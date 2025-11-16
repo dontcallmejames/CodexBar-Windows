@@ -9,9 +9,16 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "CodexBar",
-            path: "Sources/CodexBar"),
+            path: "Sources/CodexBar",
+            swiftSettings: [
+                // Opt into Swift 6 strict concurrency (approachable migration path).
+                .enableUpcomingFeature("StrictConcurrency"),
+            ]),
         .testTarget(
             name: "CodexBarTests",
             dependencies: ["CodexBar"],
-            path: "Tests"),
+            path: "Tests",
+            swiftSettings: [
+                .enableUpcomingFeature("StrictConcurrency"),
+            ]),
     ])
