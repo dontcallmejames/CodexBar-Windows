@@ -300,12 +300,12 @@ struct IconView: View {
                     weeklyRemaining: self.loadingSecondary,
                     stale: false))
                 .onReceive(self.displayLink.$tick) { _ in
-                    self.phase += 0.35 // faster
+                    self.phase += 0.18 // a bit slower
                 }
             }
         }
         .onAppear {
-            self.displayLink.start(fps: 30)
+            self.displayLink.start(fps: 20)
         }
         .onDisappear {
             self.displayLink.stop()
