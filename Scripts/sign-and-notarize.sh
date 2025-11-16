@@ -18,7 +18,7 @@ swift build -c release --arch arm64
 ./Scripts/package_app.sh release
 
 echo "Signing with $APP_IDENTITY"
-codesign --force --options runtime --sign "$APP_IDENTITY" "$APP_BUNDLE"
+codesign --force --deep --options runtime --timestamp --sign "$APP_IDENTITY" "$APP_BUNDLE"
 
 DITTO_BIN=${DITTO_BIN:-/usr/bin/ditto}
 "$DITTO_BIN" -c -k --keepParent "$APP_BUNDLE" /tmp/CodexBarNotarize.zip
