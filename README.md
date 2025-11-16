@@ -46,5 +46,15 @@ Outputs `CodexBar-0.1.0.zip` ready to ship. Adjust `APP_IDENTITY` in the script 
 - If Codex changes the event schema, percentages may fail to parse; the menu will show the error string.
 - Only arm64 build is scripted; add `--arch x86_64` if you want a universal binary.
 
+## Release checklist
+- [ ] Update version in Scripts/package_app.sh, Scripts/sign-and-notarize.sh, About panel (CodexBarApp) and CHANGELOG.md
+- [ ] Run swiftlint & swiftformat
+- [ ] swift test / swift build -c release
+- [ ] ./Scripts/package_app.sh release
+- [ ] ./Scripts/sign-and-notarize.sh (arm64)
+- [ ] Verify .app: `spctl -a -t exec -vv CodexBar.app`; `stapler validate CodexBar.app`
+- [ ] Upload `CodexBar-<version>.zip` to GitHub Releases and tag
+- [ ] README download link points to the new release
+
 ## Changelog
 See [CHANGELOG.md](CHANGELOG.md).
