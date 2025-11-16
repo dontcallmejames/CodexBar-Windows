@@ -58,3 +58,6 @@ Outputs `CodexBar-0.1.0.zip` ready to ship. Adjust `APP_IDENTITY` in the script 
 
 ## Changelog
 See [CHANGELOG.md](CHANGELOG.md).
+
+## Related
+- [Trimmy](https://github.com/steipete/Trimmy): menu-bar clipboard flattener for multi-line shell snippets.
