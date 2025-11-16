@@ -47,6 +47,19 @@ if [[ -d ".build/$CONF/Sparkle.framework" ]]; then
   cp -R ".build/$CONF/Sparkle.framework" "$APP/Contents/Frameworks/"
   chmod -R a+rX "$APP/Contents/Frameworks/Sparkle.framework"
   install_name_tool -add_rpath "@executable_path/../Frameworks" "$APP/Contents/MacOS/CodexBar"
+  # Re-sign Sparkle and all nested components with Developer ID + timestamp
+  SPARKLE="$APP/Contents/Frameworks/Sparkle.framework"
+  CODESIGN_ID="${APP_IDENTITY:-Developer ID Application: Peter Steinberger (Y5PE65HELJ)}"
+  function resign() { codesign --force --timestamp --options runtime --sign "$CODESIGN_ID" "$1"; }
+  resign "$SPARKLE"
+  resign "$SPARKLE/Versions/B/Sparkle"
+  resign "$SPARKLE/Versions/B/Autoupdate"
+  resign "$SPARKLE/Versions/B/Updater.app"
+  resign "$SPARKLE/Versions/B/Updater.app/Contents/MacOS/Updater"
+  resign "$SPARKLE/Versions/B/XPCServices/Downloader.xpc"
+  resign "$SPARKLE/Versions/B/XPCServices/Downloader.xpc/Contents/MacOS/Downloader"
+  resign "$SPARKLE/Versions/B/XPCServices/Installer.xpc"
+  resign "$SPARKLE/Versions/B/XPCServices/Installer.xpc/Contents/MacOS/Installer"
 fi
 
 if [[ -f "$ICON_TARGET" ]]; then
