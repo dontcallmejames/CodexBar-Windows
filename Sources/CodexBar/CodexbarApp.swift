@@ -44,6 +44,9 @@ final class SettingsStore: ObservableObject {
         didSet { LaunchAtLoginManager.setEnabled(self.launchAtLogin) }
     }
 
+    /// Hidden toggle to reveal debug-only menu items (enable via defaults write com.steipete.CodexBar debugMenuEnabled -bool YES).
+    @AppStorage("debugMenuEnabled") var debugMenuEnabled: Bool = false
+
     init(userDefaults: UserDefaults = .standard) {
         let raw = userDefaults.string(forKey: "refreshFrequency") ?? RefreshFrequency.twoMinutes.rawValue
         self.refreshFrequency = RefreshFrequency(rawValue: raw) ?? .twoMinutes
@@ -84,6 +87,17 @@ final class UsageStore: ObservableObject {
             self.lastError = nil
         } catch {
             self.lastError = error.localizedDescription
+        }
+    }
+
+    /// For demo/testing: drop the snapshot so the loading animation plays, then restore the last snapshot.
+    func replayLoadingAnimation(duration: TimeInterval = 3) {
+        guard !self.isRefreshing else { return }
+        let current = self.snapshot
+        self.snapshot = nil
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(duration))
+            self.snapshot = current
         }
     }
 
@@ -180,6 +194,12 @@ struct MenuContent: View {
             }
             .disabled(self.store.isRefreshing)
             .buttonStyle(.plain)
+            Button("Usage Dashboard") {
+                if let url = URL(string: "https://chatgpt.com/codex/settings/usage") {
+                    NSWorkspace.shared.open(url)
+                }
+            }
+            .buttonStyle(.plain)
             Divider()
             Menu("Settings") {
                 Menu("Refresh every: \(self.settings.refreshFrequency.label)") {
@@ -199,6 +219,12 @@ struct MenuContent: View {
                 Toggle("Launch at login", isOn: self.$settings.launchAtLogin)
                 Button("Check for Updates…") {
                     self.updater.checkForUpdates(nil)
+                }
+                if self.settings.debugMenuEnabled {
+                    Divider()
+                    Button("Debug: Replay Loading Animation") {
+                        self.store.replayLoadingAnimation()
+                    }
                 }
             }
             .buttonStyle(.plain)
@@ -258,7 +284,7 @@ struct IconView: View {
     let snapshot: UsageSnapshot?
     let isStale: Bool
     @State private var phase: CGFloat = 0
-    private let displayLink = DisplayLink()
+    @StateObject private var displayLink = DisplayLinkDriver()
 
     var body: some View {
         Group {
@@ -272,10 +298,16 @@ struct IconView: View {
                     primaryRemaining: self.loadingValue,
                     weeklyRemaining: self.loadingValue * 0.6,
                     stale: false))
-                    .onReceive(self.displayLink.publisher) { _ in
+                    .onReceive(self.displayLink.$tick) { _ in
                         self.phase += 0.08
                     }
             }
+        }
+        .onAppear {
+            self.displayLink.start(fps: 15)
+        }
+        .onDisappear {
+            self.displayLink.stop()
         }
     }
 
@@ -301,13 +333,24 @@ private func showAbout() {
     let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? ""
     let versionString = build.isEmpty ? version : "\(version) (\(build))"
 
+    let separator: NSAttributedString = NSAttributedString(string: " · ", attributes: [
+        .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
+    ])
+
+    func makeLink(_ title: String, urlString: String) -> NSAttributedString {
+        NSAttributedString(string: title, attributes: [
+            .link: URL(string: urlString) as Any,
+            .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
+        ])
+    }
+
     let credits = NSMutableAttributedString(string: "Peter Steinberger — MIT License\n")
     credits.append(makeLink("GitHub", urlString: "https://github.com/steipete/CodexBar"))
-    credits.append(NSAttributedString(string: "\n"))
+    credits.append(separator)
     credits.append(makeLink("Website", urlString: "https://steipete.me"))
-    credits.append(NSAttributedString(string: "\n"))
+    credits.append(separator)
     credits.append(makeLink("Twitter", urlString: "https://twitter.com/steipete"))
-    credits.append(NSAttributedString(string: "\n"))
+    credits.append(separator)
     credits.append(makeLink("Email", urlString: "mailto:peter@steipete.me"))
 
     let options: [NSApplication.AboutPanelOptionKey: Any] = [
@@ -320,13 +363,6 @@ private func showAbout() {
     ]
 
     NSApp.orderFrontStandardAboutPanel(options: options)
-
-    func makeLink(_ title: String, urlString: String) -> NSAttributedString {
-        NSAttributedString(string: title, attributes: [
-            .link: URL(string: urlString) as Any,
-            .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
-        ])
-    }
 }
 
 enum LaunchAtLoginManager {

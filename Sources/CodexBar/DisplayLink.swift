@@ -1,28 +1,39 @@
+import AppKit
 import Combine
 import QuartzCore
 
-/// Lightweight display link publisher to drive simple animations for the menu bar icon (macOS via CVDisplayLink).
-final class DisplayLink {
-    private let subject = PassthroughSubject<Void, Never>()
-    private var link: CVDisplayLink?
+/// Minimal CADisplayLink driver built on macOS 15's NSScreen.displayLink replacement.
+/// Publishes ticks on the main thread at the requested frame rate.
+@MainActor
+final class DisplayLinkDriver: ObservableObject {
+    @Published var tick: Int = 0
+    private var link: CADisplayLink?
 
-    var publisher: AnyPublisher<Void, Never> {
-        self.subject.eraseToAnyPublisher()
+    func start(fps: Double = 12) {
+        guard self.link == nil, let screen = NSScreen.main else { return }
+        let displayLink = screen.displayLink(target: self, selector: #selector(step))
+        let rate = Float(fps)
+        displayLink.preferredFrameRateRange = CAFrameRateRange(
+            minimum: rate,
+            maximum: rate,
+            preferred: rate)
+        displayLink.add(to: .main, forMode: .common)
+        self.link = displayLink
     }
 
-    init() {
-        var dl: CVDisplayLink?
-        CVDisplayLinkCreateWithActiveCGDisplays(&dl)
-        guard let link = dl else { return }
-        CVDisplayLinkSetOutputHandler(link) { [weak subject] _, _, _, _, _ in
-            subject?.send(())
-            return kCVReturnSuccess
-        }
-        CVDisplayLinkStart(link)
-        self.link = link
+    func stop() {
+        self.link?.invalidate()
+        self.link = nil
+    }
+
+    @objc private func step(_: CADisplayLink) {
+        // Safe on main runloop; drives SwiftUI updates.
+        self.tick &+= 1
     }
 
     deinit {
-        if let link { CVDisplayLinkStop(link) }
+        Task { @MainActor [weak self] in
+            self?.stop()
+        }
     }
 }
