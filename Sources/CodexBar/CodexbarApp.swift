@@ -295,12 +295,12 @@ struct IconView: View {
                     stale: self.isStale))
             } else {
                 Image(nsImage: IconRenderer.makeIcon(
-                    primaryRemaining: self.loadingValue,
-                    weeklyRemaining: self.loadingValue * 0.6,
+                    primaryRemaining: self.loadingPrimary,
+                    weeklyRemaining: self.loadingSecondary,
                     stale: false))
-                    .onReceive(self.displayLink.$tick) { _ in
-                        self.phase += 0.08
-                    }
+                .onReceive(self.displayLink.$tick) { _ in
+                    self.phase += 0.2 // faster
+                }
             }
         }
         .onAppear {
@@ -311,10 +311,16 @@ struct IconView: View {
         }
     }
 
-    private var loadingValue: Double {
-        // Faster sweep 10–100%
-        let v = 0.55 + 0.45 * sin(Double(self.phase))
-        return max(0, min(v * 100, 100))
+    private var loadingPrimary: Double {
+        // Knight Rider-style ping-pong across the bar.
+        let v = (sin(Double(self.phase)) + 1) * 0.5 // 0…1
+        return v * 100
+    }
+
+    private var loadingSecondary: Double {
+        // Move opposite direction for the lower bar.
+        let v = (sin(Double(self.phase + .pi)) + 1) * 0.5
+        return v * 100
     }
 }
 
