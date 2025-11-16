@@ -1,0 +1,43 @@
+# CodexBar
+
+Tiny macOS 15+ menu bar app that shows how much Codex usage you have left (5‑hour + weekly windows) and when each window resets. No Dock icon, minimal UI, dynamic bar icon in the menu bar.
+
+- Reads the newest `rollout-*.jsonl` in `~/.codex/sessions/...` and extracts the latest `token_count` event to get `used_percent`, `window_minutes`, and `resets_at`.
+- Displays both windows (5h / weekly), last-updated time, your ChatGPT account email + plan (decoded locally from `~/.codex/auth.json`), and a configurable refresh cadence.
+- Horizontal bar icon: top bar = 5h window, bottom hairline = weekly window. Filled portion shows “percent left.” Turns dim when the last read failed.
+- CLI-only: does not hit chatgpt.com or browsers; keeps tokens on-device.
+
+## Quick start
+```bash
+swift build -c release          # or debug for development
+./Scripts/package_app.sh        # builds CodexBar.app in-place
+open CodexBar.app
+```
+
+Requirements:
+- Codex CLI ≥ 0.55.0 installed and logged in (`codex --version`).
+- At least one Codex prompt this session so `token_count` events exist (otherwise you’ll see “No usage yet”).
+
+## Refresh cadence
+Menu → “Refresh every …” with presets: Manual, 1 min, 2 min (default), 5 min. Manual still allows “Refresh now.”
+
+## Notarization & signing
+Same flow as Trimmy:
+```bash
+export APP_STORE_CONNECT_API_KEY_P8="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"
+export APP_STORE_CONNECT_KEY_ID="ABC123XYZ"
+export APP_STORE_CONNECT_ISSUER_ID="00000000-0000-0000-0000-000000000000"
+./Scripts/sign-and-notarize.sh
+```
+Outputs `CodexBar-0.1.0.zip` ready to ship. Adjust `APP_IDENTITY` in the script if needed.
+
+## How account info is read
+`~/.codex/auth.json` is decoded locally (JWT only) to show your email + plan (Pro/Plus/Business). Nothing is sent anywhere.
+
+## Limitations / edge cases
+- If the newest session log has no `token_count` yet, you’ll see “No usage yet.” Run one Codex prompt and refresh.
+- If Codex changes the event schema, percentages may fail to parse; the menu will show the error string.
+- Only arm64 build is scripted; add `--arch x86_64` if you want a universal binary.
+
+## Changelog
+See [CHANGELOG.md](CHANGELOG.md).
