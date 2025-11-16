@@ -1,18 +1,23 @@
-import XCTest
+import Foundation
+import Testing
 @testable import CodexBar
 
-final class CodexBarTests: XCTestCase {
-    func testIconRendererProducesTemplateImage() {
+@Suite
+struct CodexBarTests {
+    @Test
+    func iconRendererProducesTemplateImage() {
         let image = IconRenderer.makeIcon(primaryRemaining: 50, weeklyRemaining: 75, stale: false)
-        XCTAssertTrue(image.isTemplate)
-        XCTAssertGreaterThan(image.size.width, 0)
+        #expect(image.isTemplate)
+        #expect(image.size.width > 0)
     }
 
-    func testUsageFetcherParsesLatestTokenCount() async throws {
-        let tmp = try XCTUnwrap(FileManager.default.url(for: .itemReplacementDirectory,
-                                                        in: .userDomainMask,
-                                                        appropriateFor: URL(fileURLWithPath: NSTemporaryDirectory()),
-                                                        create: true))
+    @Test
+    func usageFetcherParsesLatestTokenCount() async throws {
+        let tmp = try FileManager.default.url(
+            for: .itemReplacementDirectory,
+            in: .userDomainMask,
+            appropriateFor: URL(fileURLWithPath: NSTemporaryDirectory()),
+            create: true)
         defer { try? FileManager.default.removeItem(at: tmp) }
 
         let sessions = tmp.appendingPathComponent("sessions/2025/11/16", isDirectory: true)
@@ -49,54 +54,37 @@ final class CodexBarTests: XCTestCase {
         let fetcher = UsageFetcher(environment: ["CODEX_HOME": tmp.path])
         let snapshot = try await fetcher.loadLatestUsage()
 
-        XCTAssertEqual(snapshot.primary.usedPercent, 25.0, accuracy: 0.01)
-        XCTAssertEqual(snapshot.secondary.usedPercent, 60.0, accuracy: 0.01)
-        XCTAssertEqual(snapshot.primary.windowMinutes, 300)
-        XCTAssertEqual(snapshot.secondary.windowMinutes, 10_080)
+        #expect(snapshot.primary.usedPercent.isApproximatelyEqual(to: 25.0, absoluteTolerance: 0.01))
+        #expect(snapshot.secondary.usedPercent.isApproximatelyEqual(to: 60.0, absoluteTolerance: 0.01))
+        #expect(snapshot.primary.windowMinutes == 300)
+        #expect(snapshot.secondary.windowMinutes == 10_080)
 
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions.insert(.withFractionalSeconds)
         let expectedDate = formatter.date(from: "2025-11-16T18:00:00.000Z")
-        XCTAssertEqual(snapshot.updatedAt, expectedDate)
+        #expect(snapshot.updatedAt == expectedDate)
     }
 
-    func testUsageFetcherErrorsWhenNoTokenCount() async {
-        let tmp = try! FileManager.default.url(for: .itemReplacementDirectory,
-                                               in: .userDomainMask,
-                                               appropriateFor: URL(fileURLWithPath: NSTemporaryDirectory()),
-                                               create: true)
+    @Test
+    func usageFetcherErrorsWhenNoTokenCount() async throws {
+        let tmp = try FileManager.default.url(
+            for: .itemReplacementDirectory,
+            in: .userDomainMask,
+            appropriateFor: URL(fileURLWithPath: NSTemporaryDirectory()),
+            create: true)
         defer { try? FileManager.default.removeItem(at: tmp) }
 
         let sessions = tmp.appendingPathComponent("sessions/2025/11/16", isDirectory: true)
-        try? FileManager.default.createDirectory(at: sessions, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: sessions, withIntermediateDirectories: true)
 
         let file = sessions.appendingPathComponent("rollout-2025-11-16T10-00-00.jsonl")
-        try? "{\"timestamp\":\"2025-11-16T10:00:00.000Z\",\"type\":\"event_msg\",\"payload\":{\"type\":\"other\"}}\n"
+        try "{\"timestamp\":\"2025-11-16T10:00:00.000Z\",\"type\":\"event_msg\",\"payload\":{\"type\":\"other\"}}\n"
             .write(to: file, atomically: true, encoding: .utf8)
 
         let fetcher = UsageFetcher(environment: ["CODEX_HOME": tmp.path])
-        await XCTAssertThrowsErrorAsync(try await fetcher.loadLatestUsage()) { error in
-            guard case UsageError.noRateLimitsFound = error else {
-                XCTFail("Expected noRateLimitsFound, got \(error)")
-                return
-            }
+        await #expect(throws: UsageError.noRateLimitsFound) {
+            _ = try await fetcher.loadLatestUsage()
         }
-    }
-}
-
-// MARK: - Async throw helper
-
-private func XCTAssertThrowsErrorAsync<T>(
-    _ expression: @autoclosure () async throws -> T,
-    _ errorHandler: (Error) -> Void,
-    file: StaticString = #filePath,
-    line: UInt = #line
-) async {
-    do {
-        _ = try await expression()
-        XCTFail("Expected error to be thrown", file: file, line: line)
-    } catch {
-        errorHandler(error)
     }
 }
 
@@ -105,5 +93,11 @@ private extension Data {
         var result = self
         result.append(0x0A)
         return result
+    }
+}
+
+private extension Double {
+    func isApproximatelyEqual(to other: Double, absoluteTolerance: Double) -> Bool {
+        abs(self - other) <= absoluteTolerance
     }
 }
