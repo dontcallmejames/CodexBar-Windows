@@ -285,6 +285,7 @@ struct IconView: View {
     let isStale: Bool
     @State private var phase: CGFloat = 0
     @StateObject private var displayLink = DisplayLinkDriver()
+    @State private var pattern = LoadingPattern.random()
 
     var body: some View {
         Group {
@@ -299,7 +300,7 @@ struct IconView: View {
                     weeklyRemaining: self.loadingSecondary,
                     stale: false))
                 .onReceive(self.displayLink.$tick) { _ in
-                    self.phase += 0.2 // faster
+                    self.phase += 0.35 // faster
                 }
             }
         }
@@ -312,15 +313,53 @@ struct IconView: View {
     }
 
     private var loadingPrimary: Double {
-        // Knight Rider-style ping-pong across the bar.
-        let v = (sin(Double(self.phase)) + 1) * 0.5 // 0…1
-        return v * 100
+        self.pattern.value(phase: Double(self.phase))
     }
 
     private var loadingSecondary: Double {
-        // Move opposite direction for the lower bar.
-        let v = (sin(Double(self.phase + .pi)) + 1) * 0.5
-        return v * 100
+        self.pattern.value(phase: Double(self.phase + self.pattern.secondaryOffset))
+    }
+}
+
+private enum LoadingPattern: CaseIterable {
+    case knightRider
+    case cylon
+    case outsideIn
+    case race
+    case pulse
+
+    static func random() -> LoadingPattern {
+        self.allCases.randomElement()!
+    }
+
+    var secondaryOffset: Double {
+        switch self {
+        case .knightRider: .pi
+        case .cylon: .pi / 2
+        case .outsideIn: .pi
+        case .race: .pi / 3
+        case .pulse: .pi / 2
+        }
+    }
+
+    func value(phase: Double) -> Double {
+        // All outputs clamped to 0…100
+        let v: Double
+        switch self {
+        case .knightRider:
+            v = 0.5 + 0.5 * sin(phase) // ping-pong
+        case .cylon:
+            let t = phase.truncatingRemainder(dividingBy: .pi * 2) / (.pi * 2)
+            v = t // sawtooth 0→1
+        case .outsideIn:
+            v = abs(cos(phase)) // high at edges, dips in center
+        case .race:
+            let t = (phase * 1.5).truncatingRemainder(dividingBy: .pi * 2) / (.pi * 2)
+            v = t
+        case .pulse:
+            v = 0.4 + 0.6 * (0.5 + 0.5 * sin(phase)) // gentle pulsing 40–100%
+        }
+        return max(0, min(v * 100, 100))
     }
 }
 
