@@ -304,7 +304,7 @@ struct IconView: View {
             }
         }
         .onAppear {
-            self.displayLink.start(fps: 15)
+            self.displayLink.start(fps: 30)
         }
         .onDisappear {
             self.displayLink.stop()
@@ -312,8 +312,8 @@ struct IconView: View {
     }
 
     private var loadingValue: Double {
-        // Simple oscillating fill 20–90%
-        let v = 0.55 + 0.35 * sin(Double(self.phase))
+        // Faster sweep 10–100%
+        let v = 0.55 + 0.45 * sin(Double(self.phase))
         return max(0, min(v * 100, 100))
     }
 }
