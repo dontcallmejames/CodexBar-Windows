@@ -1,0 +1,15 @@
+<?xml version="1.0" standalone="yes"?>
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+    <channel>
+        <title>CodexBar</title>
+        <item>
+            <title>0.1.1</title>
+            <pubDate>Sun, 16 Nov 2025 20:53:34 +0100</pubDate>
+            <link>https://raw.githubusercontent.com/steipete/CodexBar/main/appcast.xml</link>
+            <sparkle:version>2</sparkle:version>
+            <sparkle:shortVersionString>0.1.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://raw.githubusercontent.com/steipete/CodexBar/main/CodexBar-0.1.0.zip" length="2378523" type="application/octet-stream" sparkle:edSignature="IqNFy6h/MZTO51aOPVZMia7E1Xa9w8oY6Fkg7Npe9KgdaRq502dz3uZmH2dG6eoQ9rOoF/o6uoIBYT/H18iVAw=="/>
+        </item>
+    </channel>
+</rss>
