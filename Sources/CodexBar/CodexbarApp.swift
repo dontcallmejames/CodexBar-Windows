@@ -113,8 +113,11 @@ struct UsageRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(self.title).font(.headline)
-            Text("\(self.window.remainingPercent, specifier: "%.0f")% left "
-                + "(\(self.window.usedPercent, specifier: "%.0f")% used)")
+            let usageText = String(
+                format: "%.0f%% left (%.0f%% used)",
+                self.window.remainingPercent,
+                self.window.usedPercent)
+            Text(usageText)
             if let reset = window.resetsAt {
                 Text("Resets \(reset.formatted(date: .abbreviated, time: .shortened))")
             }
