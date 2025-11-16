@@ -44,7 +44,8 @@ final class SettingsStore: ObservableObject {
         didSet { LaunchAtLoginManager.setEnabled(self.launchAtLogin) }
     }
 
-    /// Hidden toggle to reveal debug-only menu items (enable via defaults write com.steipete.CodexBar debugMenuEnabled -bool YES).
+    /// Hidden toggle to reveal debug-only menu items (enable via defaults write com.steipete.CodexBar debugMenuEnabled
+    /// -bool YES).
     @AppStorage("debugMenuEnabled") var debugMenuEnabled: Bool = false
 
     init(userDefaults: UserDefaults = .standard) {
@@ -305,17 +306,17 @@ struct IconView: View {
                     primaryRemaining: self.loadingPrimary,
                     weeklyRemaining: self.loadingSecondary,
                     stale: false))
-                .onReceive(self.displayLink.$tick) { _ in
-                    self.phase += 0.18 // a bit slower
-                    if self.debugCycle {
-                        self.cycleCounter += 1
-                        if self.cycleCounter >= self.cycleIntervalTicks {
-                            self.cycleCounter = 0
-                            self.cycleIndex = (self.cycleIndex + 1) % self.patterns.count
-                            self.pattern = self.patterns[self.cycleIndex]
+                    .onReceive(self.displayLink.$tick) { _ in
+                        self.phase += 0.18 // a bit slower
+                        if self.debugCycle {
+                            self.cycleCounter += 1
+                            if self.cycleCounter >= self.cycleIntervalTicks {
+                                self.cycleCounter = 0
+                                self.cycleIndex = (self.cycleIndex + 1) % self.patterns.count
+                                self.pattern = self.patterns[self.cycleIndex]
+                            }
                         }
                     }
-                }
             }
         }
         .onAppear {
@@ -351,7 +352,6 @@ struct IconView: View {
     }
 }
 
-
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let updaterController = SPUStandardUpdaterController(
         startingUpdater: true,
@@ -367,7 +367,7 @@ private func showAbout() {
     let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? ""
     let versionString = build.isEmpty ? version : "\(version) (\(build))"
 
-    let separator: NSAttributedString = NSAttributedString(string: " · ", attributes: [
+    let separator = NSAttributedString(string: " · ", attributes: [
         .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
     ])
 

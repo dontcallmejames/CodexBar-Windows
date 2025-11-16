@@ -11,7 +11,7 @@ final class DisplayLinkDriver: ObservableObject {
 
     func start(fps: Double = 12) {
         guard self.link == nil, let screen = NSScreen.main else { return }
-        let displayLink = screen.displayLink(target: self, selector: #selector(step))
+        let displayLink = screen.displayLink(target: self, selector: #selector(self.step))
         let rate = Float(fps)
         displayLink.preferredFrameRateRange = CAFrameRateRange(
             minimum: rate,

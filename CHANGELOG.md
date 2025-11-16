@@ -1,9 +1,9 @@
 # Changelog
 
 ## 0.2.0 — 2025-11-16
-- CADisplayLink-based loading animation (macOS 15 displayLink API); low-fps, warning-free.
-- Debug replay for loading animation (defaults write com.steipete.codexbar debugMenuEnabled -bool YES).
-- Usage Dashboard link in menu; menu layout tweaks.
+- CADisplayLink-based loading animations (macOS 15 displayLink API) with randomized patterns (Knight Rider, Cylon, outside-in, race, pulse) and debug replay cycling through all.
+- Debug replay toggle (`defaults write com.steipete.codexbar debugMenuEnabled -bool YES`) to view every pattern.
+- Usage Dashboard link in menu; menu layout tweaked.
 - Version bumped to 0.2.0 (4).
 
 ## 0.1.2 — 2025-11-16
