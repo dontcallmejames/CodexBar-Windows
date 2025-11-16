@@ -205,12 +205,6 @@ struct MenuContent: View {
                 showAbout()
             }
             .buttonStyle(.plain)
-            Button("View on GitHub") {
-                if let url = URL(string: "https://github.com/steipete/CodexBar") {
-                    NSWorkspace.shared.open(url)
-                }
-            }
-            .buttonStyle(.plain)
             Button("Quit") { NSApp.terminate(nil) }
                 .buttonStyle(.plain)
         }
@@ -296,7 +290,7 @@ private func showAbout() {
     credits.append(link)
 
     let options: [NSApplication.AboutPanelOptionKey: Any] = [
-        .applicationName: "CodexBar 📊",
+        .applicationName: "CodexBar",
         .applicationVersion: "0.1.1",
         .version: "0.1.1",
         .credits: credits,
