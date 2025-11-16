@@ -20,5 +20,6 @@ let package = Package(
             path: "Tests",
             swiftSettings: [
                 .enableUpcomingFeature("StrictConcurrency"),
+                .enableExperimentalFeature("SwiftTesting"),
             ]),
     ])
