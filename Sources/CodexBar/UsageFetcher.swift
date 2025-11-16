@@ -39,18 +39,24 @@ enum UsageError: LocalizedError {
     }
 }
 
-final class UsageFetcher {
-    private let fileManager: FileManager
+struct UsageFetcher: Sendable {
     private let codexHome: URL
 
-    init(fileManager: FileManager = .default, environment: [String: String] = ProcessInfo.processInfo.environment) {
-        self.fileManager = fileManager
+    init(environment: [String: String] = ProcessInfo.processInfo.environment) {
         let home = environment["CODEX_HOME"] ?? "\(NSHomeDirectory())/.codex"
         self.codexHome = URL(fileURLWithPath: home)
     }
 
-    func loadLatestUsage() throws -> UsageSnapshot {
-        let sessionFile = try self.latestSessionFile()
+    func loadLatestUsage() async throws -> UsageSnapshot {
+        let codexHome = self.codexHome
+        return try await Task.detached(priority: .utility) {
+            try Self.loadLatestUsageSync(fileManager: FileManager(), codexHome: codexHome)
+        }.value
+    }
+
+    // MARK: - Sync helper for detached task
+    private static func loadLatestUsageSync(fileManager: FileManager, codexHome: URL) throws -> UsageSnapshot {
+        let sessionFile = try Self.latestSessionFile(fileManager: fileManager, codexHome: codexHome)
         let lines = try String(contentsOf: sessionFile, encoding: .utf8).split(whereSeparator: \.isNewline)
 
         let decoder = JSONDecoder()
@@ -94,9 +100,9 @@ final class UsageFetcher {
         return AccountInfo(email: email, plan: plan)
     }
 
-    private func latestSessionFile() throws -> URL {
-        let sessions = self.codexHome.appendingPathComponent("sessions")
-        guard let enumerator = self.fileManager.enumerator(at: sessions, includingPropertiesForKeys: [.contentModificationDateKey]) else {
+    private static func latestSessionFile(fileManager: FileManager, codexHome: URL) throws -> URL {
+        let sessions = codexHome.appendingPathComponent("sessions")
+        guard let enumerator = fileManager.enumerator(at: sessions, includingPropertiesForKeys: [.contentModificationDateKey]) else {
             throw UsageError.noSessions
         }
 

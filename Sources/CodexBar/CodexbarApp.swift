@@ -70,7 +70,7 @@ final class UsageStore: ObservableObject {
         defer { self.isRefreshing = false }
 
         do {
-            let usage = try self.fetcher.loadLatestUsage()
+            let usage = try await self.fetcher.loadLatestUsage()
             self.snapshot = usage
             self.lastError = nil
         } catch {
@@ -133,7 +133,7 @@ struct MenuContent: View {
                 UsageRow(title: "5h limit", window: snapshot.primary)
                 UsageRow(title: "Weekly limit", window: snapshot.secondary)
                 Text("Updated \(snapshot.updatedAt.formatted(date: .omitted, time: .shortened))")
-                    .foregroundColor(Color(nsColor: .secondaryLabelColor))
+                    .foregroundStyle(.secondary)
             } else {
                 Text("No usage yet").foregroundStyle(.secondary)
                 if let error = store.lastError { Text(error).font(.caption) }
@@ -142,14 +142,14 @@ struct MenuContent: View {
             Divider()
             if let email = account.email {
                 Text("Account: \(email)")
-                    .foregroundColor(Color(nsColor: .secondaryLabelColor))
+                    .foregroundStyle(.secondary)
             } else {
                 Text("Account: unknown")
-                    .foregroundColor(Color(nsColor: .secondaryLabelColor))
+                    .foregroundStyle(.secondary)
             }
             if let plan = account.plan {
                 Text("Plan: \(plan.capitalized)")
-                    .foregroundColor(Color(nsColor: .secondaryLabelColor))
+                    .foregroundStyle(.secondary)
             }
 
             Divider()
@@ -166,25 +166,38 @@ struct MenuContent: View {
                     }
                 }
             }
+            .buttonStyle(.plain)
             Button {
                 Task { await store.refresh() }
             } label: {
                 Label(store.isRefreshing ? "Refreshing…" : "Refresh now", systemImage: "arrow.clockwise")
             }
+            .disabled(store.isRefreshing)
+            .buttonStyle(.plain)
             Divider()
             Button("About CodexBar") {
                 showAbout()
             }
+            .buttonStyle(.plain)
             Button("View on GitHub") {
                 if let url = URL(string: "https://github.com/steipete/CodexBar") {
                     NSWorkspace.shared.open(url)
                 }
             }
+            .buttonStyle(.plain)
             Button("Quit") { NSApp.terminate(nil) }
+            .buttonStyle(.plain)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
         .frame(minWidth: 240, alignment: .leading)
+        .foregroundStyle(.primary)
+        if self.settings.refreshFrequency == .manual {
+            Text("Auto-refresh is off")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 10)
+        }
     }
 }
 
@@ -235,11 +248,20 @@ struct IconView: View {
 private func showAbout() {
     NSApp.activate(ignoringOtherApps: true)
 
-    let alert = NSAlert()
-    alert.alertStyle = .informational
-    alert.messageText = "CodexBar 0.1.0"
-    alert.informativeText = "Peter Steinberger — MIT License\nhttps://github.com/steipete/CodexBar"
-    alert.icon = NSApplication.shared.applicationIconImage
-    alert.addButton(withTitle: "OK")
-    alert.runModal()
+    let credits = NSAttributedString(
+        string: "Peter Steinberger — MIT License\nhttps://github.com/steipete/CodexBar",
+        attributes: [
+            .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
+            .foregroundColor: NSColor.secondaryLabelColor,
+        ])
+
+    let options: [NSApplication.AboutPanelOptionKey: Any] = [
+        .applicationName: "CodexBar",
+        .applicationVersion: "0.1.0",
+        .version: "0.1.0",
+        .credits: credits,
+        .applicationIcon: (NSApplication.shared.applicationIconImage ?? NSImage()) as Any,
+    ]
+
+    NSApp.orderFrontStandardAboutPanel(options: options)
 }
