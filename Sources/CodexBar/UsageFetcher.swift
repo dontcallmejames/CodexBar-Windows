@@ -58,22 +58,23 @@ struct UsageFetcher: Sendable {
     // MARK: - Sync helper for detached task
 
     private static func loadLatestUsageSync(fileManager: FileManager, codexHome: URL) throws -> UsageSnapshot {
-        let sessionFile = try Self.latestSessionFile(fileManager: fileManager, codexHome: codexHome)
-        let lines = try String(contentsOf: sessionFile, encoding: .utf8).split(whereSeparator: \.isNewline)
-
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
 
-        // Walk newest-to-oldest so we return the most recent token_count quickly.
-        for lineSub in lines.reversed() {
-            guard let data = lineSub.data(using: .utf8) else { continue }
-            guard let event = try? decoder.decode(SessionLine.self, from: data) else { continue }
-            guard event.payload?.type == "token_count", let limits = event.payload?.rateLimits else { continue }
+        for sessionFile in try Self.sessionFilesSorted(fileManager: fileManager, codexHome: codexHome) {
+            let lines = try String(contentsOf: sessionFile, encoding: .utf8).split(whereSeparator: \.isNewline)
 
-            return UsageSnapshot(
-                primary: limits.primary.rateWindow,
-                secondary: limits.secondary.rateWindow,
-                updatedAt: event.timestamp ?? Date())
+            // Walk newest-to-oldest so we return the most recent token_count quickly.
+            for lineSub in lines.reversed() {
+                guard let data = lineSub.data(using: .utf8) else { continue }
+                guard let event = try? decoder.decode(SessionLine.self, from: data) else { continue }
+                guard event.payload?.type == "token_count", let limits = event.payload?.rateLimits else { continue }
+
+                return UsageSnapshot(
+                    primary: limits.primary.rateWindow,
+                    secondary: limits.secondary.rateWindow,
+                    updatedAt: event.timestamp ?? Date())
+            }
         }
 
         throw UsageError.noRateLimitsFound
@@ -104,7 +105,7 @@ struct UsageFetcher: Sendable {
         return AccountInfo(email: email, plan: plan)
     }
 
-    private static func latestSessionFile(fileManager: FileManager, codexHome: URL) throws -> URL {
+    private static func sessionFilesSorted(fileManager: FileManager, codexHome: URL) throws -> [URL] {
         let sessions = codexHome.appendingPathComponent("sessions")
         guard let enumerator = fileManager.enumerator(
             at: sessions,
@@ -113,15 +114,15 @@ struct UsageFetcher: Sendable {
             throw UsageError.noSessions
         }
 
-        var newest: (url: URL, date: Date)?
+        var files: [(url: URL, date: Date)] = []
         for case let url as URL in enumerator where url.lastPathComponent.hasPrefix("rollout-") {
             guard let date = try url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate
             else { continue }
-            if newest == nil || date > newest!.date { newest = (url, date) }
+            files.append((url, date))
         }
 
-        guard let found = newest else { throw UsageError.noSessions }
-        return found.url
+        guard !files.isEmpty else { throw UsageError.noSessions }
+        return files.sorted { $0.date > $1.date }.map(\.url)
     }
 
     private static func parseJWT(_ token: String) -> [String: Any]? {
