@@ -173,15 +173,6 @@ struct MenuContent: View {
                     .foregroundStyle(.secondary)
             }
 
-            Divider()
-            Toggle("Launch at login", isOn: self.$settings.launchAtLogin)
-            Toggle("Automatically check for updates", isOn: self.autoUpdateBinding)
-            Divider()
-            Button("Check for Updates…") {
-                self.updater.checkForUpdates(nil)
-            }
-            .buttonStyle(.plain)
-            Divider()
             Menu("Refresh every: \(self.settings.refreshFrequency.label)") {
                 ForEach(RefreshFrequency.allCases) { option in
                     Button {
@@ -204,6 +195,12 @@ struct MenuContent: View {
             .disabled(self.store.isRefreshing)
             .buttonStyle(.plain)
             Divider()
+            Toggle("Automatically check for updates", isOn: self.autoUpdateBinding)
+            Toggle("Launch at login", isOn: self.$settings.launchAtLogin)
+            Button("Check for Updates…") {
+                self.updater.checkForUpdates(nil)
+            }
+            .buttonStyle(.plain)
             Button("About CodexBar") {
                 showAbout()
             }
