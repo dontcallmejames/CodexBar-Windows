@@ -140,6 +140,12 @@ struct MenuContent: View {
     let account: AccountInfo
     let updater: SPUStandardUpdaterController
 
+    private var autoUpdateBinding: Binding<Bool> {
+        Binding(
+            get: { self.updater.updater.automaticallyChecksForUpdates },
+            set: { self.updater.updater.automaticallyChecksForUpdates = $0 })
+    }
+
     private var snapshot: UsageSnapshot? { self.store.snapshot }
 
     var body: some View {
@@ -169,12 +175,12 @@ struct MenuContent: View {
 
             Divider()
             Toggle("Launch at login", isOn: self.$settings.launchAtLogin)
+            Toggle("Automatically check for updates", isOn: self.autoUpdateBinding)
             Divider()
             Button("Check for Updates…") {
                 self.updater.checkForUpdates(nil)
             }
             .buttonStyle(.plain)
-            Toggle("Launch at login", isOn: self.$settings.launchAtLogin)
             Divider()
             Menu("Refresh every: \(self.settings.refreshFrequency.label)") {
                 ForEach(RefreshFrequency.allCases) { option in
