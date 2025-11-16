@@ -286,12 +286,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 private func showAbout() {
     NSApp.activate(ignoringOtherApps: true)
 
-    let credits = NSAttributedString(
-        string: "Peter Steinberger — MIT License\nhttps://github.com/steipete/CodexBar",
+    let credits = NSMutableAttributedString(string: "Peter Steinberger — MIT License\n")
+    let link = NSAttributedString(
+        string: "https://github.com/steipete/CodexBar",
         attributes: [
+            .link: URL(string: "https://github.com/steipete/CodexBar") as Any,
             .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
-            .foregroundColor: NSColor.secondaryLabelColor,
         ])
+    credits.append(link)
 
     let options: [NSApplication.AboutPanelOptionKey: Any] = [
         .applicationName: "CodexBar 📊",
