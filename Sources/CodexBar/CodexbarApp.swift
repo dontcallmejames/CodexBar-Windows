@@ -112,8 +112,9 @@ struct UsageRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(title).font(.headline)
-            Text("\(window.remainingPercent, specifier: "%.0f")% left (\(window.usedPercent, specifier: "%.0f")% used)")
+            Text(self.title).font(.headline)
+            Text(
+                "\(self.window.remainingPercent, specifier: "%.0f")% left (\(self.window.usedPercent, specifier: "%.0f")% used)")
             if let reset = window.resetsAt {
                 Text("Resets \(reset.formatted(date: .abbreviated, time: .shortened))")
             }
@@ -169,11 +170,11 @@ struct MenuContent: View {
             }
             .buttonStyle(.plain)
             Button {
-                Task { await store.refresh() }
+                Task { await self.store.refresh() }
             } label: {
-                Label(store.isRefreshing ? "Refreshing…" : "Refresh now", systemImage: "arrow.clockwise")
+                Label(self.store.isRefreshing ? "Refreshing…" : "Refresh now", systemImage: "arrow.clockwise")
             }
-            .disabled(store.isRefreshing)
+            .disabled(self.store.isRefreshing)
             .buttonStyle(.plain)
             Divider()
             Button("About CodexBar") {
@@ -187,7 +188,7 @@ struct MenuContent: View {
             }
             .buttonStyle(.plain)
             Button("Quit") { NSApp.terminate(nil) }
-            .buttonStyle(.plain)
+                .buttonStyle(.plain)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)

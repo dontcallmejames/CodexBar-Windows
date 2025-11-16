@@ -30,11 +30,11 @@ enum UsageError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .noSessions:
-            return "No Codex sessions found yet. Run at least one Codex prompt first."
+            "No Codex sessions found yet. Run at least one Codex prompt first."
         case .noRateLimitsFound:
-            return "Found sessions, but no rate limit events yet."
+            "Found sessions, but no rate limit events yet."
         case .decodeFailed:
-            return "Could not parse Codex session log."
+            "Could not parse Codex session log."
         }
     }
 }
@@ -56,6 +56,7 @@ struct UsageFetcher: Sendable {
     }
 
     // MARK: - Sync helper for detached task
+
     private static func loadLatestUsageSync(fileManager: FileManager, codexHome: URL) throws -> UsageSnapshot {
         let sessionFile = try Self.latestSessionFile(fileManager: fileManager, codexHome: codexHome)
         let lines = try String(contentsOf: sessionFile, encoding: .utf8).split(whereSeparator: \.isNewline)
@@ -82,7 +83,8 @@ struct UsageFetcher: Sendable {
         let authURL = self.codexHome.appendingPathComponent("auth.json")
         guard let data = try? Data(contentsOf: authURL),
               let auth = try? JSONDecoder().decode(AuthFile.self, from: data),
-              let idToken = auth.tokens?.idToken else {
+              let idToken = auth.tokens?.idToken
+        else {
             return AccountInfo(email: nil, plan: nil)
         }
 
@@ -104,13 +106,17 @@ struct UsageFetcher: Sendable {
 
     private static func latestSessionFile(fileManager: FileManager, codexHome: URL) throws -> URL {
         let sessions = codexHome.appendingPathComponent("sessions")
-        guard let enumerator = fileManager.enumerator(at: sessions, includingPropertiesForKeys: [.contentModificationDateKey]) else {
+        guard let enumerator = fileManager.enumerator(
+            at: sessions,
+            includingPropertiesForKeys: [.contentModificationDateKey])
+        else {
             throw UsageError.noSessions
         }
 
         var newest: (url: URL, date: Date)?
         for case let url as URL in enumerator where url.lastPathComponent.hasPrefix("rollout-") {
-            guard let date = try url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate else { continue }
+            guard let date = try url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate
+            else { continue }
             if newest == nil || date > newest!.date { newest = (url, date) }
         }
 
@@ -126,7 +132,9 @@ struct UsageFetcher: Sendable {
         var padded = String(payloadPart)
             .replacingOccurrences(of: "-", with: "+")
             .replacingOccurrences(of: "_", with: "/")
-        while padded.count % 4 != 0 { padded.append("=") }
+        while padded.count % 4 != 0 {
+            padded.append("=")
+        }
         guard let data = Data(base64Encoded: padded) else { return nil }
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
         return json
