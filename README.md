@@ -11,6 +11,7 @@ Tiny macOS 15+ menu bar app that shows how much Codex usage you have left (5‑h
 - Shows 5h + weekly windows, last-updated time, your ChatGPT account email + plan (decoded locally from `~/.codex/auth.json`), and a configurable refresh cadence.
 - Horizontal bar icon: top bar = 5h window, bottom hairline = weekly window. Filled portion shows “percent left” and dims on errors.
 - CLI-only: does not hit chatgpt.com or browsers; keeps tokens on-device.
+- Auto-update via Sparkle (Check for Updates… menu item, auto-check enabled). Feed defaults to GitHub Releases appcast (replace SupublicEDKey with your Ed25519 public key).
 
 ## Download
 - Ready-to-run zips are published in GitHub Releases: <https://github.com/steipete/CodexBar/releases>
@@ -53,6 +54,7 @@ Outputs `CodexBar-0.1.0.zip` ready to ship. Adjust `APP_IDENTITY` in the script 
 - [ ] ./Scripts/package_app.sh release
 - [ ] ./Scripts/sign-and-notarize.sh (arm64)
 - [ ] Verify .app: `spctl -a -t exec -vv CodexBar.app`; `stapler validate CodexBar.app`
+- [ ] Generate Sparkle appcast with notarized zip using your Ed25519 key; upload appcast + zip to Releases; set SUPublicEDKey in Info.plist
 - [ ] Upload `CodexBar-<version>.zip` to GitHub Releases and tag
 - [ ] README download link points to the new release
 

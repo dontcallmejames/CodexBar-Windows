@@ -33,6 +33,9 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
     <key>LSUIElement</key><true/>
     <key>CFBundleIconFile</key><string>Icon</string>
     <key>NSHumanReadableCopyright</key><string>© 2025 Peter Steinberger. MIT License.</string>
+    <key>SUFeedURL</key><string>https://raw.githubusercontent.com/steipete/CodexBar/main/appcast.xml</string>
+    <key>SUPublicEDKey</key><string>REPLACE_WITH_ED25519_PUBLIC_KEY</string>
+    <key>SUEnableAutomaticChecks</key><true/>
 </dict>
 </plist>
 PLIST

@@ -1,6 +1,7 @@
 import AppKit
 import Combine
 import ServiceManagement
+import Sparkle
 import SwiftUI
 
 // MARK: - Settings
@@ -137,6 +138,7 @@ struct MenuContent: View {
     @ObservedObject var store: UsageStore
     @ObservedObject var settings: SettingsStore
     let account: AccountInfo
+    let updater: SPUStandardUpdaterController
 
     private var snapshot: UsageSnapshot? { self.store.snapshot }
 
@@ -166,6 +168,12 @@ struct MenuContent: View {
             }
 
             Divider()
+            Toggle("Launch at login", isOn: self.$settings.launchAtLogin)
+            Divider()
+            Button("Check for Updates…") {
+                self.updater.checkForUpdates(nil)
+            }
+            .buttonStyle(.plain)
             Toggle("Launch at login", isOn: self.$settings.launchAtLogin)
             Divider()
             Menu("Refresh every: \(self.settings.refreshFrequency.label)") {
@@ -218,6 +226,7 @@ struct MenuContent: View {
 
 @main
 struct CodexBarApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var settings = SettingsStore()
     @StateObject private var store: UsageStore
     private let account: AccountInfo
@@ -233,7 +242,11 @@ struct CodexBarApp: App {
 
     var body: some Scene {
         MenuBarExtra(isInserted: self.$isInserted) {
-            MenuContent(store: self.store, settings: self.settings, account: self.account)
+            MenuContent(
+                store: self.store,
+                settings: self.settings,
+                account: self.account,
+                updater: self.appDelegate.updaterController)
         } label: {
             IconView(snapshot: self.store.snapshot, isStale: self.store.lastError != nil)
         }
@@ -257,6 +270,13 @@ struct IconView: View {
             Image(systemName: "chart.bar.fill")
         }
     }
+}
+
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    let updaterController = SPUStandardUpdaterController(
+        startingUpdater: true,
+        updaterDelegate: nil,
+        userDriverDelegate: nil)
 }
 
 @MainActor

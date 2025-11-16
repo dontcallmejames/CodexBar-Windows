@@ -11,3 +11,4 @@
 
 ## 0.1.1 — 2025-11-16
 - Launch-at-login toggle (SMAppService, macOS 13+) and saved preference applied at startup.
+- Sparkle wired for auto-updates (feed to GitHub Releases, SUPublicEDKey placeholder).
