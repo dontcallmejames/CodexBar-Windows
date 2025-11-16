@@ -257,7 +257,7 @@ private func showAbout() {
         ])
 
     let options: [NSApplication.AboutPanelOptionKey: Any] = [
-        .applicationName: "CodexBar",
+        .applicationName: "CodexBar 📊",
         .applicationVersion: "0.1.0",
         .version: "0.1.0",
         .credits: credits,
