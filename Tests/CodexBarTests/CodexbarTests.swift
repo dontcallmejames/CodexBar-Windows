@@ -37,7 +37,7 @@ struct CodexBarTests {
                     ],
                     "secondary": [
                         "used_percent": 60.0,
-                        "window_minutes": 10_080,
+                        "window_minutes": 10080,
                         "resets_at": 1_763_608_000,
                     ],
                 ],
@@ -57,7 +57,7 @@ struct CodexBarTests {
         #expect(snapshot.primary.usedPercent.isApproximatelyEqual(to: 25.0, absoluteTolerance: 0.01))
         #expect(snapshot.secondary.usedPercent.isApproximatelyEqual(to: 60.0, absoluteTolerance: 0.01))
         #expect(snapshot.primary.windowMinutes == 300)
-        #expect(snapshot.secondary.windowMinutes == 10_080)
+        #expect(snapshot.secondary.windowMinutes == 10080)
 
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions.insert(.withFractionalSeconds)
@@ -88,16 +88,16 @@ struct CodexBarTests {
     }
 }
 
-private extension Data {
-    func appendedNewline() -> Data {
+extension Data {
+    fileprivate func appendedNewline() -> Data {
         var result = self
         result.append(0x0A)
         return result
     }
 }
 
-private extension Double {
-    func isApproximatelyEqual(to other: Double, absoluteTolerance: Double) -> Bool {
+extension Double {
+    fileprivate func isApproximatelyEqual(to other: Double, absoluteTolerance: Double) -> Bool {
         abs(self - other) <= absoluteTolerance
     }
 }
