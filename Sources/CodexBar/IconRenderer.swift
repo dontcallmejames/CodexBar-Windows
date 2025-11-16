@@ -20,6 +20,7 @@ enum IconRenderer {
             trackPath.stroke()
 
             guard let remaining else { return }
+            // Clamp fill because backend might occasionally send >100 or <0.
             let clamped = max(0, min(remaining / 100, 1))
             let fillRect = CGRect(x: x, y: y, width: width * clamped, height: height)
             let fillPath = NSBezierPath(roundedRect: fillRect, xRadius: radius, yRadius: radius)

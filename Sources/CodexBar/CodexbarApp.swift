@@ -90,6 +90,7 @@ final class UsageStore: ObservableObject {
         self.timerTask?.cancel()
         guard let wait = self.settings.refreshFrequency.seconds else { return }
 
+        // Detached poller so the menu stays responsive while waiting.
         self.timerTask = Task.detached(priority: .utility) { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(wait))
@@ -260,6 +261,7 @@ private func showAbout() {
         .applicationVersion: "0.1.0",
         .version: "0.1.0",
         .credits: credits,
+        // Use bundled icon if available; fallback to empty image to avoid nil coercion warnings.
         .applicationIcon: (NSApplication.shared.applicationIconImage ?? NSImage()) as Any,
     ]
 

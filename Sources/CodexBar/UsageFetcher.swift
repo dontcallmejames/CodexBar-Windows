@@ -49,6 +49,7 @@ struct UsageFetcher: Sendable {
 
     func loadLatestUsage() async throws -> UsageSnapshot {
         let codexHome = self.codexHome
+        // Do file IO off the main actor so menu updates stay snappy.
         return try await Task.detached(priority: .utility) {
             try Self.loadLatestUsageSync(fileManager: FileManager(), codexHome: codexHome)
         }.value
@@ -62,6 +63,7 @@ struct UsageFetcher: Sendable {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
 
+        // Walk newest-to-oldest so we return the most recent token_count quickly.
         for lineSub in lines.reversed() {
             guard let data = lineSub.data(using: .utf8) else { continue }
             guard let event = try? decoder.decode(SessionLine.self, from: data) else { continue }
