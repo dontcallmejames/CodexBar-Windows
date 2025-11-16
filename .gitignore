@@ -11,6 +11,10 @@ Codexbar.app
 *.ipa
 *.dSYM*
 *.zip
+*.dmg
+*.pkg
+*.tar.gz
+*.tgz
 Icon.iconset
 
 # Misc
