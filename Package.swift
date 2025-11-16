@@ -6,9 +6,15 @@ let package = Package(
     platforms: [
         .macOS(.v15),
     ],
+    dependencies: [
+        .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.8.1"),
+    ],
     targets: [
         .executableTarget(
             name: "CodexBar",
+            dependencies: [
+                .product(name: "Sparkle", package: "Sparkle"),
+            ],
             path: "Sources/CodexBar",
             swiftSettings: [
                 // Opt into Swift 6 strict concurrency (approachable migration path).
