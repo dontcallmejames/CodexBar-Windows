@@ -297,8 +297,8 @@ private func showAbout() {
 
     let options: [NSApplication.AboutPanelOptionKey: Any] = [
         .applicationName: "CodexBar 📊",
-        .applicationVersion: "0.1.0",
-        .version: "0.1.0",
+        .applicationVersion: "0.1.1",
+        .version: "0.1.1",
         .credits: credits,
         // Use bundled icon if available; fallback to empty image to avoid nil coercion warnings.
         .applicationIcon: (NSApplication.shared.applicationIconImage ?? NSImage()) as Any,
