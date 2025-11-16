@@ -39,12 +39,14 @@ final class SettingsStore: ObservableObject {
     }
 
     @AppStorage("launchAtLogin") var launchAtLogin: Bool = false {
+        // Keep SMLoginItem state in sync with the toggle.
         didSet { LaunchAtLoginManager.setEnabled(self.launchAtLogin) }
     }
 
     init(userDefaults: UserDefaults = .standard) {
         let raw = userDefaults.string(forKey: "refreshFrequency") ?? RefreshFrequency.twoMinutes.rawValue
         self.refreshFrequency = RefreshFrequency(rawValue: raw) ?? .twoMinutes
+        // Apply stored login preference immediately on launch.
         LaunchAtLoginManager.setEnabled(self.launchAtLogin)
     }
 }
@@ -286,6 +288,7 @@ enum LaunchAtLoginManager {
         guard #available(macOS 13, *) else { return }
         let service = SMAppService.mainApp
         if enabled {
+            // Idempotent; safe to call repeatedly.
             try? service.register()
         } else {
             try? service.unregister()
