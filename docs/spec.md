@@ -36,3 +36,10 @@
 ## Alternatives considered
 - Fake TTY + `/status`: unnecessary; structured `token_count` already present in logs after any prompt.
 - Browser scrape of `https://chatgpt.com/codex/settings/usage`: skipped (cookie handling & brittleness).
+
+## Learnings / decisions
+- About panel: `AboutPanelOptionKey.credits` needs `NSAttributedString`; we supply credits + icon safely.
+- Menu palette: keep primary by default, apply `.secondary` only to meta lines, and use `.buttonStyle(.plain)` to avoid tint overriding colors.
+- Usage fetch runs off-main via detached task to keep the menu responsive if logs grow.
+- Emoji branding lives only in README; app name stays `CodexBar`.
+- Swift 6 strict concurrency enabled via `StrictConcurrency` upcoming feature to catch data-race risks early.
