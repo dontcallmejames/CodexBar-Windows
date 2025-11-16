@@ -223,6 +223,7 @@ struct MenuContent: View {
                 if self.settings.debugMenuEnabled {
                     Divider()
                     Button("Debug: Replay Loading Animation") {
+                        NotificationCenter.default.post(name: .codexbarDebugReplayAllAnimations, object: nil)
                         self.store.replayLoadingAnimation()
                     }
                 }
@@ -285,7 +286,12 @@ struct IconView: View {
     let isStale: Bool
     @State private var phase: CGFloat = 0
     @StateObject private var displayLink = DisplayLinkDriver()
-    @State private var pattern = LoadingPattern.random()
+    @State private var pattern: LoadingPattern = .knightRider
+    @State private var debugCycle = false
+    @State private var cycleIndex = 0
+    @State private var cycleCounter = 0
+    private let cycleIntervalTicks = 20
+    private let patterns = LoadingPattern.allCases
 
     var body: some View {
         Group {
@@ -301,14 +307,38 @@ struct IconView: View {
                     stale: false))
                 .onReceive(self.displayLink.$tick) { _ in
                     self.phase += 0.18 // a bit slower
+                    if self.debugCycle {
+                        self.cycleCounter += 1
+                        if self.cycleCounter >= self.cycleIntervalTicks {
+                            self.cycleCounter = 0
+                            self.cycleIndex = (self.cycleIndex + 1) % self.patterns.count
+                            self.pattern = self.patterns[self.cycleIndex]
+                        }
+                    }
                 }
             }
         }
         .onAppear {
             self.displayLink.start(fps: 20)
+            self.pattern = self.patterns.randomElement() ?? .knightRider
         }
         .onDisappear {
             self.displayLink.stop()
+        }
+        .onChange(of: self.snapshot == nil, initial: false) { _, isLoading in
+            guard isLoading else {
+                self.debugCycle = false
+                return
+            }
+            if !self.debugCycle {
+                self.pattern = self.patterns.randomElement() ?? .knightRider
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .codexbarDebugReplayAllAnimations)) { _ in
+            self.debugCycle = true
+            self.cycleIndex = 0
+            self.cycleCounter = 0
+            self.pattern = self.patterns.first ?? .knightRider
         }
     }
 
@@ -321,47 +351,6 @@ struct IconView: View {
     }
 }
 
-private enum LoadingPattern: CaseIterable {
-    case knightRider
-    case cylon
-    case outsideIn
-    case race
-    case pulse
-
-    static func random() -> LoadingPattern {
-        self.allCases.randomElement()!
-    }
-
-    var secondaryOffset: Double {
-        switch self {
-        case .knightRider: .pi
-        case .cylon: .pi / 2
-        case .outsideIn: .pi
-        case .race: .pi / 3
-        case .pulse: .pi / 2
-        }
-    }
-
-    func value(phase: Double) -> Double {
-        // All outputs clamped to 0…100
-        let v: Double
-        switch self {
-        case .knightRider:
-            v = 0.5 + 0.5 * sin(phase) // ping-pong
-        case .cylon:
-            let t = phase.truncatingRemainder(dividingBy: .pi * 2) / (.pi * 2)
-            v = t // sawtooth 0→1
-        case .outsideIn:
-            v = abs(cos(phase)) // high at edges, dips in center
-        case .race:
-            let t = (phase * 1.5).truncatingRemainder(dividingBy: .pi * 2) / (.pi * 2)
-            v = t
-        case .pulse:
-            v = 0.4 + 0.6 * (0.5 + 0.5 * sin(phase)) // gentle pulsing 40–100%
-        }
-        return max(0, min(v * 100, 100))
-    }
-}
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let updaterController = SPUStandardUpdaterController(
