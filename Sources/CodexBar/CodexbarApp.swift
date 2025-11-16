@@ -1,5 +1,6 @@
 import AppKit
 import Combine
+import ServiceManagement
 import SwiftUI
 
 // MARK: - Settings
@@ -37,9 +38,14 @@ final class SettingsStore: ObservableObject {
         didSet { UserDefaults.standard.set(self.refreshFrequency.rawValue, forKey: "refreshFrequency") }
     }
 
+    @AppStorage("launchAtLogin") var launchAtLogin: Bool = false {
+        didSet { LaunchAtLoginManager.setEnabled(self.launchAtLogin) }
+    }
+
     init(userDefaults: UserDefaults = .standard) {
         let raw = userDefaults.string(forKey: "refreshFrequency") ?? RefreshFrequency.twoMinutes.rawValue
         self.refreshFrequency = RefreshFrequency(rawValue: raw) ?? .twoMinutes
+        LaunchAtLoginManager.setEnabled(self.launchAtLogin)
     }
 }
 
@@ -158,6 +164,8 @@ struct MenuContent: View {
             }
 
             Divider()
+            Toggle("Launch at login", isOn: self.$settings.launchAtLogin)
+            Divider()
             Menu("Refresh every: \(self.settings.refreshFrequency.label)") {
                 ForEach(RefreshFrequency.allCases) { option in
                     Button {
@@ -270,4 +278,17 @@ private func showAbout() {
     ]
 
     NSApp.orderFrontStandardAboutPanel(options: options)
+}
+
+enum LaunchAtLoginManager {
+    @MainActor
+    static func setEnabled(_ enabled: Bool) {
+        guard #available(macOS 13, *) else { return }
+        let service = SMAppService.mainApp
+        if enabled {
+            try? service.register()
+        } else {
+            try? service.unregister()
+        }
+    }
 }
