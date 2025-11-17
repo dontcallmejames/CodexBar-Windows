@@ -10,11 +10,9 @@ struct UsageRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(self.title).font(.headline)
-            let usageText = String(
-                format: "%.0f%% left (%.0f%% used)",
-                self.window.remainingPercent,
-                self.window.usedPercent)
-            Text(usageText)
+            Text(UsageFormatter.usageLine(
+                remaining: self.window.remainingPercent,
+                used: self.window.usedPercent))
             if let reset = window.resetsAt {
                 Text("Resets \(reset.formatted(date: .abbreviated, time: .shortened))")
             }
@@ -42,7 +40,7 @@ struct MenuContent: View {
             if let snapshot {
                 UsageRow(title: "5h limit", window: snapshot.primary)
                 UsageRow(title: "Weekly limit", window: snapshot.secondary)
-                Text(self.relativeUpdated(at: snapshot.updatedAt))
+                Text(UsageFormatter.updatedString(from: snapshot.updatedAt))
                     .foregroundStyle(.secondary)
             } else {
                 Text("No usage yet").foregroundStyle(.secondary)
