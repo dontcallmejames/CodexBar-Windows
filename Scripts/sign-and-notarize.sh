@@ -4,7 +4,7 @@ set -euo pipefail
 APP_NAME="CodexBar"
 APP_IDENTITY="Developer ID Application: Peter Steinberger (Y5PE65HELJ)"
 APP_BUNDLE="CodexBar.app"
-ZIP_NAME="CodexBar-0.2.1.zip"
+ZIP_NAME="CodexBar-0.2.2.zip"
 
 if [[ -z "${APP_STORE_CONNECT_API_KEY_P8:-}" || -z "${APP_STORE_CONNECT_KEY_ID:-}" || -z "${APP_STORE_CONNECT_ISSUER_ID:-}" ]]; then
   echo "Missing APP_STORE_CONNECT_* env vars (API key, key id, issuer id)." >&2
@@ -21,7 +21,7 @@ echo "Signing with $APP_IDENTITY"
 codesign --force --deep --options runtime --timestamp --sign "$APP_IDENTITY" "$APP_BUNDLE"
 
 DITTO_BIN=${DITTO_BIN:-/usr/bin/ditto}
-"$DITTO_BIN" -c -k --keepParent "$APP_BUNDLE" /tmp/CodexBarNotarize.zip
+"$DITTO_BIN" -c -k --keepParent --sequesterRsrc "$APP_BUNDLE" /tmp/CodexBarNotarize.zip
 
 echo "Submitting for notarization"
 xcrun notarytool submit /tmp/CodexBarNotarize.zip \
@@ -33,7 +33,7 @@ xcrun notarytool submit /tmp/CodexBarNotarize.zip \
 echo "Stapling ticket"
 xcrun stapler staple "$APP_BUNDLE"
 
-"$DITTO_BIN" -c -k --keepParent "$APP_BUNDLE" "$ZIP_NAME"
+"$DITTO_BIN" -c -k --keepParent --sequesterRsrc "$APP_BUNDLE" "$ZIP_NAME"
 
 spctl -a -t exec -vv "$APP_BUNDLE"
 stapler validate "$APP_BUNDLE"

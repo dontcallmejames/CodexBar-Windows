@@ -27,8 +27,8 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
     <key>CFBundleIdentifier</key><string>com.steipete.codexbar</string>
     <key>CFBundleExecutable</key><string>CodexBar</string>
     <key>CFBundlePackageType</key><string>APPL</string>
-    <key>CFBundleShortVersionString</key><string>0.2.1</string>
-    <key>CFBundleVersion</key><string>6</string>
+    <key>CFBundleShortVersionString</key><string>0.2.2</string>
+    <key>CFBundleVersion</key><string>7</string>
     <key>LSMinimumSystemVersion</key><string>15.0</string>
     <key>LSUIElement</key><true/>
     <key>CFBundleIconFile</key><string>Icon</string>
@@ -51,6 +51,7 @@ if [[ -d ".build/$CONF/Sparkle.framework" ]]; then
   SPARKLE="$APP/Contents/Frameworks/Sparkle.framework"
   CODESIGN_ID="${APP_IDENTITY:-Developer ID Application: Peter Steinberger (Y5PE65HELJ)}"
   function resign() { codesign --force --timestamp --options runtime --sign "$CODESIGN_ID" "$1"; }
+  # Sign innermost binaries first, then the framework root to seal resources
   resign "$SPARKLE"
   resign "$SPARKLE/Versions/B/Sparkle"
   resign "$SPARKLE/Versions/B/Autoupdate"
@@ -60,10 +61,20 @@ if [[ -d ".build/$CONF/Sparkle.framework" ]]; then
   resign "$SPARKLE/Versions/B/XPCServices/Downloader.xpc/Contents/MacOS/Downloader"
   resign "$SPARKLE/Versions/B/XPCServices/Installer.xpc"
   resign "$SPARKLE/Versions/B/XPCServices/Installer.xpc/Contents/MacOS/Installer"
+  resign "$SPARKLE/Versions/B"
+  resign "$SPARKLE"
 fi
 
 if [[ -f "$ICON_TARGET" ]]; then
   cp "$ICON_TARGET" "$APP/Contents/Resources/Icon.icns"
 fi
+
+# Strip extended attributes to prevent AppleDouble (._*) files that break code sealing
+xattr -cr "$APP"
+find "$APP" -name '._*' -delete
+
+# Finally sign the app bundle itself
+CODESIGN_ID="${APP_IDENTITY:-Developer ID Application: Peter Steinberger (Y5PE65HELJ)}"
+codesign --force --timestamp --options runtime --sign "$CODESIGN_ID" "$APP"
 
 echo "Created $APP"
