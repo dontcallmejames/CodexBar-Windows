@@ -10,9 +10,12 @@ struct IconView: View {
     @State private var debugCycle = false
     @State private var cycleIndex = 0
     @State private var cycleCounter = 0
+    private let loadingFPS: Double = 12
     // Advance to next pattern every N ticks when debug cycling.
     private let cycleIntervalTicks = 20
     private let patterns = LoadingPattern.allCases
+
+    private var isLoading: Bool { self.snapshot == nil }
 
     var body: some View {
         Group {
@@ -37,25 +40,22 @@ struct IconView: View {
                                 self.pattern = self.patterns[self.cycleIndex]
                             }
                         }
-                    }
+                }
             }
         }
-        .onAppear {
-            self.displayLink.start(fps: 20)
-            self.pattern = self.patterns.randomElement() ?? .knightRider
-        }
-        .onDisappear {
-            self.displayLink.stop()
-        }
-        .onChange(of: self.snapshot == nil, initial: false) { _, isLoading in
-            guard isLoading else {
+        .onChange(of: self.isLoading, initial: true) { _, isLoading in
+            if isLoading {
+                self.displayLink.start(fps: self.loadingFPS)
+                if !self.debugCycle {
+                    self.pattern = self.patterns.randomElement() ?? .knightRider
+                }
+            } else {
+                self.displayLink.stop()
                 self.debugCycle = false
-                return
-            }
-            if !self.debugCycle {
-                self.pattern = self.patterns.randomElement() ?? .knightRider
+                self.phase = 0
             }
         }
+        .onDisappear { self.displayLink.stop() }
         .onReceive(NotificationCenter.default.publisher(for: .codexbarDebugReplayAllAnimations)) { _ in
             self.debugCycle = true
             self.cycleIndex = 0
