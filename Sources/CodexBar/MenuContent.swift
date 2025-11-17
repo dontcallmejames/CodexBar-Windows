@@ -42,7 +42,7 @@ struct MenuContent: View {
             if let snapshot {
                 UsageRow(title: "5h limit", window: snapshot.primary)
                 UsageRow(title: "Weekly limit", window: snapshot.secondary)
-                Text("Updated \(snapshot.updatedAt.formatted(date: .omitted, time: .shortened))")
+                Text(self.relativeUpdated(at: snapshot.updatedAt))
                     .foregroundStyle(.secondary)
             } else {
                 Text("No usage yet").foregroundStyle(.secondary)
@@ -120,6 +120,17 @@ struct MenuContent: View {
                 .font(.caption2)
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 10)
+        }
+    }
+
+    private func relativeUpdated(at date: Date) -> String {
+        let now = Date()
+        if let hours = Calendar.current.dateComponents([.hour], from: date, to: now).hour, hours < 24 {
+            let rel = RelativeDateTimeFormatter()
+            rel.unitsStyle = .abbreviated
+            return "Updated \(rel.localizedString(for: date, relativeTo: now))"
+        } else {
+            return "Updated \(date.formatted(date: .omitted, time: .shortened))"
         }
     }
 }
