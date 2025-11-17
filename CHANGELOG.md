@@ -1,10 +1,13 @@
 # Changelog
 
+## 0.2.2 — 2025-11-17
+- Menu bar icon stays static when no account/usage is present; loading animation only runs while fetching (12 fps) to keep idle CPU low.
+- Usage refresh first tails the newest session log (512 KB window) before scanning everything, reducing IO on large Codex logs.
+- Packaging/signing hardened: strip extended attributes, delete AppleDouble (`._*`) files, and re-sign Sparkle + app bundle to satisfy Gatekeeper.
+
 ## 0.2.1 — 2025-11-17
+- Patch bump for refactor/relative-time changes; packaging scripts set to 0.2.1 (5).
 - Streamlined Codex usage parsing: modern rate-limit handling, flexible reset time parsing, and account rate-limit updates (thanks @jazzyalex and https://jazzyalex.github.io/agent-sessions/).
-- Usage refresh now tails the newest session log (512 KB window) before falling back to a full scan, cutting disk IO and CPU spikes on large Codex logs.
-- Menu bar icon animation now sleeps when data is present; loading CADisplayLink runs at 12 fps only while fetching to reduce idle CPU.
-- If no account/usage is found, menu bar icon stays static (no loading animation) to avoid distracting motion when offline or before first login.
 
 ## 0.2.0 — 2025-11-16
 - CADisplayLink-based loading animations (macOS 15 displayLink API) with randomized patterns (Knight Rider, Cylon, outside-in, race, pulse) and debug replay cycling through all.
