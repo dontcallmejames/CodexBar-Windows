@@ -86,6 +86,100 @@ struct CodexBarTests {
             _ = try await fetcher.loadLatestUsage()
         }
     }
+
+    @Test
+    func usageFetcherParsesRateLimitsWithMilliseconds() async throws {
+        let tmp = try FileManager.default.url(
+            for: .itemReplacementDirectory,
+            in: .userDomainMask,
+            appropriateFor: URL(fileURLWithPath: NSTemporaryDirectory()),
+            create: true)
+        defer { try? FileManager.default.removeItem(at: tmp) }
+
+        let sessions = tmp.appendingPathComponent("sessions/2025/11/17", isDirectory: true)
+        try FileManager.default.createDirectory(at: sessions, withIntermediateDirectories: true)
+
+        let event: [String: Any] = [
+            "timestamp": "2025-11-17T12:00:00.000Z",
+            "type": "event_msg",
+            "payload": [
+                "type": "token_count",
+                "rate_limits": [
+                    "primary": [
+                        "used_percent": 55,
+                        "window_minutes": 300,
+                        "resets_at": 1_700_000_000,
+                    ],
+                    "secondary": [
+                        "used_percent": 12,
+                        "window_minutes": 10080,
+                        "reset_at_ms": 1_800_000_000_000,
+                    ],
+                ],
+            ],
+        ]
+
+        let data = try JSONSerialization.data(withJSONObject: event)
+        let file = sessions.appendingPathComponent("rollout-2025-11-17T12-00-00.jsonl")
+        try data.appendedNewline().write(to: file)
+        try FileManager.default.setAttributes([.modificationDate: Date()], ofItemAtPath: file.path)
+
+        let fetcher = UsageFetcher(environment: ["CODEX_HOME": tmp.path])
+        let snapshot = try await fetcher.loadLatestUsage()
+
+        #expect(snapshot.primary.usedPercent.isApproximatelyEqual(to: 55, absoluteTolerance: 0.001))
+        #expect(snapshot.primary.windowMinutes == 300)
+        #expect(snapshot.secondary.usedPercent.isApproximatelyEqual(to: 12, absoluteTolerance: 0.001))
+        #expect(snapshot.secondary.windowMinutes == 10080)
+
+        #expect(snapshot.primary.resetsAt != nil)
+        #expect(snapshot.secondary.resetsAt != nil)
+    }
+
+    @Test
+    func usageFetcherParsesAccountRateLimitUpdatedEvents() async throws {
+        let tmp = try FileManager.default.url(
+            for: .itemReplacementDirectory,
+            in: .userDomainMask,
+            appropriateFor: URL(fileURLWithPath: NSTemporaryDirectory()),
+            create: true)
+        defer { try? FileManager.default.removeItem(at: tmp) }
+
+        let sessions = tmp.appendingPathComponent("sessions/2025/11/17", isDirectory: true)
+        try FileManager.default.createDirectory(at: sessions, withIntermediateDirectories: true)
+
+        let event: [String: Any] = [
+            "timestamp": 1_800_000_000.0,
+            "type": "event_msg",
+            "payload": [
+                "type": "account/rateLimits/updated",
+                "rate_limits": [
+                    "primary": [
+                        "used_percent": 5,
+                        "window_minutes": 300,
+                        "resets_at": 1_800_000_000.0,
+                    ],
+                    "secondary": [
+                        "used_percent": 8,
+                        "window_minutes": 10080,
+                        "resets_at": 1_800_050_000.0,
+                    ],
+                ],
+            ],
+        ]
+
+        let data = try JSONSerialization.data(withJSONObject: event)
+        let file = sessions.appendingPathComponent("rollout-2025-11-17T12-30-00.jsonl")
+        try data.appendedNewline().write(to: file)
+        try FileManager.default.setAttributes([.modificationDate: Date()], ofItemAtPath: file.path)
+
+        let fetcher = UsageFetcher(environment: ["CODEX_HOME": tmp.path])
+        let snapshot = try await fetcher.loadLatestUsage()
+
+        #expect(snapshot.primary.usedPercent.isApproximatelyEqual(to: 5, absoluteTolerance: 0.001))
+        #expect(snapshot.secondary.usedPercent.isApproximatelyEqual(to: 8, absoluteTolerance: 0.001))
+        #expect(snapshot.updatedAt.timeIntervalSince1970 == 1_800_000_000.0)
+    }
 }
 
 extension Data {

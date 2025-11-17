@@ -58,22 +58,40 @@ struct UsageFetcher: Sendable {
     // MARK: - Sync helper for detached task
 
     private static func loadLatestUsageSync(fileManager: FileManager, codexHome: URL) throws -> UsageSnapshot {
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-
         for sessionFile in try Self.sessionFilesSorted(fileManager: fileManager, codexHome: codexHome) {
             let lines = try String(contentsOf: sessionFile, encoding: .utf8).split(whereSeparator: \.isNewline)
 
             // Walk newest-to-oldest so we return the most recent token_count quickly.
-            for lineSub in lines.reversed() {
-                guard let data = lineSub.data(using: .utf8) else { continue }
-                guard let event = try? decoder.decode(SessionLine.self, from: data) else { continue }
-                guard event.payload?.type == "token_count", let limits = event.payload?.rateLimits else { continue }
+            for rawLine in lines.reversed() {
+                guard let data = rawLine.data(using: .utf8) else { continue }
+                guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { continue }
+
+                // Prefer nested payload for consistency, but fall back to top-level.
+                let payload = (json["payload"] as? [String: Any]) ?? json
+                let createdAt = decodeFlexibleDate(json["timestamp"]) ??
+                    decodeFlexibleDate(payload["timestamp"]) ??
+                    decodeFlexibleDate(payload["created_at"]) ??
+                    Date()
+
+                // Accept modern token_count and account/rateLimits update shapes.
+                let type = (payload["type"] as? String)?.lowercased()
+                guard type == "token_count" || type?.contains("ratelimits") == true || type?.contains("rate_limits") == true else {
+                    continue
+                }
+
+                // Modern logs: rate_limits attached to payload (or top-level fallback for safety).
+                let rate = (payload["rate_limits"] as? [String: Any]) ??
+                    json["rate_limits"] as? [String: Any]
+                guard let rate else { continue }
+
+                let capturedAt = decodeFlexibleDate(rate["captured_at"]) ?? createdAt
+                let primary = decodeWindow(rate["primary"], created: createdAt, capturedAt: capturedAt)
+                let secondary = decodeWindow(rate["secondary"], created: createdAt, capturedAt: capturedAt)
 
                 return UsageSnapshot(
-                    primary: limits.primary.rateWindow,
-                    secondary: limits.secondary.rateWindow,
-                    updatedAt: event.timestamp ?? Date())
+                    primary: primary,
+                    secondary: secondary,
+                    updatedAt: capturedAt)
             }
         }
 
@@ -140,46 +158,77 @@ struct UsageFetcher: Sendable {
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
         return json
     }
-}
 
-// MARK: - Decoding helpers
+    // MARK: - Decoding helpers
 
-private struct SessionLine: Decodable {
-    let timestamp: Date?
-    let payload: Payload?
-
-    struct Payload: Decodable {
-        let type: String?
-        let rateLimits: RateLimits?
-
-        enum CodingKeys: String, CodingKey {
-            case type
-            case rateLimits = "rate_limits"
+    private static func decodeFlexibleDate(_ any: Any?) -> Date? {
+        guard let any else { return nil }
+        if let d = any as? Double { return Date(timeIntervalSince1970: normalizeEpochSeconds(d)) }
+        if let i = any as? Int { return Date(timeIntervalSince1970: normalizeEpochSeconds(Double(i))) }
+        if let n = any as? NSNumber { return Date(timeIntervalSince1970: normalizeEpochSeconds(n.doubleValue)) }
+        if let s = any as? String {
+            if CharacterSet.decimalDigits.isSuperset(of: CharacterSet(charactersIn: s)), let val = Double(s) {
+                return Date(timeIntervalSince1970: normalizeEpochSeconds(val))
+            }
+            let iso1 = ISO8601DateFormatter(); iso1.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            if let d = iso1.date(from: s) { return d }
+            let iso2 = ISO8601DateFormatter(); iso2.formatOptions = [.withInternetDateTime]
+            if let d = iso2.date(from: s) { return d }
         }
-    }
-}
-
-private struct RateLimits: Decodable {
-    let primary: Window
-    let secondary: Window
-}
-
-private struct Window: Decodable {
-    let usedPercent: Double
-    let windowMinutes: Int?
-    let resetsAt: TimeInterval?
-
-    enum CodingKeys: String, CodingKey {
-        case usedPercent = "used_percent"
-        case windowMinutes = "window_minutes"
-        case resetsAt = "resets_at"
+        return nil
     }
 
-    var rateWindow: RateWindow {
-        RateWindow(
-            usedPercent: self.usedPercent,
-            windowMinutes: self.windowMinutes,
-            resetsAt: self.resetsAt.flatMap { Date(timeIntervalSince1970: $0) })
+    private static func normalizeEpochSeconds(_ value: Double) -> Double {
+        if value > 1e14 { return value / 1_000_000 }
+        if value > 1e11 { return value / 1_000 }
+        return value
+    }
+
+    private static func decodeWindow(_ any: Any?, created: Date, capturedAt: Date?) -> RateWindow {
+        guard let dict = any as? [String: Any] else {
+            return RateWindow(usedPercent: 0, windowMinutes: nil, resetsAt: nil)
+        }
+
+        let usedPercent: Double = {
+            if let d = dict["used_percent"] as? Double { return d }
+            if let i = dict["used_percent"] as? Int { return Double(i) }
+            if let n = dict["used_percent"] as? NSNumber { return n.doubleValue }
+            return 0
+        }()
+
+        let windowMinutes = (dict["window_minutes"] as? NSNumber)?.intValue
+
+        var resetsAt: Date?
+        let keys = ["resets_at", "reset_at", "resetsAt", "resetAt", "resets_at_ms", "reset_at_ms"]
+        for key in keys {
+            guard let raw = dict[key] else { continue }
+            if key.hasSuffix("_ms") {
+                if let num = raw as? NSNumber {
+                    resetsAt = Date(timeIntervalSince1970: normalizeEpochSeconds(num.doubleValue))
+                    break
+                }
+                if let num = raw as? Double {
+                    resetsAt = Date(timeIntervalSince1970: normalizeEpochSeconds(num))
+                    break
+                }
+                if let num = raw as? Int {
+                    resetsAt = Date(timeIntervalSince1970: normalizeEpochSeconds(Double(num)))
+                    break
+                }
+                if let s = raw as? String, let num = Double(s) {
+                    resetsAt = Date(timeIntervalSince1970: normalizeEpochSeconds(num))
+                    break
+                }
+            } else if let date = decodeFlexibleDate(raw) {
+                resetsAt = date
+                break
+            }
+        }
+
+        // If captured_at is present and resetsAt was missing, assume capturedAt is the best freshness indicator.
+        let finalReset = resetsAt ?? capturedAt ?? created
+
+        return RateWindow(usedPercent: usedPercent, windowMinutes: windowMinutes, resetsAt: finalReset)
     }
 }
 
