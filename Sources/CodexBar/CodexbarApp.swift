@@ -9,6 +9,14 @@ struct CodexBarApp: App {
     private let account: AccountInfo
     @State private var isInserted = true
 
+    private var hasAccount: Bool {
+        self.account.email != nil || self.account.plan != nil
+    }
+
+    private var shouldAnimateIcon: Bool {
+        self.hasAccount && self.store.lastError == nil && self.store.snapshot == nil
+    }
+
     init() {
         let settings = SettingsStore()
         let fetcher = UsageFetcher()
@@ -25,7 +33,10 @@ struct CodexBarApp: App {
                 account: self.account,
                 updater: self.appDelegate.updaterController)
         } label: {
-            IconView(snapshot: self.store.snapshot, isStale: self.store.lastError != nil)
+            IconView(
+                snapshot: self.store.snapshot,
+                isStale: self.store.lastError != nil,
+                showLoadingAnimation: self.shouldAnimateIcon)
         }
         Settings {
             EmptyView()
