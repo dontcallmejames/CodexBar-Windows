@@ -4,6 +4,7 @@ import SwiftUI
 struct IconView: View {
     let snapshot: UsageSnapshot?
     let isStale: Bool
+    let showLoadingAnimation: Bool
     @State private var phase: CGFloat = 0
     @StateObject private var displayLink = DisplayLinkDriver()
     @State private var pattern: LoadingPattern = .knightRider
@@ -15,7 +16,7 @@ struct IconView: View {
     private let cycleIntervalTicks = 20
     private let patterns = LoadingPattern.allCases
 
-    private var isLoading: Bool { self.snapshot == nil }
+    private var isLoading: Bool { self.showLoadingAnimation && self.snapshot == nil }
 
     var body: some View {
         Group {
@@ -24,7 +25,7 @@ struct IconView: View {
                     primaryRemaining: snapshot.primary.remainingPercent,
                     weeklyRemaining: snapshot.secondary.remainingPercent,
                     stale: self.isStale))
-            } else {
+            } else if self.showLoadingAnimation {
                 // Loading: animate bars with the current pattern until data arrives.
                 Image(nsImage: IconRenderer.makeIcon(
                     primaryRemaining: self.loadingPrimary,
@@ -40,7 +41,13 @@ struct IconView: View {
                                 self.pattern = self.patterns[self.cycleIndex]
                             }
                         }
-                }
+                    }
+            } else {
+                // No animation when usage/account is unavailable; show empty tracks.
+                Image(nsImage: IconRenderer.makeIcon(
+                    primaryRemaining: nil,
+                    weeklyRemaining: nil,
+                    stale: self.isStale))
             }
         }
         .onChange(of: self.isLoading, initial: true) { _, isLoading in

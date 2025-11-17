@@ -4,6 +4,7 @@
 - Streamlined Codex usage parsing: modern rate-limit handling, flexible reset time parsing, and account rate-limit updates (thanks @jazzyalex and https://jazzyalex.github.io/agent-sessions/).
 - Usage refresh now tails the newest session log (512 KB window) before falling back to a full scan, cutting disk IO and CPU spikes on large Codex logs.
 - Menu bar icon animation now sleeps when data is present; loading CADisplayLink runs at 12 fps only while fetching to reduce idle CPU.
+- If no account/usage is found, menu bar icon stays static (no loading animation) to avoid distracting motion when offline or before first login.
 
 ## 0.2.0 — 2025-11-16
 - CADisplayLink-based loading animations (macOS 15 displayLink API) with randomized patterns (Knight Rider, Cylon, outside-in, race, pulse) and debug replay cycling through all.
