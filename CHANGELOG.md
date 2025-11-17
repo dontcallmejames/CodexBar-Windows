@@ -7,6 +7,9 @@
 - Updated time now shows relative formatting when fresher than 24h; refactored sources into smaller files for maintainability.
 - Version bumped to 0.2.0 (4).
 
+## 0.2.1 — 2025-11-17
+- Patch bump for refactor/relative-time changes; packaging scripts set to 0.2.1 (5).
+
 ## 0.1.2 — 2025-11-16
 - Animated loading icon (dual bars sweep until usage arrives); always uses rendered template icon.
 - Sparkle embedding/signing fixed with deep+timestamp; notarization pipeline solid.
