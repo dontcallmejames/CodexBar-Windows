@@ -41,6 +41,8 @@ enum UsageError: LocalizedError {
 
 struct UsageFetcher: Sendable {
     private let codexHome: URL
+    // Read only the last chunk of the newest session file first; fall back to full file if needed.
+    private static let tailReadBytes: Int = 512 * 1024
 
     init(environment: [String: String] = ProcessInfo.processInfo.environment) {
         let home = environment["CODEX_HOME"] ?? "\(NSHomeDirectory())/.codex"
@@ -59,46 +61,26 @@ struct UsageFetcher: Sendable {
 
     private static func loadLatestUsageSync(fileManager: FileManager, codexHome: URL) throws -> UsageSnapshot {
         for sessionFile in try Self.sessionFilesSorted(fileManager: fileManager, codexHome: codexHome) {
-            let lines = try String(contentsOf: sessionFile, encoding: .utf8).split(whereSeparator: \.isNewline)
-
-            // Walk newest-to-oldest so we return the most recent token_count quickly.
-            for rawLine in lines.reversed() {
-                guard let data = rawLine.data(using: .utf8) else { continue }
-                guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { continue }
-
-                // Prefer nested payload for consistency, but fall back to top-level.
-                let payload = (json["payload"] as? [String: Any]) ?? json
-                // Timestamps show up in multiple places depending on emitter; pick the first valid one.
-                let createdAt = decodeFlexibleDate(json["timestamp"]) ??
-                    decodeFlexibleDate(payload["timestamp"]) ??
-                    decodeFlexibleDate(payload["created_at"]) ??
-                    Date()
-
-                // Accept modern token_count and account/rateLimits update shapes.
-                let type = (payload["type"] as? String)?.lowercased()
-                guard type == "token_count" ||
-                    type?.contains("ratelimits") == true ||
-                    type?.contains("rate_limits") == true else {
-                    continue
-                }
-
-                // Modern logs: rate_limits attached to payload (or top-level fallback for safety).
-                let rate = (payload["rate_limits"] as? [String: Any]) ??
-                    json["rate_limits"] as? [String: Any]
-                guard let rate else { continue }
-
-                let capturedAt = decodeFlexibleDate(rate["captured_at"]) ?? createdAt
-                let primary = decodeWindow(rate["primary"], created: createdAt, capturedAt: capturedAt)
-                let secondary = decodeWindow(rate["secondary"], created: createdAt, capturedAt: capturedAt)
-
-                return UsageSnapshot(
-                    primary: primary,
-                    secondary: secondary,
-                    updatedAt: capturedAt)
+            if let snapshot = try Self.loadUsage(from: sessionFile) {
+                return snapshot
             }
         }
 
         throw UsageError.noRateLimitsFound
+    }
+
+    private static func loadUsage(from url: URL) throws -> UsageSnapshot? {
+        // First try the tail of the newest file to avoid loading multi-MB logs.
+        if let tail = try self.tailLines(url: url, bytes: self.tailReadBytes),
+           let snapshot = self.parse(lines: tail) {
+            return snapshot
+        }
+
+        // Fallback to full file scan for safety.
+        let fullLines = try String(contentsOf: url, encoding: .utf8)
+            .split(whereSeparator: \.isNewline)
+            .map(String.init)
+        return self.parse(lines: fullLines)
     }
 
     func loadAccountInfo() -> AccountInfo {
@@ -235,6 +217,67 @@ struct UsageFetcher: Sendable {
         let finalReset = resetsAt ?? capturedAt ?? created
 
         return RateWindow(usedPercent: usedPercent, windowMinutes: windowMinutes, resetsAt: finalReset)
+    }
+
+    private static func parse<S: Sequence>(lines: S) -> UsageSnapshot? where S.Element == String {
+        for rawLine in lines.reversed() {
+            guard let data = rawLine.data(using: .utf8) else { continue }
+            guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { continue }
+
+            // Prefer nested payload for consistency, but fall back to top-level.
+            let payload = (json["payload"] as? [String: Any]) ?? json
+            // Timestamps show up in multiple places depending on emitter; pick the first valid one.
+            let createdAt = decodeFlexibleDate(json["timestamp"]) ??
+                decodeFlexibleDate(payload["timestamp"]) ??
+                decodeFlexibleDate(payload["created_at"]) ??
+                Date()
+
+            // Accept modern token_count and account/rateLimits update shapes.
+            let type = (payload["type"] as? String)?.lowercased()
+            guard type == "token_count" ||
+                type?.contains("ratelimits") == true ||
+                type?.contains("rate_limits") == true else {
+                continue
+            }
+
+            // Modern logs: rate_limits attached to payload (or top-level fallback for safety).
+            let rate = (payload["rate_limits"] as? [String: Any]) ??
+                json["rate_limits"] as? [String: Any]
+            guard let rate else { continue }
+
+            let capturedAt = decodeFlexibleDate(rate["captured_at"]) ?? createdAt
+            let primary = decodeWindow(rate["primary"], created: createdAt, capturedAt: capturedAt)
+            let secondary = decodeWindow(rate["secondary"], created: createdAt, capturedAt: capturedAt)
+
+            return UsageSnapshot(
+                primary: primary,
+                secondary: secondary,
+                updatedAt: capturedAt)
+        }
+        return nil
+    }
+
+    private static func tailLines(url: URL, bytes: Int) throws -> [String]? {
+        let handle = try FileHandle(forReadingFrom: url)
+        defer { try? handle.close() }
+
+        let fileSize = (try handle.seekToEnd()) as UInt64
+        guard fileSize > 0 else { return [] }
+
+        let start = fileSize > bytes ? fileSize - UInt64(bytes) : 0
+        try handle.seek(toOffset: start)
+        let data = try handle.readToEnd() ?? Data()
+        var string = String(decoding: data, as: UTF8.self)
+        if start > 0 {
+            // Drop the potentially partial first line when starting mid-file.
+            if let newlineRange = string.range(of: "\n") {
+                string = String(string[newlineRange.upperBound...])
+            } else {
+                // No newline at all; return nil to force fallback.
+                return nil
+            }
+        }
+        return string.split(whereSeparator: \.isNewline).map(String.init)
     }
 }
 

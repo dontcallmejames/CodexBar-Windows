@@ -2,6 +2,7 @@
 
 ## 0.2.1 — 2025-11-17
 - Streamlined Codex usage parsing: modern rate-limit handling, flexible reset time parsing, and account rate-limit updates (thanks @jazzyalex and https://jazzyalex.github.io/agent-sessions/).
+- Usage refresh now tails the newest session log (512 KB window) before falling back to a full scan, cutting disk IO and CPU spikes on large Codex logs.
 - Menu bar icon animation now sleeps when data is present; loading CADisplayLink runs at 12 fps only while fetching to reduce idle CPU.
 
 ## 0.2.0 — 2025-11-16
