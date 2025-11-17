@@ -39,7 +39,8 @@ final class SettingsStore: ObservableObject {
         didSet { LaunchAtLoginManager.setEnabled(self.launchAtLogin) }
     }
 
-    /// Hidden toggle to reveal debug-only menu items (enable via defaults write com.steipete.CodexBar debugMenuEnabled -bool YES).
+    /// Hidden toggle to reveal debug-only menu items (enable via defaults write com.steipete.CodexBar debugMenuEnabled
+    /// -bool YES).
     @AppStorage("debugMenuEnabled") var debugMenuEnabled: Bool = false
 
     init(userDefaults: UserDefaults = .standard) {

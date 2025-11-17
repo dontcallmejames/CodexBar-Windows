@@ -1,5 +1,5 @@
-import SwiftUI
 import Sparkle
+import SwiftUI
 
 @main
 struct CodexBarApp: App {
