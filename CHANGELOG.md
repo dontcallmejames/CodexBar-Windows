@@ -1,5 +1,10 @@
 # Changelog
 
+# Changelog
+
+## 0.2.2 — 2025-11-17
+- Drop legacy Codex log parsing and streamline modern rate-limit handling; keeps flexible reset time parsing and account rate-limit updates (thanks @jazzyalex and https://jazzyalex.github.io/agent-sessions/).
+
 ## 0.2.0 — 2025-11-16
 - CADisplayLink-based loading animations (macOS 15 displayLink API) with randomized patterns (Knight Rider, Cylon, outside-in, race, pulse) and debug replay cycling through all.
 - Debug replay toggle (`defaults write com.steipete.codexbar debugMenuEnabled -bool YES`) to view every pattern.
@@ -9,6 +14,7 @@
 
 ## 0.2.1 — 2025-11-17
 - Patch bump for refactor/relative-time changes; packaging scripts set to 0.2.1 (5).
+- Usage parsing now tolerates legacy `info.rate_limits`, `resets_in_seconds`, and account/rateLimits updates (thanks @jazzyalex and the agent-sessions app: https://jazzyalex.github.io/agent-sessions/).
 
 ## 0.1.2 — 2025-11-16
 - Animated loading icon (dual bars sweep until usage arrives); always uses rendered template icon.

@@ -1,6 +1,6 @@
 # Release process (CodexBar)
 
-This repo is pure SwiftPM; we package/sign/notarize manually (no Xcode project). Sparkle + menu bar specifics included.
+SwiftPM-only; package/sign/notarize manually (no Xcode project). Sparkle feed is served from GitHub Releases. Checklist below merges Trimmy’s release flow with CodexBar specifics.
 
 ## Prereqs
 - Xcode 26+ installed at `/Applications/Xcode.app` (for ictool/iconutil and SDKs).
@@ -23,7 +23,7 @@ What it does:
 - Packages `CodexBar.app` with Info.plist and Icon.icns
 - Embeds Sparkle.framework, Updater, Autoupdate, XPCs
 - Codesigns **everything** with runtime + timestamp (deep) and adds rpath
-- Zips to `CodexBar-0.1.0.zip`
+- Zips to `CodexBar-<version>.zip`
 - Submits to notarytool, waits, staples, validates
 
 Gotchas fixed:
@@ -42,19 +42,24 @@ Uploads not handled automatically—commit/publish appcast + zip to the feed loc
 
 ## Tag & release
 ```
-git tag v0.1.1
+git tag v<version>
 ./Scripts/make_appcast.sh ...
 # upload zip + appcast to Releases
-# then create GitHub release (gh release create v0.1.1 ...)
+# then create GitHub release (gh release create v<version> ...)
 ```
 
 ## Checklist (quick)
-- [ ] Update versions (Package scripts, About text, CHANGELOG)
-- [ ] `swiftformat`, `swiftlint`, `swift test`
+- [ ] Update versions (scripts/Info.plist, CHANGELOG, About text)
+- [ ] `swiftformat`, `swiftlint`, `swift test` (zero warnings/errors)
 - [ ] `./Scripts/build_icon.sh` if icon changed
 - [ ] `./Scripts/sign-and-notarize.sh`
 - [ ] Generate Sparkle appcast with private key
-- [ ] Upload zip + appcast to feed (GitHub Release asset + appcast in repo); create/publish GitHub release/tag so Sparkle URL is live (avoid 404)
+- [ ] Upload zip + appcast to feed; publish tag + GitHub release so Sparkle URL is live (avoid 404)
+- [ ] Download uploaded `CodexBar-<ver>.zip`, unzip via `ditto`, run, and verify signature (`spctl -a -t exec -vv CodexBar.app` + `stapler validate`)
+- [ ] Confirm `appcast.xml` points to the new zip/version and renders correct release notes
+- [ ] When creating the GitHub release, paste the CHANGELOG entry as Markdown list (one `-` per line, blank line between sections); visually confirm bullets render correctly after publishing
+- [ ] Keep a previous signed build in `/Applications/CodexBar.app` to test Sparkle delta/full update to the new release
+- [ ] For Sparkle verification: if replacing `/Applications/CodexBar.app`, quit first, replace, relaunch, and test update
 
 ## Troubleshooting
 - **White plate icon**: regenerate icns via `build_icon.sh` (ictool) to ensure transparent padding.
