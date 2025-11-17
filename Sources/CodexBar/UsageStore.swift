@@ -57,6 +57,7 @@ final class UsageStore: ObservableObject {
         self.timerTask?.cancel()
         guard let wait = self.settings.refreshFrequency.seconds else { return }
 
+        // Background poller so the menu stays responsive; canceled when settings change or store deallocates.
         self.timerTask = Task.detached(priority: .utility) { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(wait))

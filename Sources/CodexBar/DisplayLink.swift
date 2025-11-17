@@ -6,6 +6,7 @@ import QuartzCore
 /// Publishes ticks on the main thread at the requested frame rate.
 @MainActor
 final class DisplayLinkDriver: ObservableObject {
+    // Published counter used to drive SwiftUI updates.
     @Published var tick: Int = 0
     private var link: CADisplayLink?
 
