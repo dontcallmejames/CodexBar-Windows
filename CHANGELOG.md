@@ -1,7 +1,6 @@
 # Changelog
 
 ## 0.2.1 — 2025-11-17
-- Patch bump for refactor/relative-time changes; packaging scripts set to 0.2.1 (5).
 - Streamlined Codex usage parsing: modern rate-limit handling, flexible reset time parsing, and account rate-limit updates (thanks @jazzyalex and https://jazzyalex.github.io/agent-sessions/).
 
 ## 0.2.0 — 2025-11-16
