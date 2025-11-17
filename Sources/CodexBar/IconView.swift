@@ -10,6 +10,7 @@ struct IconView: View {
     @State private var debugCycle = false
     @State private var cycleIndex = 0
     @State private var cycleCounter = 0
+    // Advance to next pattern every N ticks when debug cycling.
     private let cycleIntervalTicks = 20
     private let patterns = LoadingPattern.allCases
 
@@ -21,6 +22,7 @@ struct IconView: View {
                     weeklyRemaining: snapshot.secondary.remainingPercent,
                     stale: self.isStale))
             } else {
+                // Loading: animate bars with the current pattern until data arrives.
                 Image(nsImage: IconRenderer.makeIcon(
                     primaryRemaining: self.loadingPrimary,
                     weeklyRemaining: self.loadingSecondary,
