@@ -68,6 +68,7 @@ struct UsageFetcher: Sendable {
 
                 // Prefer nested payload for consistency, but fall back to top-level.
                 let payload = (json["payload"] as? [String: Any]) ?? json
+                // Timestamps show up in multiple places depending on emitter; pick the first valid one.
                 let createdAt = decodeFlexibleDate(json["timestamp"]) ??
                     decodeFlexibleDate(payload["timestamp"]) ??
                     decodeFlexibleDate(payload["created_at"]) ??
@@ -75,7 +76,9 @@ struct UsageFetcher: Sendable {
 
                 // Accept modern token_count and account/rateLimits update shapes.
                 let type = (payload["type"] as? String)?.lowercased()
-                guard type == "token_count" || type?.contains("ratelimits") == true || type?.contains("rate_limits") == true else {
+                guard type == "token_count" ||
+                    type?.contains("ratelimits") == true ||
+                    type?.contains("rate_limits") == true else {
                     continue
                 }
 
@@ -167,9 +170,11 @@ struct UsageFetcher: Sendable {
         if let i = any as? Int { return Date(timeIntervalSince1970: normalizeEpochSeconds(Double(i))) }
         if let n = any as? NSNumber { return Date(timeIntervalSince1970: normalizeEpochSeconds(n.doubleValue)) }
         if let s = any as? String {
+            // Support numeric epochs that may be seconds/millis/micros.
             if CharacterSet.decimalDigits.isSuperset(of: CharacterSet(charactersIn: s)), let val = Double(s) {
                 return Date(timeIntervalSince1970: normalizeEpochSeconds(val))
             }
+            // Fallback to ISO8601 with/without fractional seconds.
             let iso1 = ISO8601DateFormatter(); iso1.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
             if let d = iso1.date(from: s) { return d }
             let iso2 = ISO8601DateFormatter(); iso2.formatOptions = [.withInternetDateTime]
@@ -199,6 +204,7 @@ struct UsageFetcher: Sendable {
         let windowMinutes = (dict["window_minutes"] as? NSNumber)?.intValue
 
         var resetsAt: Date?
+        // Accept absolute reset times in seconds or milliseconds under multiple server casings.
         let keys = ["resets_at", "reset_at", "resetsAt", "resetAt", "resets_at_ms", "reset_at_ms"]
         for key in keys {
             guard let raw = dict[key] else { continue }
