@@ -46,6 +46,9 @@ final class SettingsStore: ObservableObject {
     /// When enabled (via debug menu), dump the fetched credits page HTML to /tmp for diagnostics.
     @AppStorage("creditsDebugDump") var creditsDebugDump: Bool = false
 
+    @AppStorage("showCodexUsage") var showCodexUsage: Bool = true
+    @AppStorage("showClaudeUsage") var showClaudeUsage: Bool = false
+
     init(userDefaults: UserDefaults = .standard) {
         let raw = userDefaults.string(forKey: "refreshFrequency") ?? RefreshFrequency.twoMinutes.rawValue
         self.refreshFrequency = RefreshFrequency(rawValue: raw) ?? .twoMinutes

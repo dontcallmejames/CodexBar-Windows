@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.0 — Unreleased
+- Claude support: separate menu-bar icon with crab-notch template, Claude `/usage` probing via embedded tmux script, settings toggle with version badge, and per-provider menu panes.
+- Dual icons when both providers are enabled; clicking each icon opens its own usage menu; credits remain on Codex only.
+- Probe errors surfaced inline with actionable hints; Claude settings include quick link to `~/.claude/projects`.
+
 ## 0.3.0 — 2025-11-18
 - Credits support: scrapes ChatGPT usage page via WKWebView, shows remaining credits + history inline, and moves history to a submenu.
 - Sign-in window with cookie reuse and a logout/clear-cookies action; waits out workspace picker and auto-navigates to usage page.

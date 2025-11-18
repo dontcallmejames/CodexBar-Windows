@@ -6,6 +6,7 @@ struct IconView: View {
     let creditsRemaining: Double?
     let isStale: Bool
     let showLoadingAnimation: Bool
+    let style: IconStyle
     @State private var phase: CGFloat = 0
     @StateObject private var displayLink = DisplayLinkDriver()
     @State private var pattern: LoadingPattern = .knightRider
@@ -27,6 +28,9 @@ struct IconView: View {
                     weeklyRemaining: snapshot.secondary.remainingPercent,
                     creditsRemaining: self.creditsRemaining,
                     stale: self.isStale))
+                    .renderingMode(.original)
+                    .frame(width: 20, height: 18, alignment: .center)
+                    .padding(.horizontal, 2)
             } else if self.showLoadingAnimation {
                 // Loading: animate bars with the current pattern until data arrives.
                 Image(nsImage: IconRenderer.makeIcon(
@@ -34,6 +38,9 @@ struct IconView: View {
                     weeklyRemaining: self.loadingSecondary,
                     creditsRemaining: nil,
                     stale: false))
+                    .renderingMode(.original)
+                    .frame(width: 20, height: 18, alignment: .center)
+                    .padding(.horizontal, 2)
                     .onReceive(self.displayLink.$tick) { _ in
                         self.phase += 0.18
                         if self.debugCycle {
@@ -52,6 +59,9 @@ struct IconView: View {
                     weeklyRemaining: nil,
                     creditsRemaining: self.creditsRemaining,
                     stale: self.isStale))
+                    .renderingMode(.original)
+                    .frame(width: 20, height: 18, alignment: .center)
+                    .padding(.horizontal, 2)
             }
         }
         .onChange(of: self.isLoading, initial: true) { _, isLoading in
