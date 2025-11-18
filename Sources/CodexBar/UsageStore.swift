@@ -1,28 +1,99 @@
 import Combine
 import Foundation
 import WebKit
+import AppKit
+
+enum IconStyle {
+    case codex
+    case claude
+    case combined
+}
+
+enum UsageProvider: CaseIterable {
+    case codex
+    case claude
+}
 
 @MainActor
 final class UsageStore: ObservableObject {
-    @Published var snapshot: UsageSnapshot?
+    @Published var codexSnapshot: UsageSnapshot?
+    @Published var claudeSnapshot: UsageSnapshot?
     @Published var credits: CreditsSnapshot?
-    @Published var lastError: String?
+    @Published var lastCodexError: String?
+    @Published var lastClaudeError: String?
     @Published var lastCreditsError: String?
+    @Published var codexVersion: String?
+    @Published var claudeVersion: String?
     @Published var isRefreshing = false
 
-    private let fetcher: UsageFetcher
+    private let codexFetcher: UsageFetcher
+    private let claudeFetcher: ClaudeUsageFetcher
     private let creditsFetcher: CreditsFetcher
     private let settings: SettingsStore
     private var timerTask: Task<Void, Never>?
     private var cancellables = Set<AnyCancellable>()
 
-    init(fetcher: UsageFetcher, creditsFetcher: CreditsFetcher = .init(), settings: SettingsStore) {
-        self.fetcher = fetcher
+    init(
+        fetcher: UsageFetcher,
+        claudeFetcher: ClaudeUsageFetcher = .init(),
+        creditsFetcher: CreditsFetcher = .init(),
+        settings: SettingsStore
+    ) {
+        self.codexFetcher = fetcher
+        self.claudeFetcher = claudeFetcher
         self.creditsFetcher = creditsFetcher
         self.settings = settings
         self.bindSettings()
+        self.detectVersions()
         Task { await self.refresh() }
         self.startTimer()
+    }
+
+    var preferredSnapshot: UsageSnapshot? {
+        if self.settings.showCodexUsage, let codexSnapshot {
+            return codexSnapshot
+        }
+        if self.settings.showClaudeUsage, let claudeSnapshot {
+            return claudeSnapshot
+        }
+        return nil
+    }
+
+    var iconStyle: IconStyle {
+        self.settings.showClaudeUsage ? .claude : .codex
+    }
+
+    var isStale: Bool {
+        (self.settings.showCodexUsage && self.lastCodexError != nil) ||
+            (self.settings.showClaudeUsage && self.lastClaudeError != nil)
+    }
+
+    func enabledProviders() -> [UsageProvider] {
+        var result: [UsageProvider] = []
+        if self.settings.showCodexUsage { result.append(.codex) }
+        if self.settings.showClaudeUsage { result.append(.claude) }
+        return result
+    }
+
+    func snapshot(for provider: UsageProvider) -> UsageSnapshot? {
+        switch provider {
+        case .codex: return self.codexSnapshot
+        case .claude: return self.claudeSnapshot
+        }
+    }
+
+    func style(for provider: UsageProvider) -> IconStyle {
+        switch provider {
+        case .codex: return .codex
+        case .claude: return .claude
+        }
+    }
+
+    func isStale(provider: UsageProvider) -> Bool {
+        switch provider {
+        case .codex: return self.lastCodexError != nil
+        case .claude: return self.lastClaudeError != nil
+        }
     }
 
     func refresh() async {
@@ -30,29 +101,42 @@ final class UsageStore: ObservableObject {
         self.isRefreshing = true
         defer { self.isRefreshing = false }
 
-        do {
-            async let usageTask = self.fetcher.loadLatestUsage()
-            async let creditsTask: Void = self.fetchCredits()
-
-            let (usage, _) = try await (usageTask, creditsTask)
-
-            self.snapshot = usage
-            self.lastError = nil
-        } catch {
-            self.lastError = error.localizedDescription
-        }
+        async let codexTask: Void = self.refreshCodexIfNeeded()
+        async let claudeTask: Void = self.refreshClaudeIfNeeded()
+        async let creditsTask: Void = self.refreshCreditsIfNeeded()
+        _ = await (codexTask, claudeTask, creditsTask)
     }
 
     /// For demo/testing: drop the snapshot so the loading animation plays, then restore the last snapshot.
     func replayLoadingAnimation(duration: TimeInterval = 3) {
         guard !self.isRefreshing else { return }
-        let current = self.snapshot
-        self.snapshot = nil
+        let current = self.preferredSnapshot
+        self.codexSnapshot = nil
+        self.claudeSnapshot = nil
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(duration))
-            self.snapshot = current
+            if let current {
+                if self.settings.showCodexUsage {
+                    self.codexSnapshot = current
+                } else if self.settings.showClaudeUsage {
+                    self.claudeSnapshot = current
+                }
+            }
         }
     }
+
+    func clearCookies() async {
+        let dataStore = WKWebsiteDataStore.default()
+        let types = WKWebsiteDataStore.allWebsiteDataTypes()
+        await dataStore.removeData(ofTypes: types, modifiedSince: Date.distantPast)
+        await MainActor.run {
+            self.codexSnapshot = nil
+            self.credits = nil
+            self.lastCreditsError = "Cleared cookies; sign in again to fetch credits."
+        }
+    }
+
+    // MARK: - Private
 
     private func bindSettings() {
         self.settings.$refreshFrequency
@@ -79,7 +163,51 @@ final class UsageStore: ObservableObject {
         self.timerTask?.cancel()
     }
 
-    private func fetchCredits() async {
+    private func refreshCodexIfNeeded() async {
+        guard self.settings.showCodexUsage else {
+            self.codexSnapshot = nil
+            self.lastCodexError = nil
+            return
+        }
+
+        do {
+            let usage = try await self.codexFetcher.loadLatestUsage()
+            await MainActor.run {
+                self.codexSnapshot = usage
+                self.lastCodexError = nil
+            }
+        } catch {
+            await MainActor.run {
+                self.lastCodexError = error.localizedDescription
+                self.codexSnapshot = nil
+            }
+        }
+    }
+
+    private func refreshClaudeIfNeeded() async {
+        guard self.settings.showClaudeUsage else {
+            self.claudeSnapshot = nil
+            self.lastClaudeError = nil
+            return
+        }
+
+        do {
+            let usage = try await self.claudeFetcher.loadLatestUsage()
+            await MainActor.run {
+                let snapshot = UsageSnapshot(primary: usage.primary, secondary: usage.secondary, updatedAt: usage.updatedAt)
+                self.claudeSnapshot = snapshot
+                self.lastClaudeError = nil
+            }
+        } catch {
+            await MainActor.run {
+                self.lastClaudeError = error.localizedDescription
+                self.claudeSnapshot = nil
+            }
+        }
+    }
+
+    private func refreshCreditsIfNeeded() async {
+        guard self.settings.showCodexUsage else { return }
         do {
             let credits = try await self.creditsFetcher.loadLatestCredits(debugDump: self.settings.creditsDebugDump)
             self.credits = credits
@@ -89,14 +217,39 @@ final class UsageStore: ObservableObject {
         }
     }
 
-    func clearCookies() async {
-        let dataStore = WKWebsiteDataStore.default()
-        let types = WKWebsiteDataStore.allWebsiteDataTypes()
-        await dataStore.removeData(ofTypes: types, modifiedSince: Date.distantPast)
+    func debugDumpClaude() async {
+        let output = await self.claudeFetcher.debugRawProbe()
+        let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("codexbar-claude-probe.txt")
+        try? output.write(to: url, atomically: true, encoding: .utf8)
         await MainActor.run {
-            self.snapshot = nil
-            self.credits = nil
-            self.lastCreditsError = "Cleared cookies; sign in again to fetch credits."
+            let snippet = String(output.prefix(180)).replacingOccurrences(of: "\n", with: " ")
+            self.lastClaudeError = "[Claude] \(snippet) (saved: \(url.path))"
+            NSWorkspace.shared.open(url)
         }
+    }
+
+    private func detectVersions() {
+        Task.detached { [claudeFetcher] in
+            let codexVer = Self.readCLI("codex", args: ["--version"])
+            let claudeVer = claudeFetcher.detectVersion()
+            await MainActor.run {
+                self.codexVersion = codexVer
+                self.claudeVersion = claudeVer
+            }
+        }
+    }
+
+    nonisolated private static func readCLI(_ cmd: String, args: [String]) -> String? {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+        process.arguments = [cmd] + args
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        try? process.run()
+        process.waitUntilExit()
+        guard process.terminationStatus == 0 else { return nil }
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        let text = String(decoding: data, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
+        return text.isEmpty ? nil : text
     }
 }

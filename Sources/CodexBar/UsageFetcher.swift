@@ -5,6 +5,8 @@ struct RateWindow: Codable {
     let usedPercent: Double
     let windowMinutes: Int?
     let resetsAt: Date?
+    /// Optional textual reset description (used by Claude CLI UI scrape).
+    let resetDescription: String?
 
     var remainingPercent: Double {
         max(0, 100 - self.usedPercent)
@@ -173,7 +175,7 @@ struct UsageFetcher: Sendable {
 
     private static func decodeWindow(_ any: Any?, created: Date, capturedAt: Date?) -> RateWindow {
         guard let dict = any as? [String: Any] else {
-            return RateWindow(usedPercent: 0, windowMinutes: nil, resetsAt: nil)
+            return RateWindow(usedPercent: 0, windowMinutes: nil, resetsAt: nil, resetDescription: nil)
         }
 
         let usedPercent: Double = {
@@ -216,7 +218,11 @@ struct UsageFetcher: Sendable {
         // If captured_at is present and resetsAt was missing, assume capturedAt is the best freshness indicator.
         let finalReset = resetsAt ?? capturedAt ?? created
 
-        return RateWindow(usedPercent: usedPercent, windowMinutes: windowMinutes, resetsAt: finalReset)
+        return RateWindow(
+            usedPercent: usedPercent,
+            windowMinutes: windowMinutes,
+            resetsAt: finalReset,
+            resetDescription: nil)
     }
 
     private static func parse<S: Sequence>(lines: S) -> UsageSnapshot? where S.Element == String {

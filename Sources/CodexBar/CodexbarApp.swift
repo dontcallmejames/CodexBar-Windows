@@ -7,41 +7,68 @@ struct CodexBarApp: App {
     @StateObject private var settings = SettingsStore()
     @StateObject private var store: UsageStore
     private let account: AccountInfo
-    @State private var isInserted = true
-
     private var hasAccount: Bool {
         self.account.email != nil || self.account.plan != nil
     }
 
-    private var shouldAnimateIcon: Bool {
-        self.hasAccount && self.store.lastError == nil && self.store.snapshot == nil
-    }
-
     init() {
         let settings = SettingsStore()
+        if !settings.showCodexUsage && !settings.showClaudeUsage {
+            settings.showCodexUsage = true
+        }
         let fetcher = UsageFetcher()
         self.account = fetcher.loadAccountInfo()
         _settings = StateObject(wrappedValue: settings)
         _store = StateObject(wrappedValue: UsageStore(fetcher: fetcher, settings: settings))
     }
 
+    @SceneBuilder
     var body: some Scene {
-        MenuBarExtra(isInserted: self.$isInserted) {
+        MenuBarExtra(
+            isInserted: .constant(true)) {
             MenuContent(
                 store: self.store,
                 settings: self.settings,
                 account: self.account,
-                updater: self.appDelegate.updaterController)
+                updater: self.appDelegate.updaterController,
+                provider: .codex)
         } label: {
-            IconView(
-                snapshot: self.store.snapshot,
-                creditsRemaining: self.store.credits?.remaining,
-                isStale: self.store.lastError != nil,
-                showLoadingAnimation: self.shouldAnimateIcon)
+            let showCodex = self.settings.showCodexUsage
+            let showClaude = self.settings.showClaudeUsage
+            if showCodex && showClaude {
+                HStack(spacing: 2) {
+                    IconView(
+                        snapshot: self.codexSnapshot,
+                        creditsRemaining: self.store.credits?.remaining,
+                        isStale: self.store.isStale(provider: .codex),
+                        showLoadingAnimation: self.codexShouldAnimate,
+                        style: .codex)
+                    IconView(
+                        snapshot: self.claudeSnapshot,
+                        creditsRemaining: nil,
+                        isStale: self.store.isStale(provider: .claude),
+                        showLoadingAnimation: self.claudeShouldAnimate,
+                        style: .claude)
+                }
+                .padding(.horizontal, -2)
+            } else if showClaude {
+                IconView(
+                    snapshot: self.claudeSnapshot,
+                    creditsRemaining: nil,
+                    isStale: self.store.isStale(provider: .claude),
+                    showLoadingAnimation: self.claudeShouldAnimate,
+                    style: .claude)
+            } else {
+                IconView(
+                    snapshot: self.codexSnapshot,
+                    creditsRemaining: self.store.credits?.remaining,
+                    isStale: self.store.isStale(provider: .codex),
+                    showLoadingAnimation: self.codexShouldAnimate,
+                    style: .codex)
+            }
         }
-        Settings {
-            EmptyView()
-        }
+
+        Settings { EmptyView() }
     }
 }
 
@@ -110,4 +137,41 @@ private func makeUpdaterController() -> UpdaterProviding {
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let updaterController: UpdaterProviding = makeUpdaterController()
+}
+
+extension CodexBarApp {
+    private var shouldAnimateIcon: Bool {
+        guard self.hasAccount else { return false }
+        return self.displayPrimarySnapshot == nil && !self.displayIsStale
+    }
+
+    private var codexSnapshot: UsageSnapshot? { self.store.snapshot(for: .codex) }
+    private var claudeSnapshot: UsageSnapshot? { self.store.snapshot(for: .claude) }
+    private var codexShouldAnimate: Bool {
+        self.hasAccount && self.settings.showCodexUsage && self.codexSnapshot == nil && !self.store.isStale(provider: .codex)
+    }
+    private var claudeShouldAnimate: Bool {
+        self.hasAccount && self.settings.showClaudeUsage && self.claudeSnapshot == nil && !self.store.isStale(provider: .claude)
+    }
+
+    private var displayPrimarySnapshot: UsageSnapshot? {
+        if self.settings.showCodexUsage, let snap = self.codexSnapshot { return snap }
+        if self.settings.showClaudeUsage, let snap = self.claudeSnapshot { return snap }
+        return nil
+    }
+
+    private var displayIsStale: Bool {
+        if self.settings.showCodexUsage, self.store.isStale(provider: .codex) {
+            return true
+        }
+        if self.settings.showClaudeUsage, self.store.isStale(provider: .claude) {
+            return true
+        }
+        return false
+    }
+
+    private var displayStyle: IconStyle {
+        (self.settings.showCodexUsage && self.settings.showClaudeUsage) ? .combined
+        : (self.settings.showClaudeUsage ? .claude : .codex)
+    }
 }

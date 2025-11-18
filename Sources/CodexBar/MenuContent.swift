@@ -12,7 +12,9 @@ struct UsageRow: View {
             Text(UsageFormatter.usageLine(
                 remaining: self.window.remainingPercent,
                 used: self.window.usedPercent))
-            if let reset = window.resetsAt {
+            if let description = window.resetDescription, !description.isEmpty {
+                Text("Resets \(description)")
+            } else if let reset = window.resetsAt {
                 Text("Resets \(reset.formatted(date: .abbreviated, time: .shortened))")
             }
         }
@@ -25,6 +27,7 @@ struct MenuContent: View {
     @ObservedObject var settings: SettingsStore
     let account: AccountInfo
     let updater: UpdaterProviding
+    let provider: UsageProvider
 
     private var autoUpdateBinding: Binding<Bool> {
         Binding(
@@ -32,22 +35,39 @@ struct MenuContent: View {
             set: { self.updater.automaticallyChecksForUpdates = $0 })
     }
 
-    private var snapshot: UsageSnapshot? { self.store.snapshot }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            if let snapshot {
-                UsageRow(title: "5h limit", window: snapshot.primary)
-                UsageRow(title: "Weekly limit", window: snapshot.secondary)
-                Text(UsageFormatter.updatedString(from: snapshot.updatedAt))
-                    .foregroundStyle(.secondary)
-            } else {
-                Text("No usage yet").foregroundStyle(.secondary)
-                if let error = store.lastError { Text(error).font(.caption) }
+            if self.provider == .codex && self.settings.showCodexUsage {
+                if let snap = self.store.codexSnapshot {
+                    UsageRow(title: "Codex · 5h limit", window: snap.primary)
+                    UsageRow(title: "Codex · Weekly limit", window: snap.secondary)
+                    Text(UsageFormatter.updatedString(from: snap.updatedAt))
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text("Codex: no usage yet").foregroundStyle(.secondary)
+                    if let error = store.lastCodexError { Text(error).font(.caption) }
+                }
+                Divider()
             }
 
-            Divider()
-            if let credits = store.credits {
+            if self.provider == .claude && self.settings.showClaudeUsage {
+                if let snap = self.store.claudeSnapshot {
+                    UsageRow(title: "Claude · Session", window: snap.primary)
+                    UsageRow(title: "Claude · Weekly", window: snap.secondary)
+                    Text(UsageFormatter.updatedString(from: snap.updatedAt))
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text("Claude: no usage yet").foregroundStyle(.secondary)
+                    if let error = store.lastClaudeError { Text(error).font(.caption) }
+                }
+                Divider()
+            }
+
+            if !self.settings.showCodexUsage && !self.settings.showClaudeUsage {
+                Text("No sources enabled").foregroundStyle(.secondary)
+            }
+
+            if self.provider == .codex, let credits = store.credits {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Credits: \(UsageFormatter.creditsString(from: credits.remaining))")
                         .fontWeight(.bold)
@@ -94,6 +114,20 @@ struct MenuContent: View {
             .buttonStyle(.plain)
             Divider()
             Menu("Settings") {
+                VStack(alignment: .leading, spacing: 6) {
+                    Toggle("Show Codex usage\(self.versionSuffix(self.store.codexVersion))", isOn: self.$settings.showCodexUsage)
+                    Toggle("Show Claude usage\(self.versionSuffixSimple(self.store.claudeVersion))", isOn: self.$settings.showClaudeUsage)
+                    if let err = self.store.lastClaudeError, self.settings.showClaudeUsage {
+                        Text(err).font(.caption2).foregroundStyle(.secondary)
+                    }
+                    if self.settings.debugMenuEnabled {
+                        Button("Debug: Dump Claude probe output") {
+                            Task { await self.store.debugDumpClaude() }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                Divider()
                 VStack(alignment: .leading, spacing: 6) {
                     if store.credits == nil {
                         Text("Log In to see Credits")
@@ -159,14 +193,13 @@ struct MenuContent: View {
         }
     }
 
-    private func relativeUpdated(at date: Date) -> String {
-        let now = Date()
-        if let hours = Calendar.current.dateComponents([.hour], from: date, to: now).hour, hours < 24 {
-            let rel = RelativeDateTimeFormatter()
-            rel.unitsStyle = .abbreviated
-            return "Updated \(rel.localizedString(for: date, relativeTo: now))"
-        } else {
-            return "Updated \(date.formatted(date: .omitted, time: .shortened))"
-        }
+    private func versionSuffix(_ version: String?) -> String {
+        guard let version, !version.isEmpty else { return " · not detected" }
+        return " · \(version)"
+    }
+
+    private func versionSuffixSimple(_ version: String?) -> String {
+        guard let version, !version.isEmpty else { return " · not detected" }
+        return " · \(version)"
     }
 }
