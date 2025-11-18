@@ -235,23 +235,31 @@ private enum CreditsError: LocalizedError {
 
 @MainActor
 final class NavigationDelegate: NSObject, WKNavigationDelegate {
-    private let completion: (Result<Void, Error>) -> Void
+    private var completion: ((Result<Void, Error>) -> Void)?
     static var associationKey: UInt8 = 0
 
     init(completion: @escaping (Result<Void, Error>) -> Void) {
         self.completion = completion
     }
 
+    private func resumeOnce(_ result: Result<Void, Error>, webView: WKWebView) {
+        guard let completion else { return }
+        self.completion = nil
+        webView.navigationDelegate = nil
+        webView.codexNavigationDelegate = nil
+        completion(result)
+    }
+
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-        self.completion(.success(()))
+        self.resumeOnce(.success(()), webView: webView)
     }
 
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-        self.completion(.failure(error))
+        self.resumeOnce(.failure(error), webView: webView)
     }
 
     func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
-        self.completion(.failure(error))
+        self.resumeOnce(.failure(error), webView: webView)
     }
 }
 
