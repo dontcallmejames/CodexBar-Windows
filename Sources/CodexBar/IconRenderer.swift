@@ -66,60 +66,37 @@ enum IconRenderer {
             NSGraphicsContext.current?.restoreGraphicsState()
         }
 
-        func drawTextCentered(_ text: String, y: CGFloat) {
-            let paragraph = NSMutableParagraphStyle()
-            paragraph.alignment = .center
-            let attrs: [NSAttributedString.Key: Any] = [
-                .font: NSFont.monospacedDigitSystemFont(ofSize: 8, weight: .medium),
-                .foregroundColor: NSColor.labelColor,
-                .paragraphStyle: paragraph
-            ]
-            let rect = CGRect(x: 0, y: y, width: size.width, height: 9)
-            text.draw(in: rect, withAttributes: attrs)
-        }
-
         var topValue = primaryRemaining
         var bottomValue = weeklyRemaining
-        var topText: String?
-        var bottomText: String?
-
-        let creditsText = creditsRemaining.map { UsageFormatter.creditShort($0) }
         let creditsRatio = creditsRemaining.map { min($0 / Self.creditsCap * 100, 100) }
 
-        if let primary = primaryRemaining, primary <= 0, let c = creditsText {
+        if let primary = primaryRemaining, primary <= 0, creditsRemaining != nil {
             topValue = nil
-            topText = c
-        } else if primaryRemaining == nil, let c = creditsText {
+        } else if primaryRemaining == nil, creditsRemaining != nil {
             topValue = nil
-            topText = c
         }
 
-        if let weekly = weeklyRemaining, weekly <= 0, bottomValue != nil, let c = creditsText {
+        if let weekly = weeklyRemaining, weekly <= 0, bottomValue != nil, creditsRemaining != nil {
             bottomValue = nil
-            bottomText = c
-        } else if weeklyRemaining == nil, let c = creditsText {
+        } else if weeklyRemaining == nil, creditsRemaining != nil {
             bottomValue = nil
-            bottomText = c
         }
 
         // If both top and bottom are cleared, show credits only.
-        if (topValue == nil && bottomValue == nil), let c = creditsText {
-            if let ratio = creditsRatio { drawHatchedBar(y: (size.height - 3.2) / 2, fillRatio: ratio / 100, height: 3.2) }
-            drawTextCentered(c, y: (size.height - 9) / 2)
+        if (topValue == nil && bottomValue == nil), let ratio = creditsRatio {
+            drawHatchedBar(y: (size.height - 3.2) / 2, fillRatio: ratio / 100, height: 3.2)
         } else {
             if let topValue {
                 drawBar(y: 9.5, remaining: topValue, height: 3.2)
             } else if let ratio = creditsRatio {
                 drawHatchedBar(y: 9.5, fillRatio: ratio / 100, height: 3.2)
             }
-            if let topText { drawTextCentered(topText, y: 9) }
 
             if let bottomValue {
                 drawBar(y: 4.0, remaining: bottomValue, height: 2.0)
             } else if let ratio = creditsRatio {
                 drawHatchedBar(y: 4.0, fillRatio: ratio / 100, height: 2.0)
             }
-            if let bottomText { drawTextCentered(bottomText, y: 3.5) }
         }
 
         image.unlockFocus()
