@@ -9,7 +9,7 @@
             <sparkle:version>8</sparkle:version>
             <sparkle:shortVersionString>0.3.0</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/steipete/CodexBar/releases/download/v0.3.0/CodexBar-0.3.0.zip" length="2436847" type="application/octet-stream" />
+            <enclosure url="https://github.com/steipete/CodexBar/releases/download/v0.3.0/CodexBar-0.3.0.zip" length="2436847" type="application/octet-stream" sparkle:edSignature="3KQ20jymsI50Zb2+QULeZquG1kD83j/Mz5kggxqvyQSl0EocWk8EIhO56dHFB61ls6ABh2wVH0VwS9YMPZOOAg==" />
         </item>
         <item>
             <title>0.2.2</title>
