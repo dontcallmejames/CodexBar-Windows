@@ -14,4 +14,22 @@ enum UsageFormatter {
             return "Updated \(date.formatted(date: .omitted, time: .shortened))"
         }
     }
+
+    static func creditsString(from value: Double) -> String {
+        let number = NumberFormatter()
+        number.numberStyle = .decimal
+        number.maximumFractionDigits = 2
+        let formatted = number.string(from: NSNumber(value: value)) ?? String(Int(value))
+        return "\(formatted) left"
+    }
+
+    static func creditEventSummary(_ event: CreditEvent) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        let number = NumberFormatter()
+        number.numberStyle = .decimal
+        number.maximumFractionDigits = 2
+        let credits = number.string(from: NSNumber(value: event.creditsUsed)) ?? "0"
+        return "\(formatter.string(from: event.date)) · \(event.service) · \(credits) credits"
+    }
 }

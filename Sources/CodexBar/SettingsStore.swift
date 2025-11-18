@@ -43,10 +43,19 @@ final class SettingsStore: ObservableObject {
     /// -bool YES).
     @AppStorage("debugMenuEnabled") var debugMenuEnabled: Bool = false
 
+    /// When enabled (via debug menu), dump the fetched credits page HTML to /tmp for diagnostics.
+    @AppStorage("creditsDebugDump") var creditsDebugDump: Bool = false
+
     init(userDefaults: UserDefaults = .standard) {
         let raw = userDefaults.string(forKey: "refreshFrequency") ?? RefreshFrequency.twoMinutes.rawValue
         self.refreshFrequency = RefreshFrequency(rawValue: raw) ?? .twoMinutes
         LaunchAtLoginManager.setEnabled(self.launchAtLogin)
+
+        // If debug flag not set, but a dump is requested via env, honor it.
+        if ProcessInfo.processInfo.environment["CODEXBAR_DEBUG_DUMP"] == "1" {
+            self.creditsDebugDump = true
+            self.debugMenuEnabled = true
+        }
     }
 }
 

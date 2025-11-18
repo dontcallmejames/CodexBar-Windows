@@ -1,5 +1,4 @@
 import AppKit
-import Sparkle
 import SwiftUI
 
 @MainActor
@@ -25,12 +24,12 @@ struct MenuContent: View {
     @ObservedObject var store: UsageStore
     @ObservedObject var settings: SettingsStore
     let account: AccountInfo
-    let updater: SPUStandardUpdaterController
+    let updater: UpdaterProviding
 
     private var autoUpdateBinding: Binding<Bool> {
         Binding(
-            get: { self.updater.updater.automaticallyChecksForUpdates },
-            set: { self.updater.updater.automaticallyChecksForUpdates = $0 })
+            get: { self.updater.automaticallyChecksForUpdates },
+            set: { self.updater.automaticallyChecksForUpdates = $0 })
     }
 
     private var snapshot: UsageSnapshot? { self.store.snapshot }
@@ -48,6 +47,25 @@ struct MenuContent: View {
             }
 
             Divider()
+            if let credits = store.credits {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Credits: \(UsageFormatter.creditsString(from: credits.remaining))")
+                    if let latest = credits.events.first {
+                        Text("Last spend: \(UsageFormatter.creditEventSummary(latest))")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    if !credits.events.isEmpty {
+                        Divider().padding(.vertical, 2)
+                        ForEach(credits.events.prefix(4)) { event in
+                            Text(UsageFormatter.creditEventSummary(event))
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+
             if let email = account.email {
                 Text("Account: \(email)")
                     .foregroundStyle(.secondary)
@@ -75,6 +93,20 @@ struct MenuContent: View {
             .buttonStyle(.plain)
             Divider()
             Menu("Settings") {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Log In to see Credits")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Button("Sign in to fetch credits…") {
+                        CreditsSignInWindow.present()
+                    }
+                    .buttonStyle(.plain)
+                    Button("Log out / clear cookies") {
+                        Task { await self.store.clearCookies() }
+                    }
+                    .buttonStyle(.plain)
+                }
+                Divider()
                 Menu("Refresh every: \(self.settings.refreshFrequency.label)") {
                     ForEach(RefreshFrequency.allCases) { option in
                         Button {
@@ -88,13 +120,16 @@ struct MenuContent: View {
                         }
                     }
                 }
-                Toggle("Automatically check for updates", isOn: self.autoUpdateBinding)
-                Toggle("Launch at login", isOn: self.$settings.launchAtLogin)
-                Button("Check for Updates…") {
-                    self.updater.checkForUpdates(nil)
+                if self.updater.isAvailable {
+                    Toggle("Automatically check for updates", isOn: self.autoUpdateBinding)
+                    Button("Check for Updates…") {
+                        self.updater.checkForUpdates(nil)
+                    }
                 }
+                Toggle("Launch at login", isOn: self.$settings.launchAtLogin)
+                Divider()
+                Toggle("Debug: Dump credits HTML to /tmp", isOn: self.$settings.creditsDebugDump)
                 if self.settings.debugMenuEnabled {
-                    Divider()
                     Button("Debug: Replay Loading Animation") {
                         NotificationCenter.default.post(name: .codexbarDebugReplayAllAnimations, object: nil)
                         self.store.replayLoadingAnimation()
