@@ -32,4 +32,14 @@ enum UsageFormatter {
         let credits = number.string(from: NSNumber(value: event.creditsUsed)) ?? "0"
         return "\(formatter.string(from: event.date)) · \(event.service) · \(credits) credits"
     }
+
+    static func creditEventCompact(_ event: CreditEvent) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM d"
+        let number = NumberFormatter()
+        number.numberStyle = .decimal
+        number.maximumFractionDigits = 2
+        let credits = number.string(from: NSNumber(value: event.creditsUsed)) ?? "0"
+        return "\(formatter.string(from: event.date)) — \(event.service): \(credits)"
+    }
 }
