@@ -1,19 +1,24 @@
 import Combine
 import Foundation
+import WebKit
 
 @MainActor
 final class UsageStore: ObservableObject {
     @Published var snapshot: UsageSnapshot?
+    @Published var credits: CreditsSnapshot?
     @Published var lastError: String?
+    @Published var lastCreditsError: String?
     @Published var isRefreshing = false
 
     private let fetcher: UsageFetcher
+    private let creditsFetcher: CreditsFetcher
     private let settings: SettingsStore
     private var timerTask: Task<Void, Never>?
     private var cancellables = Set<AnyCancellable>()
 
-    init(fetcher: UsageFetcher, settings: SettingsStore) {
+    init(fetcher: UsageFetcher, creditsFetcher: CreditsFetcher = .init(), settings: SettingsStore) {
         self.fetcher = fetcher
+        self.creditsFetcher = creditsFetcher
         self.settings = settings
         self.bindSettings()
         Task { await self.refresh() }
@@ -26,7 +31,11 @@ final class UsageStore: ObservableObject {
         defer { self.isRefreshing = false }
 
         do {
-            let usage = try await self.fetcher.loadLatestUsage()
+            async let usageTask = self.fetcher.loadLatestUsage()
+            async let creditsTask: Void = self.fetchCredits()
+
+            let (usage, _) = try await (usageTask, creditsTask)
+
             self.snapshot = usage
             self.lastError = nil
         } catch {
@@ -68,5 +77,26 @@ final class UsageStore: ObservableObject {
 
     deinit {
         self.timerTask?.cancel()
+    }
+
+    private func fetchCredits() async {
+        do {
+            let credits = try await self.creditsFetcher.loadLatestCredits(debugDump: self.settings.creditsDebugDump)
+            self.credits = credits
+            self.lastCreditsError = nil
+        } catch {
+            self.lastCreditsError = error.localizedDescription
+        }
+    }
+
+    func clearCookies() async {
+        let dataStore = WKWebsiteDataStore.default()
+        let types = WKWebsiteDataStore.allWebsiteDataTypes()
+        await dataStore.removeData(ofTypes: types, modifiedSince: Date.distantPast)
+        await MainActor.run {
+            self.snapshot = nil
+            self.credits = nil
+            self.lastCreditsError = "Cleared cookies; sign in again to fetch credits."
+        }
     }
 }
