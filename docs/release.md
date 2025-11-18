@@ -62,6 +62,8 @@ git tag v<version>
 - [ ] Changelog/release notes are user-facing: avoid internal-only bullets (build numbers, script bumps) and keep entries concise
 - [ ] Download uploaded `CodexBar-<ver>.zip`, unzip via `ditto`, run, and verify signature (`spctl -a -t exec -vv CodexBar.app` + `stapler validate`)
 - [ ] Confirm `appcast.xml` points to the new zip/version and renders correct release notes
+- [ ] Verify on GitHub Releases: assets present (zip, appcast), release notes match changelog, version/tag correct
+- [ ] Open the appcast URL in browser to confirm the new entry is visible and enclosure URL is reachable
 - [ ] When creating the GitHub release, paste the CHANGELOG entry as Markdown list (one `-` per line, blank line between sections); visually confirm bullets render correctly after publishing
 - [ ] Keep a previous signed build in `/Applications/CodexBar.app` to test Sparkle delta/full update to the new release
 - [ ] For Sparkle verification: if replacing `/Applications/CodexBar.app`, quit first, replace, relaunch, and test update
