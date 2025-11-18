@@ -64,6 +64,7 @@ git tag v<version>
 - [ ] Confirm `appcast.xml` points to the new zip/version and renders correct release notes
 - [ ] Verify on GitHub Releases: assets present (zip, appcast), release notes match changelog, version/tag correct
 - [ ] Open the appcast URL in browser to confirm the new entry is visible and enclosure URL is reachable
+- [ ] Manually visit the enclosure URL (curl -I) to ensure 200/OK (no 404) after publishing assets/release
 - [ ] When creating the GitHub release, paste the CHANGELOG entry as Markdown list (one `-` per line, blank line between sections); visually confirm bullets render correctly after publishing
 - [ ] Keep a previous signed build in `/Applications/CodexBar.app` to test Sparkle delta/full update to the new release
 - [ ] For Sparkle verification: if replacing `/Applications/CodexBar.app`, quit first, replace, relaunch, and test update
