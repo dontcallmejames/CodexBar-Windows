@@ -50,6 +50,7 @@ struct MenuContent: View {
             if let credits = store.credits {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Credits: \(UsageFormatter.creditsString(from: credits.remaining))")
+                        .fontWeight(.bold)
                     if let latest = credits.events.first {
                         Text("Last spend: \(UsageFormatter.creditEventSummary(latest))")
                             .font(.caption)
