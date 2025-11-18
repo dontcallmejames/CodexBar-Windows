@@ -41,14 +41,22 @@ struct CreditsFetcher {
         let delay: UInt64 = 500_000_000 // 0.5s
         var lastBody: String?
 
+        var emptyEventsRetries = 0
+
         for _ in 0..<maxAttempts {
             let result = try await Self.tryParseSnapshot(webView: webView)
 
             if let snap = result.snapshot {
-                if debugDump, let html = result.bodyHTML {
-                    Self.writeDebugHTML(html)
+                if snap.events.isEmpty, emptyEventsRetries < 6 {
+                    emptyEventsRetries += 1
+                    try? await Task.sleep(nanoseconds: delay)
+                    continue
+                } else {
+                    if debugDump, let html = result.bodyHTML {
+                        Self.writeDebugHTML(html)
+                    }
+                    return snap
                 }
-                return snap
             }
 
             if let body = result.bodyText { lastBody = body }
