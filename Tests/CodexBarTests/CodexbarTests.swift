@@ -6,7 +6,7 @@ import Testing
 struct CodexBarTests {
     @Test
     func iconRendererProducesTemplateImage() {
-        let image = IconRenderer.makeIcon(primaryRemaining: 50, weeklyRemaining: 75, stale: false)
+        let image = IconRenderer.makeIcon(primaryRemaining: 50, weeklyRemaining: 75, creditsRemaining: 500, stale: false)
         #expect(image.isTemplate)
         #expect(image.size.width > 0)
     }
