@@ -66,37 +66,25 @@ enum IconRenderer {
             NSGraphicsContext.current?.restoreGraphicsState()
         }
 
-        var topValue = primaryRemaining
-        var bottomValue = weeklyRemaining
+        let topValue = primaryRemaining
+        let bottomValue = weeklyRemaining
         let creditsRatio = creditsRemaining.map { min($0 / Self.creditsCap * 100, 100) }
 
-        if let primary = primaryRemaining, primary <= 0, creditsRemaining != nil {
-            topValue = nil
-        } else if primaryRemaining == nil, creditsRemaining != nil {
-            topValue = nil
-        }
+        let weeklyAvailable = (weeklyRemaining ?? 0) > 0
 
-        if let weekly = weeklyRemaining, weekly <= 0, bottomValue != nil, creditsRemaining != nil {
-            bottomValue = nil
-        } else if weeklyRemaining == nil, creditsRemaining != nil {
-            bottomValue = nil
-        }
-
-        // If both top and bottom are cleared, show credits only.
-        if (topValue == nil && bottomValue == nil), let ratio = creditsRatio {
-            drawHatchedBar(y: (size.height - 3.2) / 2, fillRatio: ratio / 100, height: 3.2)
+        if weeklyAvailable {
+            // Normal: top=5h, bottom=weekly, no credits.
+            drawBar(y: 9.5, remaining: topValue, height: 3.2)
+            drawBar(y: 4.0, remaining: bottomValue, height: 2.0)
         } else {
-            if let topValue {
-                drawBar(y: 9.5, remaining: topValue, height: 3.2)
-            } else if let ratio = creditsRatio {
+            // Weekly exhausted/missing: show credits on top (hatched), weekly (likely 0) on bottom.
+            if let ratio = creditsRatio {
                 drawHatchedBar(y: 9.5, fillRatio: ratio / 100, height: 3.2)
+            } else {
+                // No credits available; fall back to 5h if present.
+                drawBar(y: 9.5, remaining: topValue, height: 3.2)
             }
-
-            if let bottomValue {
-                drawBar(y: 4.0, remaining: bottomValue, height: 2.0)
-            } else if let ratio = creditsRatio {
-                drawHatchedBar(y: 4.0, fillRatio: ratio / 100, height: 2.0)
-            }
+            drawBar(y: 4.0, remaining: bottomValue, height: 2.0)
         }
 
         image.unlockFocus()
