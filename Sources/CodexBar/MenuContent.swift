@@ -94,13 +94,15 @@ struct MenuContent: View {
             Divider()
             Menu("Settings") {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Log In to see Credits")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Button("Sign in to fetch credits…") {
-                        CreditsSignInWindow.present()
+                    if store.credits == nil {
+                        Text("Log In to see Credits")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Button("Sign in to fetch credits…") {
+                            CreditsSignInWindow.present()
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                     Button("Log out / clear cookies") {
                         Task { await self.store.clearCookies() }
                     }
