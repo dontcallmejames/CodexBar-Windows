@@ -86,13 +86,20 @@ struct CreditsFetcher {
         (() => {
           const textOf = el => (el && (el.innerText || el.textContent)) ? String(el.innerText || el.textContent).trim() : '';
 
-          // Credits remaining block: look for any element containing the phrase.
+          // Credits remaining block: find the first section that mentions it and grab the first pure-number descendant.
           let creditsNumber = null;
           const candidates = Array.from(document.querySelectorAll('*')).filter(el => {
             const t = textOf(el);
             return t && t.includes('Credits remaining');
           });
           for (const el of candidates) {
+            const numbers = Array.from(el.querySelectorAll('*'))
+              .map(n => textOf(n))
+              .filter(txt => /^[0-9][0-9.,]+$/.test(txt));
+            if (numbers.length > 0) {
+              creditsNumber = numbers[0];
+              break;
+            }
             const t = textOf(el);
             const m = t.match(/Credits\\s+remaining[^0-9]*([0-9][0-9.,]+)/i);
             if (m && m[1]) { creditsNumber = m[1]; break; }
