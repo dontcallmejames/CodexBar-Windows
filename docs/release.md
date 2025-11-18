@@ -65,6 +65,7 @@ git tag v<version>
 - [ ] When creating the GitHub release, paste the CHANGELOG entry as Markdown list (one `-` per line, blank line between sections); visually confirm bullets render correctly after publishing
 - [ ] Keep a previous signed build in `/Applications/CodexBar.app` to test Sparkle delta/full update to the new release
 - [ ] For Sparkle verification: if replacing `/Applications/CodexBar.app`, quit first, replace, relaunch, and test update
+- **Definition of “done” for a release:** all of the above are complete, the appcast/enclosure link resolves, and a previous public build can update to the new one via Sparkle. Anything short of that is not a finished release.
 
 ## Troubleshooting
 - **White plate icon**: regenerate icns via `build_icon.sh` (ictool) to ensure transparent padding.
