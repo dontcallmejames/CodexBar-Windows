@@ -5,7 +5,6 @@
 - Sign-in window with cookie reuse and a logout/clear-cookies action; waits out workspace picker and auto-navigates to usage page.
 - Menu: credits line bolded; login prompt hides once credits load; debug toggle always visible (HTML dump).
 - Icon: when weekly is empty, top bar becomes a thick credits bar (capped at 1k); otherwise bars stay 5h/weekly.
-- Version bumped to 0.3.0 (build 8); packaging/notarize scripts updated.
 
 ## 0.2.2 — 2025-11-17
 - Menu bar icon stays static when no account/usage is present; loading animation only runs while fetching (12 fps) to keep idle CPU low.
