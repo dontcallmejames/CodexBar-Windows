@@ -56,12 +56,12 @@ struct MenuContent: View {
                             .foregroundStyle(.secondary)
                     }
                     if !credits.events.isEmpty {
-                        Divider().padding(.vertical, 2)
-                        ForEach(credits.events.prefix(4)) { event in
-                            Text(UsageFormatter.creditEventSummary(event))
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
+                        Menu("Credits history") {
+                            ForEach(credits.events.prefix(5)) { event in
+                                Text(UsageFormatter.creditEventCompact(event))
+                            }
                         }
+                        .menuStyle(.borderlessButton)
                     }
                 }
             }
