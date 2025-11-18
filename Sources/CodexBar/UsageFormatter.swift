@@ -42,4 +42,12 @@ enum UsageFormatter {
         let credits = number.string(from: NSNumber(value: event.creditsUsed)) ?? "0"
         return "\(formatter.string(from: event.date)) — \(event.service): \(credits)"
     }
+
+    static func creditShort(_ value: Double) -> String {
+        if value >= 1000 {
+            let k = value / 1000
+            return String(format: "%.1fk", k)
+        }
+        return String(format: "%.0f", value)
+    }
 }

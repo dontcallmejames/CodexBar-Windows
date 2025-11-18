@@ -3,6 +3,7 @@ import SwiftUI
 @MainActor
 struct IconView: View {
     let snapshot: UsageSnapshot?
+    let creditsRemaining: Double?
     let isStale: Bool
     let showLoadingAnimation: Bool
     @State private var phase: CGFloat = 0
@@ -24,12 +25,14 @@ struct IconView: View {
                 Image(nsImage: IconRenderer.makeIcon(
                     primaryRemaining: snapshot.primary.remainingPercent,
                     weeklyRemaining: snapshot.secondary.remainingPercent,
+                    creditsRemaining: self.creditsRemaining,
                     stale: self.isStale))
             } else if self.showLoadingAnimation {
                 // Loading: animate bars with the current pattern until data arrives.
                 Image(nsImage: IconRenderer.makeIcon(
                     primaryRemaining: self.loadingPrimary,
                     weeklyRemaining: self.loadingSecondary,
+                    creditsRemaining: nil,
                     stale: false))
                     .onReceive(self.displayLink.$tick) { _ in
                         self.phase += 0.18
@@ -47,6 +50,7 @@ struct IconView: View {
                 Image(nsImage: IconRenderer.makeIcon(
                     primaryRemaining: nil,
                     weeklyRemaining: nil,
+                    creditsRemaining: self.creditsRemaining,
                     stale: self.isStale))
             }
         }

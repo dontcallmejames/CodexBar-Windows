@@ -1,7 +1,7 @@
 import AppKit
 
 enum IconRenderer {
-    static func makeIcon(primaryRemaining: Double?, weeklyRemaining: Double?, stale: Bool) -> NSImage {
+    static func makeIcon(primaryRemaining: Double?, weeklyRemaining: Double?, creditsRemaining: Double?, stale: Bool) -> NSImage {
         let size = NSSize(width: 20, height: 18)
         let image = NSImage(size: size)
         image.lockFocus()
@@ -28,8 +28,50 @@ enum IconRenderer {
             fillPath.fill()
         }
 
-        drawBar(y: 9.5, remaining: primaryRemaining, height: 3.2)
-        drawBar(y: 4.0, remaining: weeklyRemaining, height: 2.0)
+        func drawTextCentered(_ text: String, y: CGFloat) {
+            let paragraph = NSMutableParagraphStyle()
+            paragraph.alignment = .center
+            let attrs: [NSAttributedString.Key: Any] = [
+                .font: NSFont.monospacedDigitSystemFont(ofSize: 8, weight: .medium),
+                .foregroundColor: NSColor.labelColor,
+                .paragraphStyle: paragraph
+            ]
+            let rect = CGRect(x: 0, y: y, width: size.width, height: 9)
+            text.draw(in: rect, withAttributes: attrs)
+        }
+
+        var topValue = primaryRemaining
+        var bottomValue = weeklyRemaining
+        var topText: String?
+        var bottomText: String?
+
+        let creditsText = creditsRemaining.map { UsageFormatter.creditShort($0) }
+
+        if let primary = primaryRemaining, primary <= 0, let c = creditsText {
+            topValue = nil
+            topText = c
+        } else if primaryRemaining == nil, let c = creditsText {
+            topValue = nil
+            topText = c
+        }
+
+        if let weekly = weeklyRemaining, weekly <= 0, bottomValue != nil, let c = creditsText {
+            bottomValue = nil
+            bottomText = c
+        } else if weeklyRemaining == nil, let c = creditsText {
+            bottomValue = nil
+            bottomText = c
+        }
+
+        // If both top and bottom are cleared, show credits only.
+        if (topValue == nil && bottomValue == nil), let c = creditsText {
+            drawTextCentered(c, y: (size.height - 9) / 2)
+        } else {
+            drawBar(y: 9.5, remaining: topValue, height: 3.2)
+            if let topText { drawTextCentered(topText, y: 9) }
+            drawBar(y: 4.0, remaining: bottomValue, height: 2.0)
+            if let bottomText { drawTextCentered(bottomText, y: 3.5) }
+        }
 
         image.unlockFocus()
         image.isTemplate = true

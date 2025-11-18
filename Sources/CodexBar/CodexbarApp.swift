@@ -35,6 +35,7 @@ struct CodexBarApp: App {
         } label: {
             IconView(
                 snapshot: self.store.snapshot,
+                creditsRemaining: self.store.credits?.remaining,
                 isStale: self.store.lastError != nil,
                 showLoadingAnimation: self.shouldAnimateIcon)
         }
