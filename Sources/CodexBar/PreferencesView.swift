@@ -4,6 +4,13 @@ import AppKit
 enum PreferencesTab: String, Hashable {
     case general
     case about
+
+    static let windowWidth: CGFloat = 400
+    static let windowHeight: CGFloat = 440
+
+    var preferredHeight: CGFloat {
+        PreferencesTab.windowHeight
+    }
 }
 
 @MainActor
@@ -12,6 +19,7 @@ struct PreferencesView: View {
     @ObservedObject var store: UsageStore
     let updater: UpdaterProviding
     @ObservedObject var selection: PreferencesSelection
+    @State private var contentHeight: CGFloat = PreferencesTab.general.preferredHeight
 
     var body: some View {
         TabView(selection: self.$selection.tab) {
@@ -23,9 +31,27 @@ struct PreferencesView: View {
                 .tabItem { Label("About", systemImage: "info.circle") }
                 .tag(PreferencesTab.about)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 12)
-        .frame(minWidth: 560, idealWidth: 560, maxWidth: 560, minHeight: 520, idealHeight: 520)
+        .padding(12)
+        .frame(width: PreferencesTab.windowWidth, height: self.contentHeight)
+        .onAppear {
+            self.updateHeight(for: self.selection.tab, animate: false)
+        }
+        .onChange(of: self.selection.tab) { _, newValue in
+            self.updateHeight(for: newValue, animate: true)
+        }
+    }
+
+    private func updateHeight(for tab: PreferencesTab, animate: Bool) {
+        let change = {
+            self.contentHeight = tab.preferredHeight
+        }
+        if animate {
+            withAnimation(.spring(response: 0.32, dampingFraction: 0.85)) {
+                change()
+            }
+        } else {
+            change()
+        }
     }
 }
 
@@ -37,67 +63,73 @@ private struct GeneralPane: View {
     @ObservedObject var store: UsageStore
 
     var body: some View {
-        Form {
-            Section {
-                PreferenceToggleRow(
-                    title: "Show Codex usage",
-                    subtitle: "Display the Codex rate limits in the menu bar.",
-                    binding: self.codexBinding)
-
-                PreferenceToggleRow(
-                    title: "Show Claude usage",
-                    subtitle: "Display Claude limits if available.",
-                    binding: self.claudeBinding)
-
-                PreferenceToggleRow(
-                    title: "Launch at login",
-                    subtitle: "Start CodexBar automatically when you log in.",
-                    binding: self.$settings.launchAtLogin)
-            }
-
-            Section("Refresh every") {
-                Picker("Refresh every", selection: self.$settings.refreshFrequency) {
-                    ForEach(RefreshFrequency.allCases) { option in
-                        Text(option.label).tag(option)
-                    }
-                }
-                .pickerStyle(.segmented)
-                if self.settings.refreshFrequency == .manual {
-                    Text("Auto-refresh is off; use the menu’s Refresh.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
-            }
-
-            Section("Credits & auth") {
-                if store.credits == nil {
-                    Text("Sign in once to show credits usage.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                    Button("Sign in to fetch credits…") { CreditsSignInWindow.present() }
-                }
-                Button("Log out / clear cookies") {
-                    Task { await self.store.clearCookies() }
-                }
-            }
-
-            if self.settings.debugMenuEnabled {
-                Section("Debug") {
+        ScrollView(.vertical, showsIndicators: true) {
+            VStack(alignment: .leading, spacing: 20) {
+                SettingsSection {
                     PreferenceToggleRow(
-                        title: "Dump credits HTML to /tmp",
-                        subtitle: "For diagnostics only.",
-                        binding: self.$settings.creditsDebugDump)
-                    Button("Replay loading animation") {
-                        NotificationCenter.default.post(name: .codexbarDebugReplayAllAnimations, object: nil)
-                        self.store.replayLoadingAnimation()
+                        title: "Show Codex usage",
+                        subtitle: self.providerSubtitle(.codex),
+                        binding: self.codexBinding)
+
+                    self.codexSigningStatus()
+
+                    PreferenceToggleRow(
+                        title: "Show Claude Code usage",
+                        subtitle: self.providerSubtitle(.claude),
+                        binding: self.claudeBinding)
+                }
+
+                Divider()
+
+                SettingsSection {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Refresh cadence")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        Picker("", selection: self.$settings.refreshFrequency) {
+                            ForEach(RefreshFrequency.allCases) { option in
+                                Text(option.label).tag(option)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+
+                        if self.settings.refreshFrequency == .manual {
+                            Text("Auto-refresh is off; use the menu's Refresh command.")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
                     }
-                    Button("Dump Claude probe output") {
-                        Task { await self.store.debugDumpClaude() }
+                }
+
+                Divider()
+
+                SettingsSection {
+                    PreferenceToggleRow(
+                        title: "Launch at login",
+                        subtitle: "Start CodexBar automatically when you log in.",
+                        binding: self.$settings.launchAtLogin)
+                }
+
+                if self.settings.debugMenuEnabled {
+                    SettingsSection(title: "Diagnostics", caption: "Tools that help reproduce tricky states.") {
+                        PreferenceToggleRow(
+                            title: "Dump credits HTML to /tmp",
+                            subtitle: "For diagnostics only.",
+                            binding: self.$settings.creditsDebugDump)
+                        Button("Replay loading animation") {
+                            NotificationCenter.default.post(name: .codexbarDebugReplayAllAnimations, object: nil)
+                            self.store.replayLoadingAnimation()
+                        }
+                        Button("Dump Claude probe output") {
+                            Task { await self.store.debugDumpClaude() }
+                        }
                     }
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
         }
-        .formStyle(.grouped)
     }
 
     private var codexBinding: Binding<Bool> {
@@ -117,6 +149,60 @@ private struct GeneralPane: View {
                 self.settings.ensureAtLeastOneProviderVisible()
             })
     }
+
+    private func providerSubtitle(_ provider: UsageProvider) -> String {
+        let cliName = provider == .codex ? "codex" : "claude"
+        let version = provider == .codex ? self.store.codexVersion : self.store.claudeVersion
+        let versionText = version ?? "not detected"
+
+        let usageText: String
+        if let snapshot = self.store.snapshot(for: provider) {
+            let timestamp = snapshot.updatedAt.formatted(date: .abbreviated, time: .shortened)
+            usageText = "usage fetched \(timestamp)"
+        } else if self.store.isStale(provider: provider) {
+            usageText = "last fetch failed"
+        } else {
+            usageText = "usage not fetched yet"
+        }
+
+        return "\(cliName) \(versionText) status • \(usageText)"
+    }
+
+    @ViewBuilder
+    private func codexSigningStatus() -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if let credits = self.store.credits {
+                Text("Signed in to Codex.")
+                    .font(.footnote.weight(.semibold))
+                Text(self.creditsSummary(credits))
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            } else if let lastError = self.store.lastCreditsError {
+                Text("Sign-in issue: \(lastError)")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else {
+                Text("Sign in once to keep credits usage handy here.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+            HStack {
+                if self.store.credits == nil {
+                    Button("Sign in to fetch credits…") { CreditsSignInWindow.present() }
+                }
+                Button("Log out / clear cookies") {
+                    Task { await self.store.clearCookies() }
+                }
+            }
+        }
+    }
+
+    private func creditsSummary(_ snapshot: CreditsSnapshot) -> String {
+        let amount = snapshot.remaining.formatted(.number.precision(.fractionLength(0...2)))
+        let timestamp = snapshot.updatedAt.formatted(date: .abbreviated, time: .shortened)
+        return "Remaining \(amount) credits as of \(timestamp)."
+    }
 }
 
 // MARK: - About
@@ -125,6 +211,8 @@ private struct GeneralPane: View {
 private struct AboutPane: View {
     let updater: UpdaterProviding
     @State private var iconHover = false
+    @State private var autoUpdateEnabled = false
+    @State private var didLoadUpdaterState = false
 
     private var versionString: String {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "–"
@@ -133,15 +221,22 @@ private struct AboutPane: View {
     }
 
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 12) {
             if let image = NSApplication.shared.applicationIconImage {
-                Image(nsImage: image)
-                    .resizable()
-                    .frame(width: 96, height: 96)
-                    .cornerRadius(16)
-                    .scaleEffect(self.iconHover ? 1.04 : 1.0)
-                    .shadow(color: self.iconHover ? .accentColor.opacity(0.25) : .clear, radius: 6)
-                    .onHover { self.iconHover = $0 }
+                Button(action: self.openProjectHome) {
+                    Image(nsImage: image)
+                        .resizable()
+                        .frame(width: 92, height: 92)
+                        .cornerRadius(16)
+                        .scaleEffect(self.iconHover ? 1.05 : 1.0)
+                        .shadow(color: self.iconHover ? .accentColor.opacity(0.25) : .clear, radius: 6)
+                }
+                .buttonStyle(.plain)
+                .onHover { hovering in
+                    withAnimation(.spring(response: 0.32, dampingFraction: 0.78)) {
+                        self.iconHover = hovering
+                    }
+                }
             }
 
             VStack(spacing: 2) {
@@ -149,28 +244,28 @@ private struct AboutPane: View {
                     .font(.title3).bold()
                 Text("Version \(self.versionString)")
                     .foregroundStyle(.secondary)
-                Text("Keep Codex usage visible—menu bar first.")
+                Text("May your tokens never run out—keep Codex limits in view.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
 
-            VStack(alignment: .center, spacing: 8) {
+            VStack(alignment: .center, spacing: 6) {
                 AboutLinkRow(icon: "chevron.left.slash.chevron.right", title: "GitHub", url: "https://github.com/steipete/CodexBar")
                 AboutLinkRow(icon: "globe", title: "Website", url: "https://steipete.me")
                 AboutLinkRow(icon: "bird", title: "Twitter", url: "https://twitter.com/steipete")
                 AboutLinkRow(icon: "envelope", title: "Email", url: "mailto:peter@steipete.me")
             }
             .frame(maxWidth: .infinity)
+            .multilineTextAlignment(.center)
 
             Divider()
 
-            if updater.isAvailable {
+            if self.updater.isAvailable {
                 VStack(spacing: 10) {
-                    Toggle("Check for updates automatically", isOn: Binding(
-                        get: { updater.automaticallyChecksForUpdates },
-                        set: { updater.automaticallyChecksForUpdates = $0 }))
+                    Toggle("Check for updates automatically", isOn: self.$autoUpdateEnabled)
                         .toggleStyle(.checkbox)
-                    Button("Check for Updates…") { updater.checkForUpdates(nil) }
+                        .frame(maxWidth: .infinity, alignment: .center)
+                    Button("Check for Updates…") { self.updater.checkForUpdates(nil) }
                 }
             } else {
                 Text("Updates unavailable in this build.")
@@ -183,9 +278,22 @@ private struct AboutPane: View {
                 .padding(.top, 4)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(.top, 16)
+        .padding(.top, 4)
         .padding(.horizontal, 24)
         .padding(.bottom, 24)
+        .onAppear {
+            guard !self.didLoadUpdaterState else { return }
+            self.autoUpdateEnabled = self.updater.automaticallyChecksForUpdates
+            self.didLoadUpdaterState = true
+        }
+        .onChange(of: self.autoUpdateEnabled) { _, newValue in
+            self.updater.automaticallyChecksForUpdates = newValue
+        }
+    }
+
+    private func openProjectHome() {
+        guard let url = URL(string: "https://github.com/steipete/CodexBar") else { return }
+        NSWorkspace.shared.open(url)
     }
 }
 
@@ -214,23 +322,58 @@ private struct PreferenceToggleRow: View {
 }
 
 @MainActor
+private struct SettingsSection<Content: View>: View {
+    let title: String?
+    let caption: String?
+    private let content: () -> Content
+
+    init(title: String? = nil, caption: String? = nil, @ViewBuilder content: @escaping () -> Content) {
+        self.title = title
+        self.caption = caption
+        self.content = content
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            if let title, !title.isEmpty {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+            }
+            if let caption {
+                Text(caption)
+                    .font(.footnote)
+                    .foregroundStyle(.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            VStack(alignment: .leading, spacing: 14) {
+                self.content()
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}
+
+@MainActor
 private struct AboutLinkRow: View {
     let icon: String
     let title: String
     let url: String
+    @State private var hovering = false
 
     var body: some View {
         Button {
             if let url = URL(string: self.url) { NSWorkspace.shared.open(url) }
         } label: {
-            HStack(spacing: 8) {
+            HStack(spacing: 6) {
                 Image(systemName: self.icon)
                 Text(self.title)
-                Spacer()
+                    .underline(self.hovering, color: .accentColor)
             }
             .frame(maxWidth: .infinity)
+            .foregroundColor(.accentColor)
         }
         .buttonStyle(.plain)
         .contentShape(Rectangle())
+        .onHover { self.hovering = $0 }
     }
 }
