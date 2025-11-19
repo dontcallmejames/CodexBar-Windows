@@ -261,7 +261,10 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         DispatchQueue.main.async {
             self.preferencesSelection.tab = tab
             NSApp.activate(ignoringOtherApps: true)
-            _ = NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
+            NotificationCenter.default.post(
+                name: .codexbarOpenSettings,
+                object: nil,
+                userInfo: ["tab": tab.rawValue])
         }
     }
 
@@ -332,6 +335,10 @@ private extension StatusItemController {
         case let .copyError(message): return (#selector(copyError(_:)), message)
         }
     }
+}
+
+extension Notification.Name {
+    static let codexbarOpenSettings = Notification.Name("codexbarOpenSettings")
 }
 
 // MARK: - NSMenu helpers
