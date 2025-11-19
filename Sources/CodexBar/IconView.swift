@@ -27,7 +27,8 @@ struct IconView: View {
                     primaryRemaining: snapshot.primary.remainingPercent,
                     weeklyRemaining: snapshot.secondary.remainingPercent,
                     creditsRemaining: self.creditsRemaining,
-                    stale: self.isStale))
+                    stale: self.isStale,
+                    style: self.style))
                     .renderingMode(.original)
                     .frame(width: 20, height: 18, alignment: .center)
                     .padding(.horizontal, 2)
@@ -37,7 +38,8 @@ struct IconView: View {
                     primaryRemaining: self.loadingPrimary,
                     weeklyRemaining: self.loadingSecondary,
                     creditsRemaining: nil,
-                    stale: false))
+                    stale: false,
+                    style: self.style))
                     .renderingMode(.original)
                     .frame(width: 20, height: 18, alignment: .center)
                     .padding(.horizontal, 2)
@@ -58,7 +60,8 @@ struct IconView: View {
                     primaryRemaining: nil,
                     weeklyRemaining: nil,
                     creditsRemaining: self.creditsRemaining,
-                    stale: self.isStale))
+                    stale: self.isStale,
+                    style: self.style))
                     .renderingMode(.original)
                     .frame(width: 20, height: 18, alignment: .center)
                     .padding(.horizontal, 2)
