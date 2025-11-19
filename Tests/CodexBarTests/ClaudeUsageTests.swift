@@ -41,4 +41,31 @@ struct ClaudeUsageTests {
         #expect(snap?.accountEmail == "steipete@gmail.com")
         #expect(snap?.accountOrganization == nil)
     }
+
+    @Test
+    func trimsAccountFields() {
+        let cases: [[String: String?]] = [
+            ["email": " steipete@gmail.com ", "org": "  Org  "],
+            ["email": "", "org": " Claude Max Account "],
+            ["email": nil, "org": " "]
+        ]
+
+        for entry in cases {
+            var payload = [
+                "ok": true,
+                "session_5h": ["pct_used": 0, "resets": ""],
+                "week_all_models": ["pct_used": 0, "resets": ""]
+            ] as [String: Any]
+            if let email = entry["email"] ?? nil { payload["account_email"] = email }
+            if let org = entry["org"] ?? nil { payload["account_org"] = org }
+            let data = try! JSONSerialization.data(withJSONObject: payload)
+            let snap = ClaudeUsageFetcher.parse(json: data)
+            let expectedEmail = (entry["email"] ?? nil)?.trimmingCharacters(in: .whitespacesAndNewlines)
+            let normalizedEmail = (expectedEmail?.isEmpty ?? true) ? nil : expectedEmail
+            #expect(snap?.accountEmail == normalizedEmail)
+            let expectedOrg = (entry["org"] ?? nil)?.trimmingCharacters(in: .whitespacesAndNewlines)
+            let normalizedOrg = (expectedOrg?.isEmpty ?? true) ? nil : expectedOrg
+            #expect(snap?.accountOrganization == normalizedOrg)
+        }
+    }
 }
