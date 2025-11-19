@@ -11,6 +11,7 @@ Codexbar.app
 *.ipa
 *.dSYM*
 *.zip
+*.delta
 *.dmg
 *.pkg
 *.tar.gz
