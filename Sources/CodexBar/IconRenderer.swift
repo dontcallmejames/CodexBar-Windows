@@ -34,21 +34,32 @@ enum IconRenderer {
                 let ctx = NSGraphicsContext.current?.cgContext
                 ctx?.saveGState()
                 ctx?.setBlendMode(.clear)
-                let eyeSize: CGFloat = 1.1
-                let eyeY = y + height * 0.45
-                let eyeOffset: CGFloat = 3.3
+                let eyeSize: CGFloat = 1.6
+                let eyeY = y + height * 0.50
+                let eyeOffset: CGFloat = 3.4
                 let center = x + width / 2
                 ctx?.addEllipse(in: CGRect(x: center - eyeOffset - eyeSize / 2, y: eyeY - eyeSize / 2, width: eyeSize, height: eyeSize))
                 ctx?.addEllipse(in: CGRect(x: center + eyeOffset - eyeSize / 2, y: eyeY - eyeSize / 2, width: eyeSize, height: eyeSize))
                 ctx?.fillPath()
 
                 // Claws: small inward cuts near ends.
-                let clawWidth: CGFloat = 1.2
-                let clawHeight: CGFloat = height * 0.72
-                ctx?.addRect(CGRect(x: x + 0.6, y: y + (height - clawHeight) / 2, width: clawWidth, height: clawHeight))
-                ctx?.addRect(CGRect(x: x + width - clawWidth - 0.6, y: y + (height - clawHeight) / 2, width: clawWidth, height: clawHeight))
+                let clawWidth: CGFloat = 1.6
+                let clawHeight: CGFloat = height * 0.82
+                ctx?.addRect(CGRect(x: x + 0.2, y: y + (height - clawHeight) / 2, width: clawWidth, height: clawHeight))
+                ctx?.addRect(CGRect(x: x + width - clawWidth - 0.2, y: y + (height - clawHeight) / 2, width: clawWidth, height: clawHeight))
                 ctx?.fillPath()
                 ctx?.restoreGState()
+
+                // Legs: three tiny downward bumps under the top bar to hint the crab.
+                let legWidth: CGFloat = 1.3
+                let legHeight: CGFloat = 1.6
+                let legY = y - 1.0
+                let legOffsets: [CGFloat] = [-4.0, 0.0, 4.0]
+                fillColor.withAlphaComponent(alpha).setFill()
+                for offset in legOffsets {
+                    let lx = center + offset - legWidth / 2
+                    NSBezierPath(roundedRect: CGRect(x: lx, y: legY, width: legWidth, height: legHeight), xRadius: 0.4, yRadius: 0.4).fill()
+                }
             }
         }
 
