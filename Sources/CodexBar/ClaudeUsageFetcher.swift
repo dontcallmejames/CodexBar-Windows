@@ -304,6 +304,12 @@ status_output=$("$TMUX_BIN" -L "$LABEL" capture-pane -t "$TARGET" -p -S -120 -J 
 status_clean=$(printf "%s" "$status_output" | perl -pe 's/\x1B\[[0-9;?]*[[:alpha:]]//g')
 account_email=$(echo "$status_clean" | awk '/Email/ {print $0; exit}' | sed -E 's/.*Email[^A-Za-z0-9@+_.-]*//' | xargs)
 if [ -z "$account_email" ]; then
+  account_email=$(echo "$status_clean" | awk '/Organization/ {sub(/.*Organization[^A-Za-z0-9@+_.-]*/, \"\"); sub(/\".*$/, \"\"); print; exit}' | xargs)
+fi
+if [ -z "$account_email" ]; then
+  account_email=$(echo "$status_clean" | awk 'BEGIN{IGNORECASE=1}/Login method/ {sub(/.*Login method[^A-Za-z0-9@+_.-]*/,""); print; exit}' | xargs)
+fi
+if [ -z "$account_email" ]; then
   account_email=$(echo "$status_clean" | awk '/Welcome back/ {sub(/.*Welcome back[[:space:]]+/,""); sub(/!.*$/,""); print; exit}' | xargs)
 fi
 account_org=$(echo "$status_clean" | awk '/Organization/ {print $0; exit}' | sed -E 's/.*Organization[^A-Za-z0-9@+_.-]*//' | xargs)
