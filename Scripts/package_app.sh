@@ -20,22 +20,21 @@ fi
 BUNDLE_ID="com.steipete.codexbar"
 FEED_URL="https://raw.githubusercontent.com/steipete/CodexBar/main/appcast.xml"
 AUTO_CHECKS=true
-LOWER_CONF=20 20 12 61 79 80 81 701 33 98 100 204 250 395 398 399 400printf "%s" "" | tr "[:upper:]" "[:lower:]")
-if [[ "" == "debug" ]]; then
+LOWER_CONF=$(printf "%s" "$CONF" | tr '[:upper:]' '[:lower:]')
+if [[ "$LOWER_CONF" == "debug" ]]; then
   BUNDLE_ID="com.steipete.codexbar.debug"
   FEED_URL=""
   AUTO_CHECKS=false
 fi
 
-
-cat > "$APP/Contents/Info.plist" <<'PLIST'
+cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
     <key>CFBundleName</key><string>CodexBar</string>
     <key>CFBundleDisplayName</key><string>CodexBar</string>
-    <key>CFBundleIdentifier</key><string></string>
+    <key>CFBundleIdentifier</key><string>${BUNDLE_ID}</string>
     <key>CFBundleExecutable</key><string>CodexBar</string>
     <key>CFBundlePackageType</key><string>APPL</string>
     <key>CFBundleShortVersionString</key><string>0.4.0</string>
@@ -44,9 +43,9 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
     <key>LSUIElement</key><true/>
     <key>CFBundleIconFile</key><string>Icon</string>
     <key>NSHumanReadableCopyright</key><string>© 2025 Peter Steinberger. MIT License.</string>
-    <key>SUFeedURL</key><string></string>
+    <key>SUFeedURL</key><string>${FEED_URL}</string>
     <key>SUPublicEDKey</key><string>AGCY8w5vHirVfGGDGc8Szc5iuOqupZSh9pMj/Qs67XI=</string>
-    <key>SUEnableAutomaticChecks</key></>
+    <key>SUEnableAutomaticChecks</key><${AUTO_CHECKS}/>
 </dict>
 </plist>
 PLIST
