@@ -3,6 +3,7 @@ import Foundation
 struct ClaudeUsageSnapshot {
     let primary: RateWindow
     let secondary: RateWindow
+    let opus: RateWindow?
     let updatedAt: Date
     let accountEmail: String?
     let accountOrganization: String?
@@ -103,9 +104,16 @@ struct ClaudeUsageFetcher: Sendable {
         let email = (rawEmail?.isEmpty ?? true) ? nil : rawEmail
         let rawOrg = (obj["account_org"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
         let org = (rawOrg?.isEmpty ?? true) ? nil : rawOrg
+        let opusWindow: RateWindow? = {
+            guard let opus = obj["week_opus"] as? [String: Any],
+                  let pct = opus["pct_used"] as? Double else { return nil }
+            let resets = opus["resets"] as? String
+            return RateWindow(usedPercent: pct, windowMinutes: nil, resetsAt: Self.parseReset(text: resets), resetDescription: resets)
+        }()
         return ClaudeUsageSnapshot(
             primary: session,
             secondary: weekAll,
+            opus: opusWindow,
             updatedAt: Date(),
             accountEmail: email,
             accountOrganization: org)

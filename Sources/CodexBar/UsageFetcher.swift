@@ -16,6 +16,7 @@ struct RateWindow: Codable {
 struct UsageSnapshot {
     let primary: RateWindow
     let secondary: RateWindow
+    let tertiary: RateWindow?
     let updatedAt: Date
     let accountEmail: String?
     let accountOrganization: String?
@@ -23,12 +24,14 @@ struct UsageSnapshot {
     init(
         primary: RateWindow,
         secondary: RateWindow,
+        tertiary: RateWindow? = nil,
         updatedAt: Date,
         accountEmail: String? = nil,
         accountOrganization: String? = nil
     ) {
         self.primary = primary
         self.secondary = secondary
+        self.tertiary = tertiary
         self.updatedAt = updatedAt
         self.accountEmail = accountEmail
         self.accountOrganization = accountOrganization
