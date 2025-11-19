@@ -299,8 +299,9 @@ capture_pane
 "$TMUX_BIN" -L "$LABEL" send-keys -t "$TARGET" Enter >/dev/null 2>&1
 sleep 0.6
 status_output=$("$TMUX_BIN" -L "$LABEL" capture-pane -t "$TARGET" -p -S -120 -J 2>/dev/null || true)
-account_email=$(echo "$status_output" | awk '/Email:/ {print $0; exit}' | sed 's/.*Email: *//' | xargs)
-account_org=$(echo "$status_output" | awk '/Organization:/ {print $0; exit}' | sed 's/.*Organization: *//' | xargs)
+status_clean=$(printf "%s" "$status_output" | perl -pe 's/\x1B\[[0-9;?]*[[:alpha:]]//g')
+account_email=$(echo "$status_clean" | awk '/Email/ {print $0; exit}' | sed -E 's/.*Email[^A-Za-z0-9@+_-]*//' | xargs)
+account_org=$(echo "$status_clean" | awk '/Organization/ {print $0; exit}' | sed -E 's/.*Organization[^A-Za-z0-9@+_-]*//' | xargs)
 
 parse_block() {
   local label="$1"
