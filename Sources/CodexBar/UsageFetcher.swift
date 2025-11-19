@@ -17,6 +17,22 @@ struct UsageSnapshot {
     let primary: RateWindow
     let secondary: RateWindow
     let updatedAt: Date
+    let accountEmail: String?
+    let accountOrganization: String?
+
+    init(
+        primary: RateWindow,
+        secondary: RateWindow,
+        updatedAt: Date,
+        accountEmail: String? = nil,
+        accountOrganization: String? = nil
+    ) {
+        self.primary = primary
+        self.secondary = secondary
+        self.updatedAt = updatedAt
+        self.accountEmail = accountEmail
+        self.accountOrganization = accountOrganization
+    }
 }
 
 struct AccountInfo: Equatable {
