@@ -127,6 +127,15 @@ private struct GeneralPane: View {
                         title: "Launch at login",
                         subtitle: nil,
                         binding: self.$settings.launchAtLogin)
+                    HStack {
+                        Spacer()
+                        Button("Quit CodexBar") {
+                            NSApp.terminate(nil)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.large)
+                    }
+                    .padding(.top, 8)
                 }
 
                 if self.settings.debugMenuEnabled {
