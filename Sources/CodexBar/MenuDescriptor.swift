@@ -125,9 +125,9 @@ struct MenuDescriptor {
         switch provider {
         case .codex?:
             sections.append(codexSection())
-            sections.append(accountSection())
         case .claude?:
             sections.append(claudeSection())
+            sections.append(accountSection())
         case nil:
             var hasUsageSection = false
             if settings.showCodexUsage {
