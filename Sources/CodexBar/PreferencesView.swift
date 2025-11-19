@@ -6,8 +6,8 @@ enum PreferencesTab: String, Hashable {
     case about
     case debug
 
-    static let windowWidth: CGFloat = 393
-    static let windowHeight: CGFloat = 451
+    static let windowWidth: CGFloat = 424  // ~8% wider
+    static let windowHeight: CGFloat = 487 // ~8% taller
 
     var preferredHeight: CGFloat {
         PreferencesTab.windowHeight
@@ -309,6 +309,7 @@ private struct AboutPane: View {
                 AboutLinkRow(icon: "bird", title: "Twitter", url: "https://twitter.com/steipete")
                 AboutLinkRow(icon: "envelope", title: "Email", url: "mailto:peter@steipete.me")
             }
+            .padding(.top, 8)
             .frame(maxWidth: .infinity)
             .multilineTextAlignment(.center)
 
