@@ -13,10 +13,6 @@ struct CodexBarApp: App {
 
     init() {
         let settings = SettingsStore()
-        // Guard: always keep at least one provider visible so the app shows an icon.
-        if !settings.showCodexUsage && !settings.showClaudeUsage {
-            settings.showCodexUsage = true
-        }
         let fetcher = UsageFetcher()
         self.account = fetcher.loadAccountInfo()
         _settings = StateObject(wrappedValue: settings)
@@ -223,21 +219,28 @@ final class StatusItemController: NSObject, NSMenuDelegate {
                 stale: self.store.isStale(provider: .claude),
                 style: .claude)
         }
-        self.attachMenus()
+        self.attachMenus(fallback: self.fallbackProvider)
     }
 
     private func updateVisibility() {
-        self.codexItem.isVisible = self.settings.showCodexUsage
+        let fallback = self.fallbackProvider
+        self.codexItem.isVisible = self.settings.showCodexUsage || fallback == .codex
         self.claudeItem.isVisible = self.settings.showClaudeUsage
-        if !self.settings.showCodexUsage && !self.settings.showClaudeUsage {
-            self.settings.showCodexUsage = true
-            self.codexItem.isVisible = true
-        }
-        self.attachMenus()
+        self.attachMenus(fallback: fallback)
     }
 
-    private func attachMenus() {
-        self.codexItem.menu = self.settings.showCodexUsage ? self.makeMenu(for: .codex) : nil
+    private var fallbackProvider: UsageProvider? {
+        (!self.settings.showCodexUsage && !self.settings.showClaudeUsage) ? .codex : nil
+    }
+
+    private func attachMenus(fallback: UsageProvider? = nil) {
+        if self.settings.showCodexUsage {
+            self.codexItem.menu = self.makeMenu(for: .codex)
+        } else if fallback == .codex {
+            self.codexItem.menu = self.makeMenu(for: nil)
+        } else {
+            self.codexItem.menu = nil
+        }
         self.claudeItem.menu = self.settings.showClaudeUsage ? self.makeMenu(for: .claude) : nil
     }
 
@@ -289,7 +292,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 // MARK: - NSMenu construction
 
 private extension StatusItemController {
-    func makeMenu(for provider: UsageProvider) -> NSMenu {
+    func makeMenu(for provider: UsageProvider?) -> NSMenu {
         let descriptor = MenuDescriptor.build(provider: provider, store: self.store, settings: self.settings, account: self.account)
         let menu = NSMenu()
         menu.autoenablesItems = false
