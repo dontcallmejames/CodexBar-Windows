@@ -5,6 +5,7 @@
 - Dual icons when both providers are enabled; clicking each icon opens its own usage menu; credits remain on Codex only.
 - Probe errors surfaced inline with actionable hints; Claude settings include quick link to `~/.claude/projects`.
 - Debug builds now use bundle ID `com.steipete.codexbar.debug` and ship with Sparkle feed disabled so dev runs don’t interfere with Accessibility/Input Monitoring trust or update flow.
+- Settings window restyled to mirror Trimmy: compact width/height, section dividers, richer provider subtitles (CLI version + usage status), inline credits/auth controls, and a refreshed About pane tagline pulled from the README.
 
 ## 0.3.0 — 2025-11-18
 - Credits support: scrapes ChatGPT usage page via WKWebView, shows remaining credits + history inline, and moves history to a submenu.
