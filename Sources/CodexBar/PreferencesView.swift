@@ -1,7 +1,7 @@
 import SwiftUI
 import AppKit
 
-enum PreferencesTab: Hashable {
+enum PreferencesTab: String, Hashable {
     case general
     case about
 }
