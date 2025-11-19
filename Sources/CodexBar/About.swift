@@ -7,6 +7,7 @@ func showAbout() {
     let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "–"
     let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? ""
     let versionString = build.isEmpty ? version : "\(version) (\(build))"
+    let buildTimestamp = Bundle.main.object(forInfoDictionaryKey: "CodexBuildTimestamp") as? String
 
     let separator = NSAttributedString(string: " · ", attributes: [
         .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
@@ -27,6 +28,12 @@ func showAbout() {
     credits.append(makeLink("Twitter", urlString: "https://twitter.com/steipete"))
     credits.append(separator)
     credits.append(makeLink("Email", urlString: "mailto:peter@steipete.me"))
+    if let buildTimestamp, let formatted = formattedBuildTimestamp(buildTimestamp) {
+        credits.append(NSAttributedString(string: "\nBuilt \(formatted)", attributes: [
+            .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
+            .foregroundColor: NSColor.secondaryLabelColor,
+        ]))
+    }
 
     let options: [NSApplication.AboutPanelOptionKey: Any] = [
         .applicationName: "CodexBar",
@@ -37,4 +44,16 @@ func showAbout() {
     ]
 
     NSApp.orderFrontStandardAboutPanel(options: options)
+}
+
+private func formattedBuildTimestamp(_ timestamp: String) -> String? {
+    let parser = ISO8601DateFormatter()
+    parser.formatOptions = [.withInternetDateTime]
+    guard let date = parser.date(from: timestamp) else { return timestamp }
+
+    let formatter = DateFormatter()
+    formatter.dateStyle = .medium
+    formatter.timeStyle = .short
+    formatter.locale = .current
+    return formatter.string(from: date)
 }
