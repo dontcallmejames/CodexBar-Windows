@@ -123,7 +123,7 @@ private struct GeneralPane: View {
 
                 Divider()
 
-                SettingsSection(contentSpacing: 0) {
+                SettingsSection(contentSpacing: 16) {
                     PreferenceToggleRow(
                         title: "Start at Login",
                         subtitle: "Automatically opens CodexBar when you start your Mac.",
