@@ -38,7 +38,8 @@ struct PreferencesView: View {
                     .tag(PreferencesTab.debug)
             }
         }
-        .padding(12)
+        .padding(.horizontal, 24)
+        .padding(.vertical, 16)
         .frame(width: PreferencesTab.windowWidth, height: self.contentHeight)
         .onAppear {
             self.updateHeight(for: self.selection.tab, animate: false)
