@@ -169,7 +169,10 @@ private struct GeneralPane: View {
     private func providerSubtitle(_ provider: UsageProvider) -> String {
         let cliName = provider == .codex ? "codex" : "claude"
         let version = provider == .codex ? self.store.codexVersion : self.store.claudeVersion
-        let versionText = version ?? "not detected"
+        var versionText = version ?? "not detected"
+        if provider == .claude, let parenRange = versionText.range(of: "(") {
+            versionText = versionText[..<parenRange.lowerBound].trimmingCharacters(in: .whitespaces)
+        }
 
         let usageText: String
         if let snapshot = self.store.snapshot(for: provider) {
