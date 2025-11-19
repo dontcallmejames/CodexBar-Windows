@@ -74,6 +74,11 @@ struct MenuDescriptor {
                 entries.append(.text("Claude · Weekly", .headline))
                 entries.append(.text(UsageFormatter.usageLine(remaining: snap.secondary.remainingPercent, used: snap.secondary.usedPercent), .primary))
                 if let reset = snap.secondary.resetDescription { entries.append(.text("Resets \(reset)", .secondary)) }
+                if let opus = snap.tertiary {
+                    entries.append(.text("Claude · Opus", .headline))
+                    entries.append(.text(UsageFormatter.usageLine(remaining: opus.remainingPercent, used: opus.usedPercent), .primary))
+                    if let reset = opus.resetDescription { entries.append(.text("Resets \(reset)", .secondary)) }
+                }
                 entries.append(.text(UsageFormatter.updatedString(from: snap.updatedAt), .secondary))
                 if let email = snap.accountEmail { entries.append(.text("Account: \(email)", .secondary)) }
                 if let org = snap.accountOrganization, !org.isEmpty { entries.append(.text("Org: \(org)", .secondary)) }

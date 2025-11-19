@@ -205,6 +205,7 @@ final class UsageStore: ObservableObject {
                 let snapshot = UsageSnapshot(
                     primary: usage.primary,
                     secondary: usage.secondary,
+                    tertiary: usage.opus,
                     updatedAt: usage.updatedAt,
                     accountEmail: usage.accountEmail,
                     accountOrganization: usage.accountOrganization)
