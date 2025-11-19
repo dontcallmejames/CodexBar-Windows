@@ -143,21 +143,6 @@ private struct GeneralPane: View {
                     .padding(.top, 16)
                 }
 
-                if self.settings.debugMenuEnabled {
-                    SettingsSection(title: "Diagnostics", caption: "Tools that help reproduce tricky states.") {
-                        PreferenceToggleRow(
-                            title: "Dump credits HTML to /tmp",
-                            subtitle: "For diagnostics only.",
-                            binding: self.$settings.creditsDebugDump)
-                        Button("Replay loading animation") {
-                            NotificationCenter.default.post(name: .codexbarDebugReplayAllAnimations, object: nil)
-                            self.store.replayLoadingAnimation()
-                        }
-                        Button("Dump Claude probe output") {
-                            Task { await self.store.debugDumpClaude() }
-                        }
-                    }
-                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 20)
@@ -353,24 +338,29 @@ private struct DebugPane: View {
     @ObservedObject var store: UsageStore
 
     var body: some View {
-        Form {
-            Section("Diagnostics toggles") {
-                Toggle("Dump credits HTML to /tmp", isOn: self.$settings.creditsDebugDump)
-                Toggle("Show debug menu items", isOn: self.$settings.debugMenuEnabled)
-                    .disabled(true)
-            }
+        ScrollView(.vertical, showsIndicators: true) {
+            VStack(alignment: .leading, spacing: 20) {
+                SettingsSection(title: "Toggles", caption: "Flip these on when you need additional data.") {
+                    PreferenceToggleRow(
+                        title: "Dump credits HTML to /tmp",
+                        subtitle: "Writes the fetched usage page to /tmp for inspection.",
+                        binding: self.$settings.creditsDebugDump)
+                }
 
-            Section("Actions") {
-                Button("Replay loading animation") {
-                    NotificationCenter.default.post(name: .codexbarDebugReplayAllAnimations, object: nil)
-                    self.store.replayLoadingAnimation()
-                }
-                Button("Dump Claude probe output") {
-                    Task { await self.store.debugDumpClaude() }
+                SettingsSection(title: "Actions", caption: "One-off tools to debug UI/usage issues.") {
+                    Button("Replay loading animation") {
+                        NotificationCenter.default.post(name: .codexbarDebugReplayAllAnimations, object: nil)
+                        self.store.replayLoadingAnimation()
+                    }
+                    Button("Dump Claude probe output") {
+                        Task { await self.store.debugDumpClaude() }
+                    }
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
         }
-        .formStyle(.grouped)
     }
 }
 
