@@ -27,6 +27,7 @@ final class UsageStore: ObservableObject {
     @Published var claudeAccountEmail: String?
     @Published var claudeAccountOrganization: String?
     @Published var isRefreshing = false
+    @Published var debugForceAnimation = false
 
     private let codexFetcher: UsageFetcher
     private let claudeFetcher: ClaudeUsageFetcher
@@ -111,10 +112,10 @@ final class UsageStore: ObservableObject {
 
     /// For demo/testing: drop the snapshot so the loading animation plays, then restore the last snapshot.
     func replayLoadingAnimation(duration: TimeInterval = 3) {
-        guard !self.isRefreshing else { return }
         let current = self.preferredSnapshot
         self.codexSnapshot = nil
         self.claudeSnapshot = nil
+        self.debugForceAnimation = true
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(duration))
             if let current {
@@ -124,6 +125,7 @@ final class UsageStore: ObservableObject {
                     self.claudeSnapshot = current
                 }
             }
+            self.debugForceAnimation = false
         }
     }
 
@@ -208,7 +210,8 @@ final class UsageStore: ObservableObject {
                     tertiary: usage.opus,
                     updatedAt: usage.updatedAt,
                     accountEmail: usage.accountEmail,
-                    accountOrganization: usage.accountOrganization)
+                    accountOrganization: usage.accountOrganization,
+                    loginMethod: usage.loginMethod)
                 self.claudeSnapshot = snapshot
                 self.claudeAccountEmail = usage.accountEmail
                 self.claudeAccountOrganization = usage.accountOrganization

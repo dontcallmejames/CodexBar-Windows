@@ -20,6 +20,7 @@ struct UsageSnapshot {
     let updatedAt: Date
     let accountEmail: String?
     let accountOrganization: String?
+    let loginMethod: String?
 
     init(
         primary: RateWindow,
@@ -27,7 +28,8 @@ struct UsageSnapshot {
         tertiary: RateWindow? = nil,
         updatedAt: Date,
         accountEmail: String? = nil,
-        accountOrganization: String? = nil
+        accountOrganization: String? = nil,
+        loginMethod: String? = nil
     ) {
         self.primary = primary
         self.secondary = secondary
@@ -35,6 +37,7 @@ struct UsageSnapshot {
         self.updatedAt = updatedAt
         self.accountEmail = accountEmail
         self.accountOrganization = accountOrganization
+        self.loginMethod = loginMethod
     }
 }
 

@@ -7,6 +7,7 @@ struct ClaudeUsageSnapshot {
     let updatedAt: Date
     let accountEmail: String?
     let accountOrganization: String?
+    let loginMethod: String?
 }
 
 enum ClaudeUsageError: LocalizedError {
@@ -104,6 +105,7 @@ struct ClaudeUsageFetcher: Sendable {
         let email = (rawEmail?.isEmpty ?? true) ? nil : rawEmail
         let rawOrg = (obj["account_org"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
         let org = (rawOrg?.isEmpty ?? true) ? nil : rawOrg
+        let loginMethod = (obj["login_method"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
         let opusWindow: RateWindow? = {
             guard let opus = obj["week_opus"] as? [String: Any],
                   let pct = opus["pct_used"] as? Double else { return nil }
@@ -116,7 +118,8 @@ struct ClaudeUsageFetcher: Sendable {
             opus: opusWindow,
             updatedAt: Date(),
             accountEmail: email,
-            accountOrganization: org)
+            accountOrganization: org,
+            loginMethod: loginMethod)
     }
 
     private static func parseReset(text: String?) -> Date? {
@@ -321,6 +324,7 @@ if [ -z "$account_email" ]; then
   account_email=$(echo "$status_clean" | awk '/Welcome back/ {sub(/.*Welcome back[[:space:]]+/,""); sub(/!.*$/,""); print; exit}' | xargs)
 fi
 account_org=$(echo "$status_clean" | awk '/Organization/ {print $0; exit}' | sed -E 's/.*Organization[^A-Za-z0-9@+_.-]*//' | xargs)
+login_method=$(echo "$status_clean" | awk 'BEGIN{IGNORECASE=1}/Login method/ {sub(/.*Login method[^A-Za-z0-9 @+_.-]*/,""); print; exit}' | xargs)
 
 parse_block() {
   local label="$1"
@@ -344,6 +348,6 @@ else
   opus_json=null
 fi
 
-echo "{\"ok\":true,\"session_5h\":{\"pct_used\":$session_pct,\"resets\":\"$session_reset\"},\"week_all_models\":{\"pct_used\":$week_all_pct,\"resets\":\"$week_all_reset\"},\"week_opus\":$opus_json,\"account_email\":\"$account_email\",\"account_org\":\"$account_org\",\"pane_preview\":\"$(pane_preview)\",\"stdout_b64\":\"$(b64_tail "$STDOUT_LOG")\",\"stderr_b64\":\"$(b64_tail "$STDERR_LOG")\"}" >&3
+echo "{\"ok\":true,\"session_5h\":{\"pct_used\":$session_pct,\"resets\":\"$session_reset\"},\"week_all_models\":{\"pct_used\":$week_all_pct,\"resets\":\"$week_all_reset\"},\"week_opus\":$opus_json,\"account_email\":\"$account_email\",\"account_org\":\"$account_org\",\"login_method\":\"$login_method\",\"pane_preview\":\"$(pane_preview)\",\"stdout_b64\":\"$(b64_tail "$STDOUT_LOG")\",\"stderr_b64\":\"$(b64_tail "$STDERR_LOG")\"}" >&3
 """#
 }

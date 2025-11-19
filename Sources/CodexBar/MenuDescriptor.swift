@@ -80,7 +80,13 @@ struct MenuDescriptor {
                     if let reset = opus.resetDescription { entries.append(.text("Resets \(reset)", .secondary)) }
                 }
                 entries.append(.text(UsageFormatter.updatedString(from: snap.updatedAt), .secondary))
-                if let email = snap.accountEmail { entries.append(.text("Account: \(email)", .secondary)) }
+                if let email = snap.accountEmail {
+                    if let plan = snap.loginMethod, !plan.isEmpty {
+                        entries.append(.text("Account: \(email) — \(plan)", .secondary))
+                    } else {
+                        entries.append(.text("Account: \(email)", .secondary))
+                    }
+                }
                 if let org = snap.accountOrganization, !org.isEmpty { entries.append(.text("Org: \(org)", .secondary)) }
             } else {
                 entries.append(.text("No usage yet", .secondary))
