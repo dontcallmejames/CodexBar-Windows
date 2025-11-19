@@ -30,6 +30,7 @@ Gotchas fixed:
 - Sparkle needs signing for framework, Autoupdate, Updater, XPCs (Downloader/Installer) or notarization fails.
 - Use `--timestamp` and `--deep` when signing the app to avoid invalid signature errors.
 - Avoid `unzip` — it can add AppleDouble `._*` files that break the sealed signature and trigger “app is damaged”. Use Finder or `ditto -x -k CodexBar-<ver>.zip /Applications`. If Gatekeeper complains, delete the app bundle, re-extract with `ditto`, then `spctl -a -t exec` to verify.
+- Manual sanity check before uploading: `find CodexBar.app -name '._*'` should return nothing; then `spctl --assess --type execute --verbose CodexBar.app` and `codesign --verify --deep --strict --verbose CodexBar.app` should both pass on the packaged bundle.
 
 ## Appcast (Sparkle)
 After notarization:
@@ -68,6 +69,7 @@ git tag v<version>
 - [ ] Ensure `sparkle:edSignature` is present for the enclosure in appcast (generate with `sign_update`/ed25519 key)
 - [ ] When creating the GitHub release, paste the CHANGELOG entry as Markdown list (one `-` per line, blank line between sections); visually confirm bullets render correctly after publishing
 - [ ] Keep a previous signed build in `/Applications/CodexBar.app` to test Sparkle delta/full update to the new release
+- [ ] Manual Gatekeeper sanity: after packaging, `find CodexBar.app -name '._*'` is empty, `spctl --assess --type execute --verbose CodexBar.app` and `codesign --verify --deep --strict --verbose CodexBar.app` succeed
 - [ ] For Sparkle verification: if replacing `/Applications/CodexBar.app`, quit first, replace, relaunch, and test update
 - **Definition of “done” for a release:** all of the above are complete, the appcast/enclosure link resolves, and a previous public build can update to the new one via Sparkle. Anything short of that is not a finished release.
 
