@@ -187,10 +187,9 @@ private struct GeneralPane: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
-            HStack {
-                if self.store.credits == nil {
-                    Button("Sign in to fetch credits…") { CreditsSignInWindow.present() }
-                }
+            if self.store.credits == nil {
+                Button("Sign in to fetch credits…") { CreditsSignInWindow.present() }
+            } else {
                 Button("Log out / clear cookies") {
                     Task { await self.store.clearCookies() }
                 }
