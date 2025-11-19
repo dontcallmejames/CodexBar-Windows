@@ -121,9 +121,20 @@ struct MenuDescriptor {
         case .claude?:
             sections.append(claudeSection())
         case nil:
-            if settings.showCodexUsage { sections.append(codexSection()) }
-            if settings.showClaudeUsage { sections.append(claudeSection()) }
-            sections.append(accountSection())
+            var hasUsageSection = false
+            if settings.showCodexUsage {
+                sections.append(codexSection())
+                hasUsageSection = true
+            }
+            if settings.showClaudeUsage {
+                sections.append(claudeSection())
+                hasUsageSection = true
+            }
+            if hasUsageSection {
+                sections.append(accountSection())
+            } else {
+                sections.append(Section(entries: [.text("No usage configured.", .secondary)]))
+            }
         }
 
         sections.append(actionsSection())
