@@ -7,7 +7,7 @@ enum PreferencesTab: String, Hashable {
     case debug
 
     static let windowWidth: CGFloat = 393
-    static let windowHeight: CGFloat = 392
+    static let windowHeight: CGFloat = 451
 
     var preferredHeight: CGFloat {
         PreferencesTab.windowHeight
@@ -128,6 +128,10 @@ private struct GeneralPane: View {
                         title: "Start at Login",
                         subtitle: "Automatically opens CodexBar when you start your Mac.",
                         binding: self.$settings.launchAtLogin)
+                    PreferenceToggleRow(
+                        title: "Show Debug Settings",
+                        subtitle: "Expose troubleshooting tools in the Debug tab.",
+                        binding: self.$settings.debugMenuEnabled)
                     HStack {
                         Spacer()
                         Button("Quit CodexBar") {
