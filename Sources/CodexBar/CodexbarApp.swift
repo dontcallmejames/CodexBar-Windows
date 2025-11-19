@@ -213,10 +213,10 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         }
         if let button = self.claudeItem.button {
             button.image = IconRenderer.makeIcon(
-                primaryRemaining: self.store.snapshot(for: .claude)?.primary.remainingPercent,
-                weeklyRemaining: self.store.snapshot(for: .claude)?.secondary.remainingPercent,
+                primaryRemaining: nil,
+                weeklyRemaining: nil,
                 creditsRemaining: nil,
-                stale: self.store.isStale(provider: .claude),
+                stale: true,
                 style: .claude)
         }
         self.attachMenus(fallback: self.fallbackProvider)
