@@ -166,6 +166,9 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private let claudeItem: NSStatusItem
     private var cancellables = Set<AnyCancellable>()
     private let preferencesSelection: PreferencesSelection
+    private var animationTimer: Timer?
+    private var animationPhase: Double = 0
+    private var animationPattern: LoadingPattern = .knightRider
 
     init(store: UsageStore, settings: SettingsStore, account: AccountInfo, updater: UpdaterProviding, preferencesSelection: PreferencesSelection) {
         self.store = store
@@ -180,6 +183,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         self.wireBindings()
         self.updateIcons()
         self.updateVisibility()
+        NotificationCenter.default.addObserver(self, selector: #selector(self.handleDebugReplayNotification), name: .codexbarDebugReplayAllAnimations, object: nil)
     }
 
     private func wireBindings() {
@@ -203,23 +207,10 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     }
 
     private func updateIcons() {
-        if let button = self.codexItem.button {
-            button.image = IconRenderer.makeIcon(
-                primaryRemaining: self.store.snapshot(for: .codex)?.primary.remainingPercent,
-                weeklyRemaining: self.store.snapshot(for: .codex)?.secondary.remainingPercent,
-                creditsRemaining: self.store.credits?.remaining,
-                stale: self.store.isStale(provider: .codex),
-                style: .codex)
-        }
-        if let button = self.claudeItem.button {
-            button.image = IconRenderer.makeIcon(
-                primaryRemaining: self.store.snapshot(for: .claude)?.primary.remainingPercent,
-                weeklyRemaining: self.store.snapshot(for: .claude)?.secondary.remainingPercent,
-                creditsRemaining: nil,
-                stale: self.store.isStale(provider: .claude),
-                style: .claude)
-        }
+        self.applyIcon(for: .codex, button: self.codexItem.button, phase: nil)
+        self.applyIcon(for: .claude, button: self.claudeItem.button, phase: nil)
         self.attachMenus(fallback: self.fallbackProvider)
+        self.updateAnimationTimer()
     }
 
     private func updateVisibility() {
@@ -242,6 +233,79 @@ final class StatusItemController: NSObject, NSMenuDelegate {
             self.codexItem.menu = nil
         }
         self.claudeItem.menu = self.settings.showClaudeUsage ? self.makeMenu(for: .claude) : nil
+    }
+
+
+    private func applyIcon(for provider: UsageProvider, button: NSStatusBarButton?, phase: Double?) {
+        guard let button else { return }
+        let snapshot = self.store.snapshot(for: provider)
+        var primary = snapshot?.primary.remainingPercent
+        var weekly = snapshot?.secondary.remainingPercent
+        var credits: Double? = provider == .codex ? self.store.credits?.remaining : nil
+        var stale = self.store.isStale(provider: provider)
+
+        if let phase, self.shouldAnimate(provider: provider) {
+            let pattern = self.animationPattern
+            primary = pattern.value(phase: phase)
+            weekly = pattern.value(phase: phase + pattern.secondaryOffset)
+            credits = nil
+            stale = false
+        }
+
+        button.image = IconRenderer.makeIcon(
+            primaryRemaining: primary,
+            weeklyRemaining: weekly,
+            creditsRemaining: credits,
+            stale: stale,
+            style: provider == .codex ? .codex : .claude)
+    }
+
+    private func shouldAnimate(provider: UsageProvider) -> Bool {
+        switch provider {
+        case .codex:
+            guard self.settings.showCodexUsage else { return false }
+        case .claude:
+            guard self.settings.showClaudeUsage else { return false }
+        }
+        return self.store.snapshot(for: provider) == nil && !self.store.isStale(provider: provider)
+    }
+
+    private func updateAnimationTimer() {
+        let needsAnimation = self.shouldAnimate(provider: .codex) || self.shouldAnimate(provider: .claude)
+        if needsAnimation {
+            if self.animationTimer == nil {
+                self.animationPattern = LoadingPattern.allCases.randomElement() ?? .knightRider
+                self.animationPhase = 0
+                let timer = Timer.scheduledTimer(withTimeInterval: 0.12, repeats: true) { [weak self] _ in
+                    Task { @MainActor [weak self] in
+                        guard let self else { return }
+                        self.animationPhase += 0.18
+                        self.applyIcon(for: .codex, button: self.codexItem.button, phase: self.animationPhase)
+                        self.applyIcon(for: .claude, button: self.claudeItem.button, phase: self.animationPhase)
+                    }
+                }
+                RunLoop.main.add(timer, forMode: .common)
+                self.animationTimer = timer
+            }
+        } else {
+            self.animationTimer?.invalidate()
+            self.animationTimer = nil
+            self.animationPhase = 0
+            self.applyIcon(for: .codex, button: self.codexItem.button, phase: nil)
+            self.applyIcon(for: .claude, button: self.claudeItem.button, phase: nil)
+        }
+    }
+
+    @objc private func handleDebugReplayNotification() {
+        let patterns = LoadingPattern.allCases
+        if let idx = patterns.firstIndex(of: self.animationPattern) {
+            let next = patterns.indices.contains(idx + 1) ? patterns[idx + 1] : patterns.first
+            self.animationPattern = next ?? .knightRider
+        } else {
+            self.animationPattern = .knightRider
+        }
+        self.animationPhase = 0
+        self.updateAnimationTimer()
     }
 
     // MARK: - Actions reachable from menus
@@ -338,6 +402,7 @@ private extension StatusItemController {
         case let .copyError(message): return (#selector(copyError(_:)), message)
         }
     }
+
 }
 
 extension Notification.Name {
