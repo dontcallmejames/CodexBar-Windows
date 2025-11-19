@@ -6,7 +6,7 @@ enum PreferencesTab: String, Hashable {
     case about
 
     static let windowWidth: CGFloat = 400
-    static let windowHeight: CGFloat = 440
+    static let windowHeight: CGFloat = 374
 
     var preferredHeight: CGFloat {
         PreferencesTab.windowHeight
@@ -165,7 +165,7 @@ private struct GeneralPane: View {
             usageText = "usage not fetched yet"
         }
 
-        return "\(cliName) \(versionText) status • \(usageText)"
+        return "\(cliName) \(versionText) • \(usageText)"
     }
 
     @ViewBuilder
