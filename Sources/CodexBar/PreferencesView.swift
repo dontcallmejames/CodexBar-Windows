@@ -106,7 +106,7 @@ private struct GeneralPane: View {
                 SettingsSection {
                     PreferenceToggleRow(
                         title: "Launch at login",
-                        subtitle: "Start CodexBar automatically when you log in.",
+                        subtitle: nil,
                         binding: self.$settings.launchAtLogin)
                 }
 
@@ -301,7 +301,7 @@ private struct AboutPane: View {
 @MainActor
 private struct PreferenceToggleRow: View {
     let title: String
-    let subtitle: String
+    let subtitle: String?
     @Binding var binding: Bool
 
     var body: some View {
@@ -312,10 +312,12 @@ private struct PreferenceToggleRow: View {
             }
             .toggleStyle(.checkbox)
 
-            Text(self.subtitle)
-                .font(.footnote)
-                .foregroundStyle(.tertiary)
-                .fixedSize(horizontal: false, vertical: true)
+            if let subtitle, !subtitle.isEmpty {
+                Text(subtitle)
+                    .font(.footnote)
+                    .foregroundStyle(.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 }
