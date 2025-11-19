@@ -28,7 +28,6 @@ struct CodexBarApp: App {
         WindowGroup("CodexBarLifecycleKeepalive") {
             HiddenWindowView()
         }
-        .windowResizability(.contentSize)
         .defaultSize(width: 1, height: 1)
         .windowStyle(.hiddenTitleBar)
 
