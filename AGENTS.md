@@ -99,3 +99,6 @@ Edit guidance: keep the actual tool list inside this `<tools></tools>` block so 
 - `XcodeBuildMCP`: MCP wrapper around Xcode tooling; run `npx mcporter XcodeBuildMCP`.
 - `gh`: GitHub CLI for PRs, CI logs, releases, repo queries; run `gh help`.
 </tools>
+
+## Local note
+- To guarantee the right bundle is running after a rebuild, use: `pkill -x CodexBar || pkill -f CodexBar.app || true; cd /Users/steipete/Projects/codexbar && open -n /Users/steipete/Projects/codexbar/CodexBar.app`.
