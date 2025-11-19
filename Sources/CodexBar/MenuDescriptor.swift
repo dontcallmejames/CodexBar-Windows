@@ -88,11 +88,8 @@ struct MenuDescriptor {
 
         func accountSection() -> Section {
             var entries: [Entry] = []
-            if let email = account.email {
-                entries.append(.text("Codex account: \(email)", .secondary))
-            } else {
-                entries.append(.text("Codex account: unknown", .secondary))
-            }
+            let emailText = account.email?.isEmpty == false ? account.email! : "Unknown"
+            entries.append(.text("Account: \(emailText)", .secondary))
             if let plan = account.plan {
                 entries.append(.text("Plan: \(plan.capitalized)", .secondary))
             }

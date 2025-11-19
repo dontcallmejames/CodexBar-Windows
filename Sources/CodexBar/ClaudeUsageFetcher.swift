@@ -99,8 +99,10 @@ struct ClaudeUsageFetcher: Sendable {
             throw ClaudeUsageError.parseFailed("missing session/weekly data")
         }
 
-        let email = obj["account_email"] as? String
-        let org = obj["account_org"] as? String
+        let rawEmail = (obj["account_email"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let email = (rawEmail?.isEmpty ?? true) ? nil : rawEmail
+        let rawOrg = (obj["account_org"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let org = (rawOrg?.isEmpty ?? true) ? nil : rawOrg
         return ClaudeUsageSnapshot(
             primary: session,
             secondary: weekAll,
@@ -300,8 +302,11 @@ capture_pane
 sleep 0.6
 status_output=$("$TMUX_BIN" -L "$LABEL" capture-pane -t "$TARGET" -p -S -120 -J 2>/dev/null || true)
 status_clean=$(printf "%s" "$status_output" | perl -pe 's/\x1B\[[0-9;?]*[[:alpha:]]//g')
-account_email=$(echo "$status_clean" | awk '/Email/ {print $0; exit}' | sed -E 's/.*Email[^A-Za-z0-9@+_-]*//' | xargs)
-account_org=$(echo "$status_clean" | awk '/Organization/ {print $0; exit}' | sed -E 's/.*Organization[^A-Za-z0-9@+_-]*//' | xargs)
+account_email=$(echo "$status_clean" | awk '/Email/ {print $0; exit}' | sed -E 's/.*Email[^A-Za-z0-9@+_.-]*//' | xargs)
+if [ -z "$account_email" ]; then
+  account_email=$(echo "$status_clean" | awk '/Welcome back/ {sub(/.*Welcome back[[:space:]]+/,""); sub(/!.*$/,""); print; exit}' | xargs)
+fi
+account_org=$(echo "$status_clean" | awk '/Organization/ {print $0; exit}' | sed -E 's/.*Organization[^A-Za-z0-9@+_.-]*//' | xargs)
 
 parse_block() {
   local label="$1"
