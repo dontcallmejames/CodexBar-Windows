@@ -105,7 +105,7 @@ private struct GeneralPane: View {
 
                 SettingsSection(contentSpacing: 6) {
                     Text("Refresh cadence")
-                        .font(.footnote.weight(.semibold))
+                        .font(.body)
                         .foregroundStyle(.secondary)
                     Picker("", selection: self.$settings.refreshFrequency) {
                         ForEach(RefreshFrequency.allCases) { option in
