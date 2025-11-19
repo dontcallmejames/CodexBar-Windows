@@ -4,6 +4,7 @@ import AppKit
 enum PreferencesTab: String, Hashable {
     case general
     case about
+    case debug
 
     static let windowWidth: CGFloat = 400
     static let windowHeight: CGFloat = 374
@@ -30,14 +31,24 @@ struct PreferencesView: View {
             AboutPane(updater: self.updater)
                 .tabItem { Label("About", systemImage: "info.circle") }
                 .tag(PreferencesTab.about)
+
+            if self.settings.debugMenuEnabled {
+                DebugPane(settings: self.settings, store: self.store)
+                    .tabItem { Label("Debug", systemImage: "ladybug") }
+                    .tag(PreferencesTab.debug)
+            }
         }
         .padding(12)
         .frame(width: PreferencesTab.windowWidth, height: self.contentHeight)
         .onAppear {
             self.updateHeight(for: self.selection.tab, animate: false)
+            self.ensureValidTabSelection()
         }
         .onChange(of: self.selection.tab) { _, newValue in
             self.updateHeight(for: newValue, animate: true)
+        }
+        .onChange(of: self.settings.debugMenuEnabled) { _, _ in
+            self.ensureValidTabSelection()
         }
     }
 
@@ -51,6 +62,13 @@ struct PreferencesView: View {
             }
         } else {
             change()
+        }
+    }
+
+    private func ensureValidTabSelection() {
+        if !self.settings.debugMenuEnabled && self.selection.tab == .debug {
+            self.selection.tab = .general
+            self.updateHeight(for: .general, animate: true)
         }
     }
 }
@@ -306,6 +324,35 @@ private struct AboutPane: View {
     private func openProjectHome() {
         guard let url = URL(string: "https://github.com/steipete/CodexBar") else { return }
         NSWorkspace.shared.open(url)
+    }
+}
+
+// MARK: - Debug
+
+@MainActor
+private struct DebugPane: View {
+    @ObservedObject var settings: SettingsStore
+    @ObservedObject var store: UsageStore
+
+    var body: some View {
+        Form {
+            Section("Diagnostics toggles") {
+                Toggle("Dump credits HTML to /tmp", isOn: self.$settings.creditsDebugDump)
+                Toggle("Show debug menu items", isOn: self.$settings.debugMenuEnabled)
+                    .disabled(true)
+            }
+
+            Section("Actions") {
+                Button("Replay loading animation") {
+                    NotificationCenter.default.post(name: .codexbarDebugReplayAllAnimations, object: nil)
+                    self.store.replayLoadingAnimation()
+                }
+                Button("Dump Claude probe output") {
+                    Task { await self.store.debugDumpClaude() }
+                }
+            }
+        }
+        .formStyle(.grouped)
     }
 }
 
