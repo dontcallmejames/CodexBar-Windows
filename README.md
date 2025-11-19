@@ -1,6 +1,6 @@
 # CodexBar 🟦🟩
 
-May your tokens never run out—keep Codex limits in view.
+May your tokens never run out—keep agent limits in view.
 
 Tiny macOS 15+ menu bar app that shows how much Codex usage you have left (5‑hour + weekly windows) and when each window resets. No Dock icon, minimal UI, dynamic bar icon in the menu bar.
 
