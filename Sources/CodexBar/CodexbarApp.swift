@@ -30,8 +30,7 @@ struct CodexBarApp: App {
                 store: self.store,
                 settings: self.settings,
                 account: self.account,
-                updater: self.appDelegate.updaterController,
-                provider: .codex)
+                updater: self.appDelegate.updaterController)
         } label: {
             let showCodex = self.settings.showCodexUsage
             let showClaude = self.settings.showClaudeUsage

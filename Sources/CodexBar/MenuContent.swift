@@ -27,8 +27,6 @@ struct MenuContent: View {
     @ObservedObject var settings: SettingsStore
     let account: AccountInfo
     let updater: UpdaterProviding
-    let provider: UsageProvider
-
     private var autoUpdateBinding: Binding<Bool> {
         Binding(
             get: { self.updater.automaticallyChecksForUpdates },
@@ -37,7 +35,7 @@ struct MenuContent: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            if self.provider == .codex && self.settings.showCodexUsage {
+            if self.settings.showCodexUsage {
                 if let snap = self.store.codexSnapshot {
                     UsageRow(title: "Codex · 5h limit", window: snap.primary)
                     UsageRow(title: "Codex · Weekly limit", window: snap.secondary)
@@ -50,7 +48,7 @@ struct MenuContent: View {
                 Divider()
             }
 
-            if self.provider == .claude && self.settings.showClaudeUsage {
+            if self.settings.showClaudeUsage {
                 if let snap = self.store.claudeSnapshot {
                     UsageRow(title: "Claude · Session", window: snap.primary)
                     UsageRow(title: "Claude · Weekly", window: snap.secondary)
@@ -67,7 +65,7 @@ struct MenuContent: View {
                 Text("No sources enabled").foregroundStyle(.secondary)
             }
 
-            if self.provider == .codex, let credits = store.credits {
+            if let credits = store.credits, self.settings.showCodexUsage {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Credits: \(UsageFormatter.creditsString(from: credits.remaining))")
                         .fontWeight(.bold)
