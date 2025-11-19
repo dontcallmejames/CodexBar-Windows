@@ -176,15 +176,18 @@ private struct GeneralPane: View {
                 Text(self.creditsSummary(credits))
                     .font(.footnote)
                     .foregroundStyle(.secondary)
-            } else if let lastError = self.store.lastCreditsError {
-                Text("Sign-in issue: \(lastError)")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
             } else {
                 Text("Sign in once to keep credits usage handy here.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
+            }
+            if self.store.credits != nil, let lastError = self.store.lastCreditsError {
+                Text(self.truncatedError(lastError))
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(3)
+                    .truncationMode(.tail)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             if self.store.credits == nil {
                 Button("Sign in to fetch credits…") { CreditsSignInWindow.present() }
@@ -194,6 +197,17 @@ private struct GeneralPane: View {
                 }
             }
         }
+    }
+
+    private func truncatedError(_ error: String) -> String {
+        let prefix = "Sign-in issue: "
+        let maxLength = 160
+        var message = error.trimmingCharacters(in: .whitespacesAndNewlines)
+        if message.count > maxLength {
+            let idx = message.index(message.startIndex, offsetBy: maxLength)
+            message = "\(message[..<idx])…"
+        }
+        return prefix + message
     }
 
     private func creditsSummary(_ snapshot: CreditsSnapshot) -> String {
