@@ -4,6 +4,8 @@ struct ClaudeUsageSnapshot {
     let primary: RateWindow
     let secondary: RateWindow
     let updatedAt: Date
+    let accountEmail: String?
+    let accountOrganization: String?
 }
 
 enum ClaudeUsageError: LocalizedError {
@@ -97,7 +99,14 @@ struct ClaudeUsageFetcher: Sendable {
             throw ClaudeUsageError.parseFailed("missing session/weekly data")
         }
 
-        return ClaudeUsageSnapshot(primary: session, secondary: weekAll, updatedAt: Date())
+        let email = obj["account_email"] as? String
+        let org = obj["account_org"] as? String
+        return ClaudeUsageSnapshot(
+            primary: session,
+            secondary: weekAll,
+            updatedAt: Date(),
+            accountEmail: email,
+            accountOrganization: org)
     }
 
     private static func parseReset(text: String?) -> Date? {
@@ -285,6 +294,14 @@ done
 
 capture_pane
 
+"$TMUX_BIN" -L "$LABEL" send-keys -t "$TARGET" "/" >/dev/null 2>&1; sleep 0.2
+"$TMUX_BIN" -L "$LABEL" send-keys -t "$TARGET" "status" >/dev/null 2>&1; sleep 0.3
+"$TMUX_BIN" -L "$LABEL" send-keys -t "$TARGET" Enter >/dev/null 2>&1
+sleep 0.6
+status_output=$("$TMUX_BIN" -L "$LABEL" capture-pane -t "$TARGET" -p -S -120 -J 2>/dev/null || true)
+account_email=$(echo "$status_output" | awk '/Email:/ {print $0; exit}' | sed 's/.*Email: *//' | xargs)
+account_org=$(echo "$status_output" | awk '/Organization:/ {print $0; exit}' | sed 's/.*Organization: *//' | xargs)
+
 parse_block() {
   local label="$1"
   local block=$(echo "$usage_output" | awk "/$label/{flag=1;next}/^$/{flag=0}flag")
@@ -307,6 +324,6 @@ else
   opus_json=null
 fi
 
-echo "{\"ok\":true,\"session_5h\":{\"pct_used\":$session_pct,\"resets\":\"$session_reset\"},\"week_all_models\":{\"pct_used\":$week_all_pct,\"resets\":\"$week_all_reset\"},\"week_opus\":$opus_json,\"pane_preview\":\"$(pane_preview)\",\"stdout_b64\":\"$(b64_tail "$STDOUT_LOG")\",\"stderr_b64\":\"$(b64_tail "$STDERR_LOG")\"}" >&3
+echo "{\"ok\":true,\"session_5h\":{\"pct_used\":$session_pct,\"resets\":\"$session_reset\"},\"week_all_models\":{\"pct_used\":$week_all_pct,\"resets\":\"$week_all_reset\"},\"week_opus\":$opus_json,\"account_email\":\"$account_email\",\"account_org\":\"$account_org\",\"pane_preview\":\"$(pane_preview)\",\"stdout_b64\":\"$(b64_tail "$STDOUT_LOG")\",\"stderr_b64\":\"$(b64_tail "$STDERR_LOG")\"}" >&3
 """#
 }

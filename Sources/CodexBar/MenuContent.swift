@@ -54,6 +54,14 @@ struct MenuContent: View {
                     UsageRow(title: "Claude · Weekly", window: snap.secondary)
                     Text(UsageFormatter.updatedString(from: snap.updatedAt))
                         .foregroundStyle(.secondary)
+                    if let email = snap.accountEmail, !email.isEmpty {
+                        Text("Claude account: \(email)")
+                            .foregroundStyle(.secondary)
+                    }
+                    if let org = snap.accountOrganization, !org.isEmpty {
+                        Text("Org: \(org)")
+                            .foregroundStyle(.secondary)
+                    }
                 } else {
                     Text("Claude: no usage yet").foregroundStyle(.secondary)
                     if let error = store.lastClaudeError { Text(error).font(.caption) }
@@ -85,15 +93,25 @@ struct MenuContent: View {
                 }
             }
 
-            if let email = account.email {
-                Text("Account: \(email)")
-                    .foregroundStyle(.secondary)
-            } else {
-                Text("Account: unknown")
+            if self.settings.showCodexUsage {
+                if let email = account.email {
+                    Text("Codex account: \(email)")
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text("Codex account: unknown")
+                        .foregroundStyle(.secondary)
+                }
+                if let plan = account.plan {
+                    Text("Plan: \(plan.capitalized)")
+                        .foregroundStyle(.secondary)
+                }
+            }
+            if self.settings.showClaudeUsage, let email = store.claudeAccountEmail {
+                Text("Claude account: \(email)")
                     .foregroundStyle(.secondary)
             }
-            if let plan = account.plan {
-                Text("Plan: \(plan.capitalized)")
+            if self.settings.showClaudeUsage, let org = store.claudeAccountOrganization, !org.isEmpty {
+                Text("Claude org: \(org)")
                     .foregroundStyle(.secondary)
             }
 

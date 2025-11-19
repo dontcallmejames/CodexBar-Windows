@@ -24,6 +24,8 @@ final class UsageStore: ObservableObject {
     @Published var lastCreditsError: String?
     @Published var codexVersion: String?
     @Published var claudeVersion: String?
+    @Published var claudeAccountEmail: String?
+    @Published var claudeAccountOrganization: String?
     @Published var isRefreshing = false
 
     private let codexFetcher: UsageFetcher
@@ -200,8 +202,15 @@ final class UsageStore: ObservableObject {
         do {
             let usage = try await self.claudeFetcher.loadLatestUsage()
             await MainActor.run {
-                let snapshot = UsageSnapshot(primary: usage.primary, secondary: usage.secondary, updatedAt: usage.updatedAt)
+                let snapshot = UsageSnapshot(
+                    primary: usage.primary,
+                    secondary: usage.secondary,
+                    updatedAt: usage.updatedAt,
+                    accountEmail: usage.accountEmail,
+                    accountOrganization: usage.accountOrganization)
                 self.claudeSnapshot = snapshot
+                self.claudeAccountEmail = usage.accountEmail
+                self.claudeAccountOrganization = usage.accountOrganization
                 self.lastClaudeError = nil
             }
         } catch {
