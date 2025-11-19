@@ -64,7 +64,7 @@ private struct GeneralPane: View {
 
     var body: some View {
         ScrollView(.vertical, showsIndicators: true) {
-            VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: 28) {
                 SettingsSection {
                     PreferenceToggleRow(
                         title: "Show Codex usage",
