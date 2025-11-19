@@ -42,7 +42,7 @@ struct CodexBarApp: App {
                 updater: self.appDelegate.updaterController,
                 selection: self.preferencesSelection)
         }
-        .defaultSize(width: 720, height: 520)
+        .defaultSize(width: PreferencesTab.windowWidth, height: PreferencesTab.general.preferredHeight)
         .windowResizability(.contentSize)
     }
 
