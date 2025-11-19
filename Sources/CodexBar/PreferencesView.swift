@@ -177,7 +177,7 @@ private struct GeneralPane: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             } else {
-                Text("Sign in once to keep credits usage handy here.")
+                Text("Sign in to OpenAI to see your available credits.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
