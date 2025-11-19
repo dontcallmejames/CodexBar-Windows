@@ -56,11 +56,22 @@ struct ClaudeUsageFetcher: Sendable {
             throw ClaudeUsageError.scriptFailed(result.status, result.output.trimmingCharacters(in: .whitespacesAndNewlines))
         }
 
+        return try Self.parse(output: result.output)
+    }
+
+    // MARK: - Parsing helpers
+
+    static func parse(json: Data) -> ClaudeUsageSnapshot? {
+        guard let output = String(data: json, encoding: .utf8) else { return nil }
+        return try? Self.parse(output: output)
+    }
+
+    private static func parse(output: String) throws -> ClaudeUsageSnapshot {
         guard
-            let data = result.output.data(using: .utf8),
+            let data = output.data(using: .utf8),
             let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
         else {
-            throw ClaudeUsageError.parseFailed(result.output.prefix(500).description)
+            throw ClaudeUsageError.parseFailed(output.prefix(500).description)
         }
 
         if let ok = obj["ok"] as? Bool, !ok {
@@ -88,8 +99,6 @@ struct ClaudeUsageFetcher: Sendable {
 
         return ClaudeUsageSnapshot(primary: session, secondary: weekAll, updatedAt: Date())
     }
-
-    // MARK: - Parsing helpers
 
     private static func parseReset(text: String?) -> Date? {
         guard let text, !text.isEmpty else { return nil }

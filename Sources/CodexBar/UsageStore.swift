@@ -144,6 +144,12 @@ final class UsageStore: ObservableObject {
                 self?.startTimer()
             }
             .store(in: &self.cancellables)
+
+        self.settings.objectWillChange
+            .sink { [weak self] _ in
+                Task { await self?.refresh() }
+            }
+            .store(in: &self.cancellables)
     }
 
     private func startTimer() {
