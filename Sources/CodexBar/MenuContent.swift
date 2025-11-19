@@ -2,240 +2,101 @@ import AppKit
 import SwiftUI
 
 @MainActor
-struct UsageRow: View {
-    let title: String
-    let window: RateWindow
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(self.title).font(.headline)
-            Text(UsageFormatter.usageLine(
-                remaining: self.window.remainingPercent,
-                used: self.window.usedPercent))
-            if let description = window.resetDescription, !description.isEmpty {
-                Text("Resets \(description)")
-            } else if let reset = window.resetsAt {
-                Text("Resets \(reset.formatted(date: .abbreviated, time: .shortened))")
-            }
-        }
-    }
-}
-
-@MainActor
 struct MenuContent: View {
     @ObservedObject var store: UsageStore
     @ObservedObject var settings: SettingsStore
     let account: AccountInfo
     let updater: UpdaterProviding
     let provider: UsageProvider?
-
-    // When rendered from a provider-specific menu bar item, only show that provider's sections.
-    private var showCodex: Bool { self.settings.showCodexUsage && (self.provider == nil || self.provider == .codex) }
-    private var showClaude: Bool { self.settings.showClaudeUsage && (self.provider == nil || self.provider == .claude) }
-    private var autoUpdateBinding: Binding<Bool> {
-        Binding(
-            get: { self.updater.automaticallyChecksForUpdates },
-            set: { self.updater.automaticallyChecksForUpdates = $0 })
-    }
+    let actions: MenuActions
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            if self.showCodex {
-                if let snap = self.store.codexSnapshot {
-                    UsageRow(title: "Codex · 5h limit", window: snap.primary)
-                    UsageRow(title: "Codex · Weekly limit", window: snap.secondary)
-                    Text(UsageFormatter.updatedString(from: snap.updatedAt))
-                        .foregroundStyle(.secondary)
-                } else {
-                    Text("Codex: no usage yet").foregroundStyle(.secondary)
-                    if let error = store.lastCodexError { Text(error).font(.caption) }
-                }
-                Divider()
-            }
+        let descriptor = MenuDescriptor.build(
+            provider: self.provider,
+            store: self.store,
+            settings: self.settings,
+            account: self.account)
 
-            if self.showClaude {
-                if let snap = self.store.claudeSnapshot {
-                    UsageRow(title: "Claude · Session", window: snap.primary)
-                    UsageRow(title: "Claude · Weekly", window: snap.secondary)
-                    Text(UsageFormatter.updatedString(from: snap.updatedAt))
-                        .foregroundStyle(.secondary)
-                    if let email = snap.accountEmail, !email.isEmpty {
-                        Text("Claude account: \(email)")
-                            .foregroundStyle(.secondary)
-                    }
-                    if let org = snap.accountOrganization, !org.isEmpty {
-                        Text("Org: \(org)")
-                            .foregroundStyle(.secondary)
-                    }
-                } else {
-                    Text("Claude: no usage yet").foregroundStyle(.secondary)
-                    if let error = store.lastClaudeError, !error.isEmpty {
-                        // Keep UI short; make it copyable.
-                        let truncated = error.count > 20 ? String(error.prefix(20)) + "…" : error
-                        Button {
-                            let pb = NSPasteboard.general
-                            pb.clearContents()
-                            pb.setString(error, forType: .string)
-                        } label: {
-                            Text(truncated)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
-                                .truncationMode(.tail)
-                        }
-                        .buttonStyle(.plain)
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(Array(descriptor.sections.enumerated()), id: \.offset) { index, section in
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(Array(section.entries.enumerated()), id: \.offset) { _, entry in
+                        self.row(for: entry)
                     }
                 }
-                Divider()
-            }
-
-            if !self.showCodex && !self.showClaude {
-                Text("No sources enabled").foregroundStyle(.secondary)
-            }
-
-            if let credits = store.credits, self.showCodex {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Credits: \(UsageFormatter.creditsString(from: credits.remaining))")
-                        .fontWeight(.bold)
-                    if let latest = credits.events.first {
-                        Text("Last spend: \(UsageFormatter.creditEventSummary(latest))")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    if !credits.events.isEmpty {
-                        Menu("Credits history") {
-                            ForEach(credits.events.prefix(5)) { event in
-                                Text(UsageFormatter.creditEventCompact(event))
-                            }
-                        }
-                        .menuStyle(.borderlessButton)
-                    }
+                if index < descriptor.sections.count - 1 {
+                    Divider()
                 }
             }
-
-            if self.showCodex {
-                if let email = account.email {
-                    Text("Codex account: \(email)")
-                        .foregroundStyle(.secondary)
-                } else {
-                    Text("Codex account: unknown")
-                        .foregroundStyle(.secondary)
-                }
-                if let plan = account.plan {
-                    Text("Plan: \(plan.capitalized)")
-                        .foregroundStyle(.secondary)
-                }
-            }
-            if self.settings.showClaudeUsage, let email = store.claudeAccountEmail {
-                Text("Claude account: \(email)")
-                    .foregroundStyle(.secondary)
-            }
-            if self.settings.showClaudeUsage, let org = store.claudeAccountOrganization, !org.isEmpty {
-                Text("Claude org: \(org)")
-                    .foregroundStyle(.secondary)
-            }
-
-            Button {
-                Task { await self.store.refresh() }
-            } label: {
-                Text(self.store.isRefreshing ? "Refreshing…" : "Refresh now")
-            }
-            .disabled(self.store.isRefreshing)
-            .buttonStyle(.plain)
-            Button("Usage Dashboard") {
-                if let url = URL(string: "https://chatgpt.com/codex/settings/usage") {
-                    NSWorkspace.shared.open(url)
-                }
-            }
-            .buttonStyle(.plain)
-            Divider()
-            Menu("Settings") {
-                VStack(alignment: .leading, spacing: 6) {
-                    Toggle("Show Codex usage\(self.versionSuffix(self.store.codexVersion))", isOn: self.$settings.showCodexUsage)
-                    Toggle("Show Claude usage\(self.versionSuffixSimple(self.store.claudeVersion))", isOn: self.$settings.showClaudeUsage)
-                    if let err = self.store.lastClaudeError, self.settings.showClaudeUsage {
-                        Text(err).font(.caption2).foregroundStyle(.secondary)
-                    }
-                    if self.settings.debugMenuEnabled {
-                        Button("Debug: Dump Claude probe output") {
-                            Task { await self.store.debugDumpClaude() }
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                Divider()
-                VStack(alignment: .leading, spacing: 6) {
-                    if store.credits == nil {
-                        Text("Log In to see Credits")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Button("Sign in to fetch credits…") {
-                            CreditsSignInWindow.present()
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    Button("Log out / clear cookies") {
-                        Task { await self.store.clearCookies() }
-                    }
-                    .buttonStyle(.plain)
-                }
-                Divider()
-                Menu("Refresh every: \(self.settings.refreshFrequency.label)") {
-                    ForEach(RefreshFrequency.allCases) { option in
-                        Button {
-                            self.settings.refreshFrequency = option
-                        } label: {
-                            if self.settings.refreshFrequency == option {
-                                Label(option.label, systemImage: "checkmark")
-                            } else {
-                                Text(option.label)
-                            }
-                        }
-                    }
-                }
-                if self.updater.isAvailable {
-                    Toggle("Automatically check for updates", isOn: self.autoUpdateBinding)
-                    Button("Check for Updates…") {
-                        self.updater.checkForUpdates(nil)
-                    }
-                }
-                Toggle("Launch at login", isOn: self.$settings.launchAtLogin)
-                Divider()
-                Toggle("Debug: Dump credits HTML to /tmp", isOn: self.$settings.creditsDebugDump)
-                if self.settings.debugMenuEnabled {
-                    Button("Debug: Replay Loading Animation") {
-                        NotificationCenter.default.post(name: .codexbarDebugReplayAllAnimations, object: nil)
-                        self.store.replayLoadingAnimation()
-                    }
-                }
-            }
-            .buttonStyle(.plain)
-            Button("About CodexBar") {
-                showAbout()
-            }
-            .buttonStyle(.plain)
-            Button("Quit") { NSApp.terminate(nil) }
-                .buttonStyle(.plain)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
-        .frame(minWidth: 240, alignment: .leading)
-        .foregroundStyle(.primary)
-        if self.settings.refreshFrequency == .manual {
-            Text("Auto-refresh is off")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 10)
+        .frame(minWidth: 260, alignment: .leading)
+    }
+
+    @ViewBuilder
+    private func row(for entry: MenuDescriptor.Entry) -> some View {
+        switch entry {
+        case let .text(text, style):
+            switch style {
+            case .headline:
+                Text(text).font(.headline)
+            case .primary:
+                Text(text)
+            case .secondary:
+                Text(text).foregroundStyle(.secondary).font(.footnote)
+            }
+        case let .action(title, action):
+            Button(title) { self.perform(action) }
+                .buttonStyle(.plain)
+        case .divider:
+            Divider()
         }
     }
 
-    private func versionSuffix(_ version: String?) -> String {
-        guard let version, !version.isEmpty else { return " · not detected" }
-        return " · \(version)"
+    private func perform(_ action: MenuDescriptor.MenuAction) {
+        switch action {
+        case .refresh:
+            self.actions.refresh()
+        case .dashboard:
+            self.actions.openDashboard()
+        case .settings:
+            self.actions.openSettings()
+        case .about:
+            self.actions.openAbout()
+        case .quit:
+            self.actions.quit()
+        case let .copyError(message):
+            self.actions.copyError(message)
+        }
+    }
+}
+
+struct MenuActions {
+    let refresh: () -> Void
+    let openDashboard: () -> Void
+    let openSettings: () -> Void
+    let openAbout: () -> Void
+    let quit: () -> Void
+    let copyError: (String) -> Void
+}
+
+@MainActor
+struct StatusIconView: View {
+    @ObservedObject var store: UsageStore
+    let provider: UsageProvider
+
+    var body: some View {
+        Image(nsImage: self.icon)
+            .renderingMode(.template)
     }
 
-    private func versionSuffixSimple(_ version: String?) -> String {
-        guard let version, !version.isEmpty else { return " · not detected" }
-        return " · \(version)"
+    private var icon: NSImage {
+        IconRenderer.makeIcon(
+            primaryRemaining: self.store.snapshot(for: self.provider)?.primary.remainingPercent,
+            weeklyRemaining: self.store.snapshot(for: self.provider)?.secondary.remainingPercent,
+            creditsRemaining: self.provider == .codex ? self.store.credits?.remaining : nil,
+            stale: self.store.isStale(provider: self.provider),
+            style: self.provider == .codex ? .codex : .claude)
     }
 }

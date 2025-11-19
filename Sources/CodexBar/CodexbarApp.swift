@@ -8,6 +8,7 @@ struct CodexBarApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var settings = SettingsStore()
     @StateObject private var store: UsageStore
+    private let preferencesSelection = PreferencesSelection()
     private let account: AccountInfo
 
     init() {
@@ -20,12 +21,35 @@ struct CodexBarApp: App {
         self.account = fetcher.loadAccountInfo()
         _settings = StateObject(wrappedValue: settings)
         _store = StateObject(wrappedValue: UsageStore(fetcher: fetcher, settings: settings))
-        self.appDelegate.configure(store: _store.wrappedValue, settings: settings, account: self.account)
+        self.appDelegate.configure(store: _store.wrappedValue, settings: settings, account: self.account, selection: self.preferencesSelection)
     }
 
     @SceneBuilder
     var body: some Scene {
-        Settings { EmptyView() }
+        // Hidden 1×1 window to keep SwiftUI's lifecycle alive so `Settings` scene
+        // shows the native toolbar tabs even though the UI is AppKit-based.
+        WindowGroup("CodexBarLifecycleKeepalive") {
+            HiddenWindowView()
+        }
+        .windowResizability(.contentSize)
+        .defaultSize(width: 1, height: 1)
+        .windowStyle(.hiddenTitleBar)
+
+        Settings {
+            PreferencesView(
+                settings: self.settings,
+                store: self.store,
+                updater: self.appDelegate.updaterController,
+                selection: self.preferencesSelection)
+        }
+        .defaultSize(width: 720, height: 520)
+        .windowResizability(.contentSize)
+    }
+
+    private func openSettings(tab: PreferencesTab) {
+        self.preferencesSelection.tab = tab
+        NSApp.activate(ignoringOtherApps: true)
+        _ = NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
     }
 }
 
@@ -97,12 +121,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let updaterController: UpdaterProviding = makeUpdaterController()
     private var statusController: StatusItemController?
 
-    func configure(store: UsageStore, settings: SettingsStore, account: AccountInfo) {
+    func configure(store: UsageStore, settings: SettingsStore, account: AccountInfo, selection: PreferencesSelection) {
         self.statusController = StatusItemController(
             store: store,
             settings: settings,
             account: account,
-            updater: self.updaterController)
+            updater: self.updaterController,
+            preferencesSelection: selection)
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -116,7 +141,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 store: store,
                 settings: settings,
                 account: account,
-                updater: self.updaterController)
+                updater: self.updaterController,
+                preferencesSelection: PreferencesSelection())
         }
     }
 }
@@ -132,7 +158,7 @@ extension CodexBarApp {
     }
 }
 
-// MARK: - Status item controller (AppKit)
+// MARK: - Status item controller (AppKit-hosted icons, SwiftUI popovers)
 
 @MainActor
 final class StatusItemController: NSObject, NSMenuDelegate {
@@ -143,12 +169,14 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private let codexItem: NSStatusItem
     private let claudeItem: NSStatusItem
     private var cancellables = Set<AnyCancellable>()
+    private let preferencesSelection: PreferencesSelection
 
-    init(store: UsageStore, settings: SettingsStore, account: AccountInfo, updater: UpdaterProviding) {
+    init(store: UsageStore, settings: SettingsStore, account: AccountInfo, updater: UpdaterProviding, preferencesSelection: PreferencesSelection) {
         self.store = store
         self.settings = settings
         self.account = account
         self.updater = updater
+        self.preferencesSelection = preferencesSelection
         let bar = NSStatusBar.system
         self.codexItem = bar.statusItem(withLength: NSStatusItem.variableLength)
         self.claudeItem = bar.statusItem(withLength: NSStatusItem.variableLength)
@@ -156,26 +184,26 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         self.wireBindings()
         self.updateIcons()
         self.updateVisibility()
-        self.installMenus()
     }
 
     private func wireBindings() {
         self.store.objectWillChange
             .receive(on: RunLoop.main)
-            .sink { [weak self] _ in self?.updateIcons() }
+            .sink { [weak self] _ in
+                self?.updateIcons()
+            }
             .store(in: &self.cancellables)
 
         self.settings.objectWillChange
             .receive(on: RunLoop.main)
-            .sink { [weak self] _ in self?.updateVisibility() }
+            .sink { [weak self] _ in
+                self?.updateVisibility()
+            }
             .store(in: &self.cancellables)
     }
 
-    private func installMenus() {
-        self.codexItem.menu = self.makeMenu(for: .codex)
-        self.claudeItem.menu = self.makeMenu(for: .claude)
-        self.codexItem.menu?.delegate = self
-        self.claudeItem.menu?.delegate = self
+    private func installButtonsIfNeeded() {
+        // No button actions needed when menus are attached directly.
     }
 
     private func updateIcons() {
@@ -186,8 +214,6 @@ final class StatusItemController: NSObject, NSMenuDelegate {
                 creditsRemaining: self.store.credits?.remaining,
                 stale: self.store.isStale(provider: .codex),
                 style: .codex)
-            button.target = self
-            button.action = #selector(showCodexMenu)
         }
         if let button = self.claudeItem.button {
             button.image = IconRenderer.makeIcon(
@@ -196,9 +222,8 @@ final class StatusItemController: NSObject, NSMenuDelegate {
                 creditsRemaining: nil,
                 stale: self.store.isStale(provider: .claude),
                 style: .claude)
-            button.target = self
-            button.action = #selector(showClaudeMenu)
         }
+        self.attachMenus()
     }
 
     private func updateVisibility() {
@@ -208,132 +233,16 @@ final class StatusItemController: NSObject, NSMenuDelegate {
             self.settings.showCodexUsage = true
             self.codexItem.isVisible = true
         }
+        self.attachMenus()
     }
 
-    @objc private func showCodexMenu() {
-        guard let button = self.codexItem.button else { return }
-        self.codexItem.menu = self.makeMenu(for: .codex)
-        self.codexItem.menu?.popUp(positioning: nil, at: NSPoint(x: 0, y: button.bounds.height - 3), in: button)
+    private func attachMenus() {
+        self.codexItem.menu = self.settings.showCodexUsage ? self.makeMenu(for: .codex) : nil
+        self.claudeItem.menu = self.settings.showClaudeUsage ? self.makeMenu(for: .claude) : nil
     }
 
-    @objc private func showClaudeMenu() {
-        guard let button = self.claudeItem.button else { return }
-        self.claudeItem.menu = self.makeMenu(for: .claude)
-        self.claudeItem.menu?.popUp(positioning: nil, at: NSPoint(x: 0, y: button.bounds.height - 3), in: button)
-    }
+    // MARK: - Actions reachable from menus
 
-    func menuWillOpen(_ menu: NSMenu) {
-        if menu == self.codexItem.menu {
-            self.codexItem.menu = self.makeMenu(for: .codex)
-            self.codexItem.menu?.delegate = self
-        } else if menu == self.claudeItem.menu {
-            self.claudeItem.menu = self.makeMenu(for: .claude)
-            self.claudeItem.menu?.delegate = self
-        }
-    }
-
-    private func makeMenu(for provider: UsageProvider) -> NSMenu {
-        let menu = NSMenu()
-        menu.autoenablesItems = false
-
-        addUsageSection(menu: menu, provider: provider)
-        menu.addItem(.separator())
-        addCredits(menu: menu, provider: provider)
-        menu.addItem(.separator())
-        addAccount(menu: menu, provider: provider)
-        menu.addItem(.separator())
-        addActions(menu: menu)
-        menu.addItem(.separator())
-        addMeta(menu: menu)
-        return menu
-    }
-
-    // MARK: - Menu builders (pure AppKit)
-
-    private func addUsageSection(menu: NSMenu, provider: UsageProvider) {
-        let snap = self.store.snapshot(for: provider)
-        switch provider {
-        case .codex:
-            menu.addItem(title: "Codex · 5h limit", isBold: true)
-            if let snap {
-                menu.addItem(title: UsageFormatter.usageLine(remaining: snap.primary.remainingPercent, used: snap.primary.usedPercent))
-                if let reset = snap.primary.resetDescription { menu.addItem(title: "Resets \(reset)") }
-                menu.addItem(title: "Codex · Weekly limit", isBold: true)
-                menu.addItem(title: UsageFormatter.usageLine(remaining: snap.secondary.remainingPercent, used: snap.secondary.usedPercent))
-                if let reset = snap.secondary.resetDescription { menu.addItem(title: "Resets \(reset)") }
-                menu.addItem(title: UsageFormatter.updatedString(from: snap.updatedAt))
-            } else {
-                menu.addItem(title: "No usage yet")
-                addError(menu: menu, error: self.store.lastCodexError)
-            }
-        case .claude:
-            menu.addItem(title: "Claude · Session", isBold: true)
-            if let snap {
-                menu.addItem(title: UsageFormatter.usageLine(remaining: snap.primary.remainingPercent, used: snap.primary.usedPercent))
-                if let reset = snap.primary.resetDescription { menu.addItem(title: "Resets \(reset)") }
-                menu.addItem(title: "Claude · Weekly", isBold: true)
-                menu.addItem(title: UsageFormatter.usageLine(remaining: snap.secondary.remainingPercent, used: snap.secondary.usedPercent))
-                if let reset = snap.secondary.resetDescription { menu.addItem(title: "Resets \(reset)") }
-                menu.addItem(title: UsageFormatter.updatedString(from: snap.updatedAt))
-                if let email = snap.accountEmail { menu.addItem(title: "Account: \(email)") }
-                if let org = snap.accountOrganization { menu.addItem(title: "Org: \(org)") }
-            } else {
-                menu.addItem(title: "No usage yet")
-                addError(menu: menu, error: self.store.lastClaudeError)
-            }
-        }
-    }
-
-    private func addError(menu: NSMenu, error: String?) {
-        guard let err = error, !err.isEmpty else { return }
-        let truncated = err.count > 20 ? String(err.prefix(20)) + "…" : err
-        let item = NSMenuItem(title: truncated, action: #selector(copyError(_:)), keyEquivalent: "")
-        item.representedObject = err
-        menu.addItem(item)
-    }
-
-    private func addCredits(menu: NSMenu, provider: UsageProvider) {
-        guard provider == .codex else { return }
-        if let credits = self.store.credits {
-            menu.addItem(title: "Credits: \(UsageFormatter.creditsString(from: credits.remaining))")
-            if let latest = credits.events.first {
-                menu.addItem(title: "Last spend: \(UsageFormatter.creditEventSummary(latest))")
-            }
-        } else {
-            menu.addItem(title: "Credits: sign in")
-        }
-    }
-
-    private func addAccount(menu: NSMenu, provider: UsageProvider) {
-        guard provider == .codex else { return }
-        if let email = self.account.email {
-            menu.addItem(title: "Codex account: \(email)")
-        } else {
-            menu.addItem(title: "Codex account: unknown")
-        }
-        if let plan = self.account.plan {
-            menu.addItem(title: "Plan: \(plan.capitalized)")
-        }
-    }
-
-    private func addActions(menu: NSMenu) {
-        menu.addItem(NSMenuItem(title: "Refresh now", action: #selector(refreshNow), keyEquivalent: ""))
-        menu.addItem(NSMenuItem(title: "Usage Dashboard", action: #selector(openDashboard), keyEquivalent: ""))
-    }
-
-    private func addMeta(menu: NSMenu) {
-        let s = NSMenuItem(title: "Settings", action: #selector(openSettings), keyEquivalent: "")
-        s.target = self
-        menu.addItem(s)
-        let a = NSMenuItem(title: "About CodexBar", action: #selector(openAbout), keyEquivalent: "")
-        a.target = self
-        menu.addItem(a)
-        let q = NSMenuItem(title: "Quit", action: #selector(quit), keyEquivalent: "q")
-        q.target = self
-        menu.addItem(q)
-    }
-
-    // MARK: Actions
     @objc private func refreshNow() {
         Task { await self.store.refresh() }
     }
@@ -344,8 +253,16 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         }
     }
 
-    @objc private func openSettings() {
-        NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
+    @objc private func showSettingsGeneral() { self.openSettings(tab: .general) }
+
+    @objc private func showSettingsAbout() { self.openSettings(tab: .about) }
+
+    private func openSettings(tab: PreferencesTab) {
+        DispatchQueue.main.async {
+            self.preferencesSelection.tab = tab
+            NSApp.activate(ignoringOtherApps: true)
+            _ = NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
+        }
     }
 
     @objc private func openAbout() {
@@ -363,9 +280,62 @@ final class StatusItemController: NSObject, NSMenuDelegate {
             pb.setString(err, forType: .string)
         }
     }
+
+}
+
+// MARK: - NSMenu construction
+
+private extension StatusItemController {
+    func makeMenu(for provider: UsageProvider) -> NSMenu {
+        let descriptor = MenuDescriptor.build(provider: provider, store: self.store, settings: self.settings, account: self.account)
+        let menu = NSMenu()
+        menu.autoenablesItems = false
+
+        for (index, section) in descriptor.sections.enumerated() {
+            for entry in section.entries {
+                switch entry {
+                case let .text(text, style):
+                    let item = NSMenuItem(title: text, action: nil, keyEquivalent: "")
+                    item.isEnabled = false
+                    if style == .headline {
+                        let font = NSFont.systemFont(ofSize: NSFont.systemFontSize, weight: .semibold)
+                        item.attributedTitle = NSAttributedString(string: text, attributes: [.font: font])
+                    } else if style == .secondary {
+                        let font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
+                        item.attributedTitle = NSAttributedString(string: text, attributes: [.font: font, .foregroundColor: NSColor.secondaryLabelColor])
+                    }
+                    menu.addItem(item)
+                case let .action(title, action):
+                    let (selector, represented) = self.selector(for: action)
+                    let item = NSMenuItem(title: title, action: selector, keyEquivalent: "")
+                    item.target = self
+                    item.representedObject = represented
+                    menu.addItem(item)
+                case .divider:
+                    menu.addItem(.separator())
+                }
+            }
+            if index < descriptor.sections.count - 1 {
+                menu.addItem(.separator())
+            }
+        }
+        return menu
+    }
+
+    private func selector(for action: MenuDescriptor.MenuAction) -> (Selector, Any?) {
+        switch action {
+        case .refresh: return (#selector(refreshNow), nil)
+        case .dashboard: return (#selector(openDashboard), nil)
+        case .settings: return (#selector(showSettingsGeneral), nil)
+        case .about: return (#selector(showSettingsAbout), nil)
+        case .quit: return (#selector(quit), nil)
+        case let .copyError(message): return (#selector(copyError(_:)), message)
+        }
+    }
 }
 
 // MARK: - NSMenu helpers
+
 private extension NSMenu {
     @discardableResult
     func addItem(title: String, isBold: Bool = false) -> NSMenuItem {

@@ -59,6 +59,14 @@ final class SettingsStore: ObservableObject {
             self.creditsDebugDump = true
             self.debugMenuEnabled = true
         }
+
+        self.ensureAtLeastOneProviderVisible()
+    }
+
+    func ensureAtLeastOneProviderVisible() {
+        if !self.showCodexUsage && !self.showClaudeUsage {
+            self.showCodexUsage = true
+        }
     }
 }
 
