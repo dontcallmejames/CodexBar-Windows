@@ -8,8 +8,10 @@ enum IconRenderer {
         let image = NSImage(size: size)
         image.lockFocus()
 
-        let trackColor = NSColor.labelColor.withAlphaComponent(stale ? 0.35 : 0.6)
-        let fillColor = NSColor.labelColor.withAlphaComponent(stale ? 0.55 : 1.0)
+        // Keep monochrome template icons; Claude uses subtle shape cues only.
+        let baseFill = NSColor.labelColor
+        let trackColor = NSColor.labelColor.withAlphaComponent(stale ? 0.28 : 0.5)
+        let fillColor = baseFill.withAlphaComponent(stale ? 0.55 : 1.0)
 
         func drawBar(y: CGFloat, remaining: Double?, height: CGFloat, alpha: CGFloat = 1.0, addNotches: Bool = false) {
             let width: CGFloat = 14
@@ -29,36 +31,40 @@ enum IconRenderer {
             fillColor.withAlphaComponent(alpha).setFill()
             fillPath.fill()
 
-            // Claude twist: tiny eye cutouts + claw bumps on the top bar.
+            // Claude twist: tiny eye cutouts + side “ears” and small legs to feel more characterful.
             if addNotches {
                 let ctx = NSGraphicsContext.current?.cgContext
                 ctx?.saveGState()
                 ctx?.setBlendMode(.clear)
-                let eyeSize: CGFloat = 1.6
+                let eyeSize: CGFloat = 1.5
                 let eyeY = y + height * 0.50
-                let eyeOffset: CGFloat = 3.4
+                let eyeOffset: CGFloat = 3.2
                 let center = x + width / 2
                 ctx?.addEllipse(in: CGRect(x: center - eyeOffset - eyeSize / 2, y: eyeY - eyeSize / 2, width: eyeSize, height: eyeSize))
                 ctx?.addEllipse(in: CGRect(x: center + eyeOffset - eyeSize / 2, y: eyeY - eyeSize / 2, width: eyeSize, height: eyeSize))
                 ctx?.fillPath()
 
-                // Claws: small inward cuts near ends.
-                let clawWidth: CGFloat = 1.6
-                let clawHeight: CGFloat = height * 0.82
-                ctx?.addRect(CGRect(x: x + 0.2, y: y + (height - clawHeight) / 2, width: clawWidth, height: clawHeight))
-                ctx?.addRect(CGRect(x: x + width - clawWidth - 0.2, y: y + (height - clawHeight) / 2, width: clawWidth, height: clawHeight))
+                // Ears: outward bumps on both ends (clear to carve) then refill to accent edges.
+                let earWidth: CGFloat = 2.6
+                let earHeight: CGFloat = height * 0.9
+                ctx?.addRect(CGRect(x: x - 0.6, y: y + (height - earHeight) / 2, width: earWidth, height: earHeight))
+                ctx?.addRect(CGRect(x: x + width - earWidth + 0.6, y: y + (height - earHeight) / 2, width: earWidth, height: earHeight))
                 ctx?.fillPath()
                 ctx?.restoreGState()
 
-                // Legs: three tiny downward bumps under the top bar to hint the crab.
-                let legWidth: CGFloat = 1.3
-                let legHeight: CGFloat = 1.6
-                let legY = y - 1.0
-                let legOffsets: [CGFloat] = [-4.0, 0.0, 4.0]
+                // Refill outward “ears” so they protrude slightly beyond the bar using the fill color.
                 fillColor.withAlphaComponent(alpha).setFill()
+                NSBezierPath(roundedRect: CGRect(x: x - 0.8, y: y + (height - earHeight) / 2, width: earWidth * 0.8, height: earHeight), xRadius: 0.9, yRadius: 0.9).fill()
+                NSBezierPath(roundedRect: CGRect(x: x + width - earWidth * 0.8 + 0.8, y: y + (height - earHeight) / 2, width: earWidth * 0.8, height: earHeight), xRadius: 0.9, yRadius: 0.9).fill()
+
+                // Tiny legs under the bar.
+                let legWidth: CGFloat = 1.4
+                let legHeight: CGFloat = 2.1
+                let legY = y - 1.4
+                let legOffsets: [CGFloat] = [-4.2, -1.4, 1.4, 4.2]
                 for offset in legOffsets {
                     let lx = center + offset - legWidth / 2
-                    NSBezierPath(roundedRect: CGRect(x: lx, y: legY, width: legWidth, height: legHeight), xRadius: 0.4, yRadius: 0.4).fill()
+                    NSBezierPath(rect: CGRect(x: lx, y: legY, width: legWidth, height: legHeight)).fill()
                 }
             }
         }
@@ -68,8 +74,9 @@ enum IconRenderer {
         let creditsRatio = creditsRemaining.map { min($0 / Self.creditsCap * 100, 100) }
 
         let weeklyAvailable = (weeklyRemaining ?? 0) > 0
-        let creditsHeight: CGFloat = 6.5
-        let topHeight: CGFloat = 3.2
+        let claudeExtraHeight: CGFloat = style == .claude ? 0.6 : 0
+        let creditsHeight: CGFloat = 6.5 + claudeExtraHeight
+        let topHeight: CGFloat = 3.2 + claudeExtraHeight
         let bottomHeight: CGFloat = 2.0
         let creditsAlpha: CGFloat = 1.0
 
