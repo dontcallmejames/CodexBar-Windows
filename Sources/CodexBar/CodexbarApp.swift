@@ -2,6 +2,7 @@ import SwiftUI
 import Security
 import AppKit
 import Combine
+import QuartzCore
 
 @main
 struct CodexBarApp: App {
@@ -166,7 +167,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private let claudeItem: NSStatusItem
     private var cancellables = Set<AnyCancellable>()
     private let preferencesSelection: PreferencesSelection
-    private var animationTimer: Timer?
+    private var animationDisplayLink: CADisplayLink?
     private var animationPhase: Double = 0
     private var animationPattern: LoadingPattern = .knightRider
 
@@ -207,10 +208,10 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     }
 
     private func updateIcons() {
-        self.applyIcon(for: .codex, button: self.codexItem.button, phase: nil)
-        self.applyIcon(for: .claude, button: self.claudeItem.button, phase: nil)
+        self.applyIcon(for: .codex, phase: nil)
+        self.applyIcon(for: .claude, phase: nil)
         self.attachMenus(fallback: self.fallbackProvider)
-        self.updateAnimationTimer()
+        self.updateAnimationState()
     }
 
     private func updateVisibility() {
@@ -218,6 +219,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         self.codexItem.isVisible = self.settings.showCodexUsage || fallback == .codex
         self.claudeItem.isVisible = self.settings.showClaudeUsage
         self.attachMenus(fallback: fallback)
+        self.updateAnimationState()
     }
 
     private var fallbackProvider: UsageProvider? {
@@ -235,8 +237,8 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         self.claudeItem.menu = self.settings.showClaudeUsage ? self.makeMenu(for: .claude) : nil
     }
 
-
-    private func applyIcon(for provider: UsageProvider, button: NSStatusBarButton?, phase: Double?) {
+    private func applyIcon(for provider: UsageProvider, phase: Double?) {
+        let button = provider == .codex ? self.codexItem.button : self.claudeItem.button
         guard let button else { return }
         let snapshot = self.store.snapshot(for: provider)
         var primary = snapshot?.primary.remainingPercent
@@ -270,30 +272,30 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         return self.store.snapshot(for: provider) == nil && !self.store.isStale(provider: provider)
     }
 
-    private func updateAnimationTimer() {
+    private func updateAnimationState() {
         let needsAnimation = self.shouldAnimate(provider: .codex) || self.shouldAnimate(provider: .claude)
         if needsAnimation {
-            if self.animationTimer == nil {
+            if self.animationDisplayLink == nil {
                 self.animationPattern = LoadingPattern.allCases.randomElement() ?? .knightRider
                 self.animationPhase = 0
-                let timer = Timer.scheduledTimer(withTimeInterval: 0.12, repeats: true) { [weak self] _ in
-                    Task { @MainActor [weak self] in
-                        guard let self else { return }
-                        self.animationPhase += 0.18
-                        self.applyIcon(for: .codex, button: self.codexItem.button, phase: self.animationPhase)
-                        self.applyIcon(for: .claude, button: self.claudeItem.button, phase: self.animationPhase)
-                    }
+                if let link = NSScreen.main?.displayLink(target: self, selector: #selector(self.animateIcons(_:))) {
+                    link.add(to: .main, forMode: .common)
+                    self.animationDisplayLink = link
                 }
-                RunLoop.main.add(timer, forMode: .common)
-                self.animationTimer = timer
             }
         } else {
-            self.animationTimer?.invalidate()
-            self.animationTimer = nil
+            self.animationDisplayLink?.invalidate()
+            self.animationDisplayLink = nil
             self.animationPhase = 0
-            self.applyIcon(for: .codex, button: self.codexItem.button, phase: nil)
-            self.applyIcon(for: .claude, button: self.claudeItem.button, phase: nil)
+            self.applyIcon(for: .codex, phase: nil)
+            self.applyIcon(for: .claude, phase: nil)
         }
+    }
+
+    @objc private func animateIcons(_ link: CADisplayLink) {
+        self.animationPhase += 0.18
+        self.applyIcon(for: .codex, phase: self.animationPhase)
+        self.applyIcon(for: .claude, phase: self.animationPhase)
     }
 
     @objc private func handleDebugReplayNotification() {
@@ -305,7 +307,11 @@ final class StatusItemController: NSObject, NSMenuDelegate {
             self.animationPattern = .knightRider
         }
         self.animationPhase = 0
-        self.updateAnimationTimer()
+        self.updateAnimationState()
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 
     // MARK: - Actions reachable from menus
