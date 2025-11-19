@@ -64,14 +64,17 @@ private struct GeneralPane: View {
 
     var body: some View {
         ScrollView(.vertical, showsIndicators: true) {
-            VStack(alignment: .leading, spacing: 28) {
-                SettingsSection {
-                    PreferenceToggleRow(
-                        title: "Show Codex usage",
-                        subtitle: self.providerSubtitle(.codex),
-                        binding: self.codexBinding)
+            VStack(alignment: .leading, spacing: 16) {
+                SettingsSection(contentSpacing: 8) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        PreferenceToggleRow(
+                            title: "Show Codex usage",
+                            subtitle: self.providerSubtitle(.codex),
+                            binding: self.codexBinding)
 
-                    self.codexSigningStatus()
+                        self.codexSigningStatus()
+                    }
+                    .padding(.bottom, 18)
 
                     PreferenceToggleRow(
                         title: "Show Claude Code usage",
@@ -81,29 +84,27 @@ private struct GeneralPane: View {
 
                 Divider()
 
-                SettingsSection {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text("Refresh cadence")
-                            .font(.footnote.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                        Picker("", selection: self.$settings.refreshFrequency) {
-                            ForEach(RefreshFrequency.allCases) { option in
-                                Text(option.label).tag(option)
-                            }
+                SettingsSection(contentSpacing: 6) {
+                    Text("Refresh cadence")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    Picker("", selection: self.$settings.refreshFrequency) {
+                        ForEach(RefreshFrequency.allCases) { option in
+                            Text(option.label).tag(option)
                         }
-                        .pickerStyle(.segmented)
+                    }
+                    .pickerStyle(.segmented)
 
-                        if self.settings.refreshFrequency == .manual {
-                            Text("Auto-refresh is off; use the menu's Refresh command.")
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
-                        }
+                    if self.settings.refreshFrequency == .manual {
+                        Text("Auto-refresh is off; use the menu's Refresh command.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
                     }
                 }
 
                 Divider()
 
-                SettingsSection {
+                SettingsSection(contentSpacing: 0) {
                     PreferenceToggleRow(
                         title: "Launch at login",
                         subtitle: nil,
@@ -137,7 +138,6 @@ private struct GeneralPane: View {
             get: { self.settings.showCodexUsage },
             set: { newValue in
                 self.settings.showCodexUsage = newValue
-                self.settings.ensureAtLeastOneProviderVisible()
             })
     }
 
@@ -146,7 +146,6 @@ private struct GeneralPane: View {
             get: { self.settings.showClaudeUsage },
             set: { newValue in
                 self.settings.showClaudeUsage = newValue
-                self.settings.ensureAtLeastOneProviderVisible()
             })
     }
 
@@ -326,11 +325,13 @@ private struct PreferenceToggleRow: View {
 private struct SettingsSection<Content: View>: View {
     let title: String?
     let caption: String?
+    let contentSpacing: CGFloat
     private let content: () -> Content
 
-    init(title: String? = nil, caption: String? = nil, @ViewBuilder content: @escaping () -> Content) {
+    init(title: String? = nil, caption: String? = nil, contentSpacing: CGFloat = 14, @ViewBuilder content: @escaping () -> Content) {
         self.title = title
         self.caption = caption
+        self.contentSpacing = contentSpacing
         self.content = content
     }
 
@@ -346,7 +347,7 @@ private struct SettingsSection<Content: View>: View {
                     .foregroundStyle(.tertiary)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: self.contentSpacing) {
                 self.content()
             }
             .frame(maxWidth: .infinity, alignment: .leading)
