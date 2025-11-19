@@ -27,6 +27,11 @@ struct MenuContent: View {
     @ObservedObject var settings: SettingsStore
     let account: AccountInfo
     let updater: UpdaterProviding
+    let provider: UsageProvider?
+
+    // When rendered from a provider-specific menu bar item, only show that provider's sections.
+    private var showCodex: Bool { self.settings.showCodexUsage && (self.provider == nil || self.provider == .codex) }
+    private var showClaude: Bool { self.settings.showClaudeUsage && (self.provider == nil || self.provider == .claude) }
     private var autoUpdateBinding: Binding<Bool> {
         Binding(
             get: { self.updater.automaticallyChecksForUpdates },
@@ -35,7 +40,7 @@ struct MenuContent: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            if self.settings.showCodexUsage {
+            if self.showCodex {
                 if let snap = self.store.codexSnapshot {
                     UsageRow(title: "Codex · 5h limit", window: snap.primary)
                     UsageRow(title: "Codex · Weekly limit", window: snap.secondary)
@@ -48,7 +53,7 @@ struct MenuContent: View {
                 Divider()
             }
 
-            if self.settings.showClaudeUsage {
+            if self.showClaude {
                 if let snap = self.store.claudeSnapshot {
                     UsageRow(title: "Claude · Session", window: snap.primary)
                     UsageRow(title: "Claude · Weekly", window: snap.secondary)
@@ -64,16 +69,31 @@ struct MenuContent: View {
                     }
                 } else {
                     Text("Claude: no usage yet").foregroundStyle(.secondary)
-                    if let error = store.lastClaudeError { Text(error).font(.caption) }
+                    if let error = store.lastClaudeError, !error.isEmpty {
+                        // Keep UI short; make it copyable.
+                        let truncated = error.count > 20 ? String(error.prefix(20)) + "…" : error
+                        Button {
+                            let pb = NSPasteboard.general
+                            pb.clearContents()
+                            pb.setString(error, forType: .string)
+                        } label: {
+                            Text(truncated)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                                .truncationMode(.tail)
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
                 Divider()
             }
 
-            if !self.settings.showCodexUsage && !self.settings.showClaudeUsage {
+            if !self.showCodex && !self.showClaude {
                 Text("No sources enabled").foregroundStyle(.secondary)
             }
 
-            if let credits = store.credits, self.settings.showCodexUsage {
+            if let credits = store.credits, self.showCodex {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Credits: \(UsageFormatter.creditsString(from: credits.remaining))")
                         .fontWeight(.bold)
@@ -93,7 +113,7 @@ struct MenuContent: View {
                 }
             }
 
-            if self.settings.showCodexUsage {
+            if self.showCodex {
                 if let email = account.email {
                     Text("Codex account: \(email)")
                         .foregroundStyle(.secondary)
