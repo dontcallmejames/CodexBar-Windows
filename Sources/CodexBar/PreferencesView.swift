@@ -256,6 +256,19 @@ private struct AboutPane: View {
         return build.map { "\(version) (\($0))" } ?? version
     }
 
+    private var buildTimestamp: String? {
+        guard let raw = Bundle.main.object(forInfoDictionaryKey: "CodexBuildTimestamp") as? String else { return nil }
+        let parser = ISO8601DateFormatter()
+        parser.formatOptions = [.withInternetDateTime]
+        guard let date = parser.date(from: raw) else { return raw }
+
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        formatter.locale = .current
+        return formatter.string(from: date)
+    }
+
     var body: some View {
         VStack(spacing: 12) {
             if let image = NSApplication.shared.applicationIconImage {
@@ -280,6 +293,11 @@ private struct AboutPane: View {
                     .font(.title3).bold()
                 Text("Version \(self.versionString)")
                     .foregroundStyle(.secondary)
+                if let buildTimestamp {
+                    Text("Built \(buildTimestamp)")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
                 Text("May your tokens never run out—keep Codex limits in view.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
