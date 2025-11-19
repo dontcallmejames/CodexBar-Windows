@@ -7,7 +7,7 @@ enum PreferencesTab: String, Hashable {
     case debug
 
     static let windowWidth: CGFloat = 374
-    static let windowHeight: CGFloat = 374
+    static let windowHeight: CGFloat = 392
 
     var preferredHeight: CGFloat {
         PreferencesTab.windowHeight
@@ -136,7 +136,7 @@ private struct GeneralPane: View {
                         .buttonStyle(.borderedProminent)
                         .controlSize(.large)
                     }
-                    .padding(.top, 8)
+                    .padding(.top, 16)
                 }
 
                 if self.settings.debugMenuEnabled {
@@ -192,7 +192,11 @@ private struct GeneralPane: View {
             usageText = "usage not fetched yet"
         }
 
-        return "\(cliName) \(versionText) • \(usageText)"
+        if cliName == "codex" {
+            return "\(versionText) • \(usageText)"
+        } else {
+            return "\(cliName) \(versionText) • \(usageText)"
+        }
     }
 
     @ViewBuilder
