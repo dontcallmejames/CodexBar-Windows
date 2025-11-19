@@ -125,8 +125,8 @@ private struct GeneralPane: View {
 
                 SettingsSection(contentSpacing: 0) {
                     PreferenceToggleRow(
-                        title: "Launch at login",
-                        subtitle: nil,
+                        title: "Start at Login",
+                        subtitle: "Automatically opens CodexBar when you start your Mac.",
                         binding: self.$settings.launchAtLogin)
                     HStack {
                         Spacer()
