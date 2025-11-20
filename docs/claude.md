@@ -28,9 +28,9 @@ Goal: add optional Claude Code usage alongside Codex, with a Claude-themed menu 
      - “Select a workspace” → send Enter
      - Telemetry `(y/n)` → send `n` + Enter
      - Login prompts → abort with a nice error (“claude login”).
-  2) Type `/`, then `usage`, then press Enter once.
+  2) Send the `/usage` slash command directly (type `/usage`, press Enter once) so we land on the Usage tab.
   3) Re-press Enter every ~1.5s (Claude sometimes drops the first one under load).
-  4) If still no usage after a few seconds, re-type `/usage` + Enter up to 3 times.
+  4) If still no usage after a few seconds, re-send `/usage` + Enter up to 3 times.
   5) Stop as soon as the buffer contains both “Current session” and “Current week (all models)”.
   6) Keep reading ~2s more so percent lines are captured cleanly, then exit.
 - Parsing:

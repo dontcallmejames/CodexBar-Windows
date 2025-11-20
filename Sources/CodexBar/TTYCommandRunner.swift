@@ -108,15 +108,15 @@ struct TTYCommandRunner {
                 usleep(150_000)
             }
 
-            // Send `/usage`: open the command palette, type "usage", then press Enter.
-            // Claude sometimes drops the very first Enter when the system is busy, so we
-            // keep retrying Enter later instead of spamming other navigation keys.
+            // Send the `/usage` slash command directly so the CLI lands on the Usage tab
+            // without depending on palette search ordering. Claude sometimes drops the very
+            // first Enter when the system is busy, so we keep retrying Enter later instead
+            // of spamming other navigation keys.
             usleep(800_000) // let the CLI finish booting before we start typing
-            try send("/")
+            try send("/usage")
             usleep(200_000)
-            try send("usage")
-            usleep(250_000)
-            try send("\r") // initial Enter to execute the command palette entry
+            try send("\r") // initial Enter to execute the slash command
+            let afterSlashEnter = Date()
 
             // Read until we see both session and weekly blocks. The CLI occasionally ignores Enter
             // when the host is under load, so we keep re-sending Enter at a sane cadence instead of
@@ -124,7 +124,7 @@ struct TTYCommandRunner {
             var gotSession = false
             var gotWeek = false
             var enterRetries = 0
-            var lastEnter = Date()
+            var lastEnter = afterSlashEnter
             var resendUsageRetries = 0
             usleep(600_000) // allow usage view to render before detection
             while Date() < deadline {
