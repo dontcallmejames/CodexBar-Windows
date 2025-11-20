@@ -30,29 +30,45 @@ enum ClaudeStatusProbeError: LocalizedError {
 /// Runs `claude` inside a PTY, sends `/usage`, and parses the rendered text panel.
 struct ClaudeStatusProbe {
     var claudeBinary: String = "claude"
-    var timeout: TimeInterval = 10.0
+    var timeout: TimeInterval = 20.0
 
     func fetch() async throws -> ClaudeStatusSnapshot {
         guard TTYCommandRunner.which(claudeBinary) != nil else { throw ClaudeStatusProbeError.claudeNotInstalled }
         let runner = TTYCommandRunner()
-        // Send command without trailing newline; TTY runner will submit with CRs.
-        let result = try runner.run(
-            binary: claudeBinary,
-            send: "/usage",
-            options: .init(
-                rows: 50,
-                cols: 160,
-                timeout: timeout,
-                extraArgs: ["--dangerously-skip-permissions"]))
-        let snap = try Self.parse(text: result.text)
-        if #available(macOS 13.0, *) {
-            os_log("[ClaudeStatusProbe] PTY scrape ok — session %d%% left, week %d%% left, opus %d%% left",
-                   log: .default, type: .info,
-                   snap.sessionPercentLeft ?? -1,
-                   snap.weeklyPercentLeft ?? -1,
-                   snap.opusPercentLeft ?? -1)
+        var lastError: Error?
+
+        // Two attempts: the second one uses a slightly longer timeout to ride out slow CLI redraws
+        // or moments where the CLI simply drops the first Enter.
+        for attempt in 0..<2 {
+            do {
+                // Send command without trailing newline; TTY runner will submit with CRs.
+                let result = try runner.run(
+                    binary: claudeBinary,
+                    send: "/usage",
+                    options: .init(
+                        rows: 50,
+                        cols: 160,
+                        timeout: timeout + TimeInterval(attempt * 6),
+                        extraArgs: ["--dangerously-skip-permissions"]))
+                let snap = try Self.parse(text: result.text)
+                if #available(macOS 13.0, *) {
+                    os_log("[ClaudeStatusProbe] PTY scrape ok — session %d%% left, week %d%% left, opus %d%% left",
+                           log: .default, type: .info,
+                           snap.sessionPercentLeft ?? -1,
+                           snap.weeklyPercentLeft ?? -1,
+                           snap.opusPercentLeft ?? -1)
+                }
+                return snap
+            } catch {
+                lastError = error
+                // Give the CLI a brief breather before retrying.
+                usleep(250_000)
+                continue
+            }
         }
-        return snap
+
+        if let lastError { throw lastError }
+        throw ClaudeStatusProbeError.timedOut
     }
 
     // MARK: - Parsing helpers
