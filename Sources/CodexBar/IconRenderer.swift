@@ -161,8 +161,8 @@ enum IconRenderer {
 
         let weeklyAvailable = (weeklyRemaining ?? 0) > 0
         let claudeExtraHeight: CGFloat = style == .claude ? 0.6 : 0
-        let creditsHeight: CGFloat = 7.0 + claudeExtraHeight
-        let topHeight: CGFloat = 3.8 + claudeExtraHeight
+        let creditsHeight: CGFloat = 7.4 + claudeExtraHeight
+        let topHeight: CGFloat = 4.4 + claudeExtraHeight
         let bottomHeight: CGFloat = 2.6
         let creditsAlpha: CGFloat = 1.0
 
