@@ -64,18 +64,14 @@ final class SettingsStore: ObservableObject {
         if let dict = userDefaults.dictionary(forKey: Self.providerToggleKey) as? [String: Bool] {
             self.providerToggles = dict
         } else {
-            self.providerToggles = [:]
+            // Defaults: Codex on, Claude off.
+            self.providerToggles = ["codex": true, "claude": false]
         }
 
-        // Migrate legacy toggles if present.
-        if self.providerToggles["codex"] == nil, userDefaults.object(forKey: "showCodexUsage") != nil {
-            self.providerToggles["codex"] = userDefaults.bool(forKey: "showCodexUsage")
-        }
-        if self.providerToggles["claude"] == nil, userDefaults.object(forKey: "showClaudeUsage") != nil {
-            self.providerToggles["claude"] = userDefaults.bool(forKey: "showClaudeUsage")
-        }
         userDefaults.set(self.providerToggles, forKey: Self.providerToggleKey)
-
+        // Purge legacy keys since we never shipped them.
+        userDefaults.removeObject(forKey: "showCodexUsage")
+        userDefaults.removeObject(forKey: "showClaudeUsage")
         LaunchAtLoginManager.setEnabled(self.launchAtLogin)
     }
 
