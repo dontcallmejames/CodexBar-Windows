@@ -1,6 +1,6 @@
+import AppKit
 import Combine
 import Foundation
-import AppKit
 
 enum IconStyle {
     case codex
@@ -11,6 +11,26 @@ enum IconStyle {
 enum UsageProvider: CaseIterable {
     case codex
     case claude
+}
+
+/// Tracks consecutive failures so we can ignore a single flake when we previously had fresh data.
+struct ConsecutiveFailureGate {
+    private(set) var streak: Int = 0
+
+    mutating func recordSuccess() {
+        self.streak = 0
+    }
+
+    mutating func reset() {
+        self.streak = 0
+    }
+
+    /// Returns true when the caller should surface the error to the UI.
+    mutating func shouldSurfaceError(onFailureWithPriorData hadPriorData: Bool) -> Bool {
+        self.streak += 1
+        if hadPriorData, self.streak == 1 { return false }
+        return true
+    }
 }
 
 @MainActor
@@ -29,16 +49,17 @@ final class UsageStore: ObservableObject {
     @Published var debugForceAnimation = false
 
     private let codexFetcher: UsageFetcher
-    private let claudeFetcher: ClaudeUsageFetcher
+    private let claudeFetcher: any ClaudeUsageFetching
     private let settings: SettingsStore
+    private var claudeFailureGate = ConsecutiveFailureGate()
     private var timerTask: Task<Void, Never>?
     private var cancellables = Set<AnyCancellable>()
 
     init(
         fetcher: UsageFetcher,
-        claudeFetcher: ClaudeUsageFetcher = .init(),
-        settings: SettingsStore
-    ) {
+        claudeFetcher: any ClaudeUsageFetching = ClaudeUsageFetcher(),
+        settings: SettingsStore)
+    {
         self.codexFetcher = fetcher
         self.claudeFetcher = claudeFetcher
         self.settings = settings
@@ -76,22 +97,22 @@ final class UsageStore: ObservableObject {
 
     func snapshot(for provider: UsageProvider) -> UsageSnapshot? {
         switch provider {
-        case .codex: return self.codexSnapshot
-        case .claude: return self.claudeSnapshot
+        case .codex: self.codexSnapshot
+        case .claude: self.claudeSnapshot
         }
     }
 
     func style(for provider: UsageProvider) -> IconStyle {
         switch provider {
-        case .codex: return .codex
-        case .claude: return .claude
+        case .codex: .codex
+        case .claude: .claude
         }
     }
 
     func isStale(provider: UsageProvider) -> Bool {
         switch provider {
-        case .codex: return self.lastCodexError != nil
-        case .claude: return self.lastClaudeError != nil
+        case .codex: self.lastCodexError != nil
+        case .claude: self.lastClaudeError != nil
         }
     }
 
@@ -183,11 +204,12 @@ final class UsageStore: ObservableObject {
         guard self.settings.showClaudeUsage else {
             self.claudeSnapshot = nil
             self.lastClaudeError = nil
+            self.claudeFailureGate.reset()
             return
         }
 
         do {
-            let usage = try await self.claudeFetcher.loadLatestUsage()
+            let usage = try await self.fetchClaudeWithRetry()
             await MainActor.run {
                 let snapshot = UsageSnapshot(
                     primary: usage.primary,
@@ -201,12 +223,29 @@ final class UsageStore: ObservableObject {
                 self.claudeAccountEmail = usage.accountEmail
                 self.claudeAccountOrganization = usage.accountOrganization
                 self.lastClaudeError = nil
+                self.claudeFailureGate.recordSuccess()
             }
         } catch {
             await MainActor.run {
-                self.lastClaudeError = error.localizedDescription
-                self.claudeSnapshot = nil
+                let hadPriorData = self.claudeSnapshot != nil
+                let shouldSurface = self.claudeFailureGate.shouldSurfaceError(onFailureWithPriorData: hadPriorData)
+                if shouldSurface {
+                    self.lastClaudeError = error.localizedDescription
+                    self.claudeSnapshot = nil
+                } else {
+                    // Keep showing the last good snapshot and suppress the single flake.
+                    self.lastClaudeError = nil
+                }
             }
+        }
+    }
+
+    private func fetchClaudeWithRetry() async throws -> ClaudeUsageSnapshot {
+        do {
+            return try await self.claudeFetcher.loadLatestUsage(model: "sonnet")
+        } catch {
+            // Retry once to ride out slow renders or dropped keystrokes.
+            return try await self.claudeFetcher.loadLatestUsage(model: "sonnet")
         }
     }
 
@@ -228,9 +267,9 @@ final class UsageStore: ObservableObject {
     }
 
     func debugDumpClaude() async {
-        let output = await self.claudeFetcher.debugRawProbe()
+        let output = await self.claudeFetcher.debugRawProbe(model: "sonnet")
         let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("codexbar-claude-probe.txt")
-        try? output.write(to: url, atomically: true, encoding: .utf8)
+        try? output.write(to: url, atomically: true, encoding: String.Encoding.utf8)
         await MainActor.run {
             let snippet = String(output.prefix(180)).replacingOccurrences(of: "\n", with: " ")
             self.lastClaudeError = "[Claude] \(snippet) (saved: \(url.path))"
@@ -249,7 +288,7 @@ final class UsageStore: ObservableObject {
         }
     }
 
-    nonisolated private static func readCLI(_ cmd: String, args: [String]) -> String? {
+    private nonisolated static func readCLI(_ cmd: String, args: [String]) -> String? {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
         process.arguments = [cmd] + args
