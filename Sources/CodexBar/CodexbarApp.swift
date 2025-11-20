@@ -1,8 +1,8 @@
-import SwiftUI
-import Security
 import AppKit
 import Combine
 import QuartzCore
+import Security
+import SwiftUI
 
 @main
 struct CodexBarApp: App {
@@ -18,7 +18,11 @@ struct CodexBarApp: App {
         self.account = fetcher.loadAccountInfo()
         _settings = StateObject(wrappedValue: settings)
         _store = StateObject(wrappedValue: UsageStore(fetcher: fetcher, settings: settings))
-        self.appDelegate.configure(store: _store.wrappedValue, settings: settings, account: self.account, selection: self.preferencesSelection)
+        self.appDelegate.configure(
+            store: _store.wrappedValue,
+            settings: settings,
+            account: self.account,
+            selection: self.preferencesSelection)
     }
 
     @SceneBuilder
@@ -67,6 +71,7 @@ final class DisabledUpdaterController: UpdaterProviding {
 
 #if canImport(Sparkle) && ENABLE_SPARKLE
 import Sparkle
+
 extension SPUStandardUpdaterController: UpdaterProviding {
     var automaticallyChecksForUpdates: Bool {
         get { self.updater.automaticallyChecksForUpdates }
@@ -149,6 +154,7 @@ extension CodexBarApp {
     private var codexShouldAnimate: Bool {
         self.settings.showCodexUsage && self.codexSnapshot == nil && !self.store.isStale(provider: .codex)
     }
+
     private var claudeShouldAnimate: Bool {
         self.settings.showClaudeUsage && self.claudeSnapshot == nil && !self.store.isStale(provider: .claude)
     }
@@ -162,28 +168,38 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private let settings: SettingsStore
     private let account: AccountInfo
     private let updater: UpdaterProviding
-    private let codexItem: NSStatusItem
-    private let claudeItem: NSStatusItem
+    private var statusItems: [UsageProvider: NSStatusItem] = [:]
     private var cancellables = Set<AnyCancellable>()
     private let preferencesSelection: PreferencesSelection
     private var animationDisplayLink: CADisplayLink?
     private var animationPhase: Double = 0
     private var animationPattern: LoadingPattern = .knightRider
 
-    init(store: UsageStore, settings: SettingsStore, account: AccountInfo, updater: UpdaterProviding, preferencesSelection: PreferencesSelection) {
+    init(
+        store: UsageStore,
+        settings: SettingsStore,
+        account: AccountInfo,
+        updater: UpdaterProviding,
+        preferencesSelection: PreferencesSelection)
+    {
         self.store = store
         self.settings = settings
         self.account = account
         self.updater = updater
         self.preferencesSelection = preferencesSelection
         let bar = NSStatusBar.system
-        self.codexItem = bar.statusItem(withLength: NSStatusItem.variableLength)
-        self.claudeItem = bar.statusItem(withLength: NSStatusItem.variableLength)
+        for provider in UsageProvider.allCases {
+            self.statusItems[provider] = bar.statusItem(withLength: NSStatusItem.variableLength)
+        }
         super.init()
         self.wireBindings()
         self.updateIcons()
         self.updateVisibility()
-        NotificationCenter.default.addObserver(self, selector: #selector(self.handleDebugReplayNotification(_:)), name: .codexbarDebugReplayAllAnimations, object: nil)
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(self.handleDebugReplayNotification(_:)),
+            name: .codexbarDebugReplayAllAnimations,
+            object: nil)
     }
 
     private func wireBindings() {
@@ -214,39 +230,49 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     }
 
     private func updateIcons() {
-        self.applyIcon(for: .codex, phase: nil)
-        self.applyIcon(for: .claude, phase: nil)
+        UsageProvider.allCases.forEach { self.applyIcon(for: $0, phase: nil) }
         self.attachMenus(fallback: self.fallbackProvider)
         self.updateAnimationState()
     }
 
     private func updateVisibility() {
         let fallback = self.fallbackProvider
-        let forceShowCodex = self.store.debugForceAnimation
-        self.codexItem.isVisible = self.settings.showCodexUsage || fallback == .codex || forceShowCodex
-        self.claudeItem.isVisible = self.settings.showClaudeUsage || self.store.debugForceAnimation
+        for provider in UsageProvider.allCases {
+            let item = self.statusItems[provider]
+            let isEnabled = self.isEnabled(provider)
+            let force = self.store.debugForceAnimation
+            item?.isVisible = isEnabled || fallback == provider || force
+        }
         self.attachMenus(fallback: fallback)
         self.updateAnimationState()
     }
 
     private var fallbackProvider: UsageProvider? {
-        (!self.settings.showCodexUsage && !self.settings.showClaudeUsage) ? .codex : nil
+        self.store.enabledProviders().isEmpty ? .codex : nil
+    }
+
+    private func isEnabled(_ provider: UsageProvider) -> Bool {
+        switch provider {
+        case .codex: self.settings.showCodexUsage
+        case .claude: self.settings.showClaudeUsage
+        }
     }
 
     private func attachMenus(fallback: UsageProvider? = nil) {
-        if self.settings.showCodexUsage {
-            self.codexItem.menu = self.makeMenu(for: .codex)
-        } else if fallback == .codex {
-            self.codexItem.menu = self.makeMenu(for: nil)
-        } else {
-            self.codexItem.menu = nil
+        for provider in UsageProvider.allCases {
+            guard let item = self.statusItems[provider] else { continue }
+            if self.isEnabled(provider) {
+                item.menu = self.makeMenu(for: provider)
+            } else if fallback == provider {
+                item.menu = self.makeMenu(for: nil)
+            } else {
+                item.menu = nil
+            }
         }
-        self.claudeItem.menu = self.settings.showClaudeUsage ? self.makeMenu(for: .claude) : nil
     }
 
     private func applyIcon(for provider: UsageProvider, phase: Double?) {
-        let button = provider == .codex ? self.codexItem.button : self.claudeItem.button
-        guard let button else { return }
+        guard let button = self.statusItems[provider]?.button else { return }
         let snapshot = self.store.snapshot(for: provider)
         var primary = snapshot?.primary.remainingPercent
         var weekly = snapshot?.secondary.remainingPercent
@@ -273,7 +299,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
             }
         }
 
-        let style: IconStyle = provider == .codex ? .codex : .claude
+        let style: IconStyle = self.store.style(for: provider)
         if let morphProgress {
             button.image = IconRenderer.makeMorphIcon(progress: morphProgress, style: style)
         } else {
@@ -289,13 +315,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private func shouldAnimate(provider: UsageProvider) -> Bool {
         if self.store.debugForceAnimation { return true }
 
-        let visible: Bool
-        switch provider {
-        case .codex:
-            visible = self.store.debugForceAnimation || self.settings.showCodexUsage || self.fallbackProvider == .codex
-        case .claude:
-            visible = self.store.debugForceAnimation || self.settings.showClaudeUsage
-        }
+        let visible = self.store.debugForceAnimation || self.isEnabled(provider) || self.fallbackProvider == provider
         guard visible else { return false }
 
         let isStale = self.store.isStale(provider: provider)
@@ -304,7 +324,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     }
 
     private func updateAnimationState() {
-        let needsAnimation = self.shouldAnimate(provider: .codex) || self.shouldAnimate(provider: .claude)
+        let needsAnimation = UsageProvider.allCases.contains { self.shouldAnimate(provider: $0) }
         if needsAnimation {
             if self.animationDisplayLink == nil {
                 if let forced = self.settings.debugLoadingPattern {
@@ -325,15 +345,13 @@ final class StatusItemController: NSObject, NSMenuDelegate {
             self.animationDisplayLink?.invalidate()
             self.animationDisplayLink = nil
             self.animationPhase = 0
-            self.applyIcon(for: .codex, phase: nil)
-            self.applyIcon(for: .claude, phase: nil)
+            UsageProvider.allCases.forEach { self.applyIcon(for: $0, phase: nil) }
         }
     }
 
     @objc private func animateIcons(_ link: CADisplayLink) {
         self.animationPhase += 0.045 // half-speed animation
-        self.applyIcon(for: .codex, phase: self.animationPhase)
-        self.applyIcon(for: .claude, phase: self.animationPhase)
+        UsageProvider.allCases.forEach { self.applyIcon(for: $0, phase: self.animationPhase) }
     }
 
     private func advanceAnimationPattern() {
@@ -348,7 +366,8 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
     @objc private func handleDebugReplayNotification(_ notification: Notification) {
         if let raw = notification.userInfo?["pattern"] as? String,
-           let selected = LoadingPattern(rawValue: raw) {
+           let selected = LoadingPattern(rawValue: raw)
+        {
             self.animationPattern = selected
         } else if let forced = self.settings.debugLoadingPattern {
             self.animationPattern = forced
@@ -405,14 +424,17 @@ final class StatusItemController: NSObject, NSMenuDelegate {
             pb.setString(err, forType: .string)
         }
     }
-
 }
 
 // MARK: - NSMenu construction
 
-private extension StatusItemController {
-    func makeMenu(for provider: UsageProvider?) -> NSMenu {
-        let descriptor = MenuDescriptor.build(provider: provider, store: self.store, settings: self.settings, account: self.account)
+extension StatusItemController {
+    private func makeMenu(for provider: UsageProvider?) -> NSMenu {
+        let descriptor = MenuDescriptor.build(
+            provider: provider,
+            store: self.store,
+            settings: self.settings,
+            account: self.account)
         let menu = NSMenu()
         menu.autoenablesItems = false
 
@@ -427,7 +449,9 @@ private extension StatusItemController {
                         item.attributedTitle = NSAttributedString(string: text, attributes: [.font: font])
                     } else if style == .secondary {
                         let font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
-                        item.attributedTitle = NSAttributedString(string: text, attributes: [.font: font, .foregroundColor: NSColor.secondaryLabelColor])
+                        item.attributedTitle = NSAttributedString(
+                            string: text,
+                            attributes: [.font: font, .foregroundColor: NSColor.secondaryLabelColor])
                     }
                     menu.addItem(item)
                 case let .action(title, action):
@@ -449,15 +473,14 @@ private extension StatusItemController {
 
     private func selector(for action: MenuDescriptor.MenuAction) -> (Selector, Any?) {
         switch action {
-        case .refresh: return (#selector(refreshNow), nil)
-        case .dashboard: return (#selector(openDashboard), nil)
-        case .settings: return (#selector(showSettingsGeneral), nil)
-        case .about: return (#selector(showSettingsAbout), nil)
-        case .quit: return (#selector(quit), nil)
-        case let .copyError(message): return (#selector(copyError(_:)), message)
+        case .refresh: (#selector(self.refreshNow), nil)
+        case .dashboard: (#selector(self.openDashboard), nil)
+        case .settings: (#selector(self.showSettingsGeneral), nil)
+        case .about: (#selector(self.showSettingsAbout), nil)
+        case .quit: (#selector(self.quit), nil)
+        case let .copyError(message): (#selector(self.copyError(_:)), message)
         }
     }
-
 }
 
 extension Notification.Name {
@@ -466,9 +489,9 @@ extension Notification.Name {
 
 // MARK: - NSMenu helpers
 
-private extension NSMenu {
+extension NSMenu {
     @discardableResult
-    func addItem(title: String, isBold: Bool = false) -> NSMenuItem {
+    fileprivate func addItem(title: String, isBold: Bool = false) -> NSMenuItem {
         let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
         if isBold {
             let font = NSFont.systemFont(ofSize: NSFont.systemFontSize, weight: .bold)
