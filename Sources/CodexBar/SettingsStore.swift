@@ -55,14 +55,38 @@ final class SettingsStore: ObservableObject {
         }
     }
 
-    @AppStorage("showCodexUsage") var showCodexUsage: Bool = true
-    @AppStorage("showClaudeUsage") var showClaudeUsage: Bool = false
+    private static let providerToggleKey = "providerToggles"
+    private var providerToggles: [String: Bool]
 
     init(userDefaults: UserDefaults = .standard) {
         let raw = userDefaults.string(forKey: "refreshFrequency") ?? RefreshFrequency.twoMinutes.rawValue
         self.refreshFrequency = RefreshFrequency(rawValue: raw) ?? .twoMinutes
-        LaunchAtLoginManager.setEnabled(self.launchAtLogin)
+        if let dict = userDefaults.dictionary(forKey: Self.providerToggleKey) as? [String: Bool] {
+            self.providerToggles = dict
+        } else {
+            self.providerToggles = [:]
+        }
 
+        // Migrate legacy toggles if present.
+        if self.providerToggles["codex"] == nil, userDefaults.object(forKey: "showCodexUsage") != nil {
+            self.providerToggles["codex"] = userDefaults.bool(forKey: "showCodexUsage")
+        }
+        if self.providerToggles["claude"] == nil, userDefaults.object(forKey: "showClaudeUsage") != nil {
+            self.providerToggles["claude"] = userDefaults.bool(forKey: "showClaudeUsage")
+        }
+        userDefaults.set(self.providerToggles, forKey: Self.providerToggleKey)
+
+        LaunchAtLoginManager.setEnabled(self.launchAtLogin)
+    }
+
+    func isProviderEnabled(provider: UsageProvider, metadata: ProviderMetadata) -> Bool {
+        self.providerToggles[metadata.cliName] ?? metadata.defaultEnabled
+    }
+
+    func setProviderEnabled(provider: UsageProvider, metadata: ProviderMetadata, enabled: Bool) {
+        self.objectWillChange.send()
+        self.providerToggles[metadata.cliName] = enabled
+        UserDefaults.standard.set(self.providerToggles, forKey: Self.providerToggleKey)
     }
 }
 

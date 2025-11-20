@@ -8,7 +8,7 @@ enum IconStyle {
     case combined
 }
 
-enum UsageProvider: CaseIterable {
+enum UsageProvider: String, CaseIterable {
     case codex
     case claude
 }
@@ -24,6 +24,7 @@ struct ProviderMetadata {
     let creditsHint: String
     let toggleTitle: String
     let cliName: String
+    let defaultEnabled: Bool
 }
 
 /// Tracks consecutive failures so we can ignore a single flake when we previously had fresh data.
@@ -82,7 +83,8 @@ final class UsageStore: ObservableObject {
             supportsCredits: true,
             creditsHint: "Credits: run Codex in Terminal",
             toggleTitle: "Show Codex usage",
-            cliName: "codex"),
+            cliName: "codex",
+            defaultEnabled: true),
         .claude: ProviderMetadata(
             id: .claude,
             displayName: "Claude",
@@ -93,7 +95,8 @@ final class UsageStore: ObservableObject {
             supportsCredits: false,
             creditsHint: "",
             toggleTitle: "Show Claude Code usage",
-            cliName: "claude"),
+            cliName: "claude",
+            defaultEnabled: false),
     ]
     private var timerTask: Task<Void, Never>?
     private var cancellables = Set<AnyCancellable>()
@@ -111,6 +114,7 @@ final class UsageStore: ObservableObject {
                 .map { ($0, ConsecutiveFailureGate()) })
         self.providerSpecs = Self.makeProviderSpecs(
             settings: settings,
+            metadata: self.providerMetadata,
             codexFetcher: fetcher,
             claudeFetcher: claudeFetcher,
             onClaudeSuccess: { [weak self] snap in
@@ -172,10 +176,7 @@ final class UsageStore: ObservableObject {
     }
 
     func isEnabled(_ provider: UsageProvider) -> Bool {
-        switch provider {
-        case .codex: self.settings.showCodexUsage
-        case .claude: self.settings.showClaudeUsage
-        }
+        self.settings.isProviderEnabled(provider: provider, metadata: self.metadata(for: provider))
     }
 
     func refresh() async {
@@ -199,9 +200,9 @@ final class UsageStore: ObservableObject {
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(duration))
             if let current {
-                if self.settings.showCodexUsage {
+                if self.isEnabled(.codex) {
                     self.snapshots[.codex] = current
-                } else if self.settings.showClaudeUsage {
+                } else if self.isEnabled(.claude) {
                     self.snapshots[.claude] = current
                 }
             }
@@ -278,7 +279,7 @@ final class UsageStore: ObservableObject {
     }
 
     private func refreshCreditsIfNeeded() async {
-        guard self.settings.showCodexUsage else { return }
+        guard self.isEnabled(.codex) else { return }
         do {
             let snap = try await CodexStatusProbe().fetch()
             let credits = CreditsSnapshot(remaining: snap.credits ?? 0, events: [], updatedAt: Date())
@@ -307,19 +308,22 @@ final class UsageStore: ObservableObject {
 
     private static func makeProviderSpecs(
         settings: SettingsStore,
+        metadata: [UsageProvider: ProviderMetadata],
         codexFetcher: UsageFetcher,
         claudeFetcher: any ClaudeUsageFetching,
         onClaudeSuccess: @escaping (UsageSnapshot) -> Void) -> [UsageProvider: ProviderSpec]
     {
+        let codexMeta = metadata[.codex]!
+        let claudeMeta = metadata[.claude]!
         let codexSpec = ProviderSpec(
             style: .codex,
-            isEnabled: { settings.showCodexUsage },
+            isEnabled: { settings.isProviderEnabled(provider: .codex, metadata: codexMeta) },
             fetch: { try await codexFetcher.loadLatestUsage() },
             onSuccess: nil)
 
         let claudeSpec = ProviderSpec(
             style: .claude,
-            isEnabled: { settings.showClaudeUsage },
+            isEnabled: { settings.isProviderEnabled(provider: .claude, metadata: claudeMeta) },
             fetch: {
                 let usage = try await claudeFetcher.loadLatestUsage(model: "sonnet")
                 return UsageSnapshot(

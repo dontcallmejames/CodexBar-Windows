@@ -252,10 +252,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     }
 
     private func isEnabled(_ provider: UsageProvider) -> Bool {
-        switch provider {
-        case .codex: self.settings.showCodexUsage
-        case .claude: self.settings.showClaudeUsage
-        }
+        self.store.isEnabled(provider)
     }
 
     private func attachMenus(fallback: UsageProvider? = nil) {
