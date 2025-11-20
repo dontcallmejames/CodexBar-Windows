@@ -6,7 +6,12 @@ import Testing
 struct CodexBarTests {
     @Test
     func iconRendererProducesTemplateImage() {
-        let image = IconRenderer.makeIcon(primaryRemaining: 50, weeklyRemaining: 75, creditsRemaining: 500, stale: false, style: .codex)
+        let image = IconRenderer.makeIcon(
+            primaryRemaining: 50,
+            weeklyRemaining: 75,
+            creditsRemaining: 500,
+            stale: false,
+            style: .codex)
         #expect(image.isTemplate)
         #expect(image.size.width > 0)
     }
@@ -198,7 +203,9 @@ struct CodexBarTests {
         // Build a ~700 KB file whose rate_limits event is near EOF so tail-read hits it.
         var lines: [String] = []
         let filler = String(repeating: "x", count: 900) // ~0.9 KB per line
-        for _ in 0..<700 { lines.append("\"\(filler)\"") } // non-JSON we will fail to parse
+        for _ in 0..<700 {
+            lines.append("\"\(filler)\"")
+        } // non-JSON we will fail to parse
 
         let event: [String: Any] = [
             "timestamp": "2025-11-17T01:59:59.000Z",
@@ -212,7 +219,11 @@ struct CodexBarTests {
             ],
         ]
         let data = try JSONSerialization.data(withJSONObject: event)
-        lines.append(String(decoding: data, as: UTF8.self))
+        guard let eventLine = String(data: data, encoding: .utf8) else {
+            #expect(Bool(false), "Failed to encode event JSON")
+            return
+        }
+        lines.append(eventLine)
         try lines.joined(separator: "\n").write(to: file, atomically: true, encoding: .utf8)
         try FileManager.default.setAttributes([.modificationDate: Date()], ofItemAtPath: file.path)
 
@@ -247,9 +258,16 @@ struct CodexBarTests {
                 ],
             ],
         ]
-        var lines: [String] = [String(decoding: try JSONSerialization.data(withJSONObject: event), as: UTF8.self)]
+        let eventData = try JSONSerialization.data(withJSONObject: event)
+        guard let firstLine = String(data: eventData, encoding: .utf8) else {
+            #expect(Bool(false), "Failed to encode event JSON")
+            return
+        }
+        var lines: [String] = [firstLine]
         let filler = String(repeating: "y", count: 1200)
-        for _ in 0..<800 { lines.append("\"\(filler)\"") } // pushes size past tail window
+        for _ in 0..<800 {
+            lines.append("\"\(filler)\"")
+        } // pushes size past tail window
         try lines.joined(separator: "\n").write(to: file, atomically: true, encoding: .utf8)
         try FileManager.default.setAttributes([.modificationDate: Date()], ofItemAtPath: file.path)
 

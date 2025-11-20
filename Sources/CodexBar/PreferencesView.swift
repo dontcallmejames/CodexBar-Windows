@@ -150,19 +150,18 @@ private struct GeneralPane: View {
     }
 
     private var codexBinding: Binding<Bool> {
-        Binding(
-            get: { self.settings.showCodexUsage },
-            set: { newValue in
-                self.settings.showCodexUsage = newValue
-            })
+        self.binding(for: .codex)
     }
 
     private var claudeBinding: Binding<Bool> {
-        Binding(
-            get: { self.settings.showClaudeUsage },
-            set: { newValue in
-                self.settings.showClaudeUsage = newValue
-            })
+        self.binding(for: .claude)
+    }
+
+    private func binding(for provider: UsageProvider) -> Binding<Bool> {
+        let meta = self.store.metadata(for: provider)
+        return Binding(
+            get: { self.settings.isProviderEnabled(provider: provider, metadata: meta) },
+            set: { self.settings.setProviderEnabled(provider: provider, metadata: meta, enabled: $0) })
     }
 
     private func providerSubtitle(_ provider: UsageProvider) -> String {
@@ -367,7 +366,8 @@ private struct DebugPane: View {
 
                 SettingsSection(
                     title: "Loading animations",
-                    caption: "Pick a pattern and replay to preview it in the menu bar. \"Random\" keeps the existing behavior.")
+                    caption: "Pick a pattern and replay to preview it in the menu bar. "
+                        + "\"Random\" keeps the existing behavior.")
                 {
                     Picker("Animation pattern", selection: self.animationPatternBinding) {
                         Text("Random (default)").tag(nil as LoadingPattern?)

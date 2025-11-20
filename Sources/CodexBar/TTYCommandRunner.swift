@@ -1,5 +1,5 @@
-import Foundation
 import Darwin
+import Foundation
 
 /// Executes an interactive CLI inside a pseudo-terminal and returns all captured text.
 /// Keeps it minimal so we can reuse for Codex and Claude without tmux.
@@ -22,58 +22,60 @@ struct TTYCommandRunner {
 
         var errorDescription: String? {
             switch self {
-            case .binaryNotFound(let bin): "Binary not found on PATH: \(bin)"
-            case .launchFailed(let msg): "Failed to launch process: \(msg)"
+            case let .binaryNotFound(bin): "Binary not found on PATH: \(bin)"
+            case let .launchFailed(msg): "Failed to launch process: \(msg)"
             case .timedOut: "PTY command timed out."
             }
         }
     }
 
+    // swiftlint:disable cyclomatic_complexity
     func run(binary: String, send script: String, options: Options = Options()) throws -> Result {
         guard let resolved = Self.which(binary) else { throw Error.binaryNotFound(binary) }
 
-        var master: Int32 = -1
-        var slave: Int32 = -1
+        var primaryFD: Int32 = -1
+        var secondaryFD: Int32 = -1
         var term = termios()
         var win = winsize(ws_row: options.rows, ws_col: options.cols, ws_xpixel: 0, ws_ypixel: 0)
-        guard openpty(&master, &slave, nil, &term, &win) == 0 else {
+        guard openpty(&primaryFD, &secondaryFD, nil, &term, &win) == 0 else {
             throw Error.launchFailed("openpty failed")
         }
-        // Make master non-blocking so read loops don't hang when no data is available.
-        _ = fcntl(master, F_SETFL, O_NONBLOCK)
+        // Make primary side non-blocking so read loops don't hang when no data is available.
+        _ = fcntl(primaryFD, F_SETFL, O_NONBLOCK)
 
-        let masterHandle = FileHandle(fileDescriptor: master, closeOnDealloc: true)
-        let slaveHandle = FileHandle(fileDescriptor: slave, closeOnDealloc: true)
+        let primaryHandle = FileHandle(fileDescriptor: primaryFD, closeOnDealloc: true)
+        let secondaryHandle = FileHandle(fileDescriptor: secondaryFD, closeOnDealloc: true)
 
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: resolved)
         proc.arguments = options.extraArgs
-        proc.standardInput = slaveHandle
-        proc.standardOutput = slaveHandle
-        proc.standardError = slaveHandle
+        proc.standardInput = secondaryHandle
+        proc.standardOutput = secondaryHandle
+        proc.standardError = secondaryHandle
 
         try proc.run()
 
         func send(_ text: String) throws {
-            if let data = text.data(using: .utf8) {
-                try masterHandle.write(contentsOf: data)
-            }
+            guard let data = text.data(using: .utf8) else { return }
+            try primaryHandle.write(contentsOf: data)
         }
 
         let deadline = Date().addingTimeInterval(options.timeout)
         var buffer = Data()
         func readChunk() {
             var tmp = [UInt8](repeating: 0, count: 8192)
-            let n = Darwin.read(master, &tmp, tmp.count)
+            let n = Darwin.read(primaryFD, &tmp, tmp.count)
             if n > 0 { buffer.append(contentsOf: tmp.prefix(n)) }
         }
 
         func containsSession() -> Bool {
-            buffer.contains("Current session".data(using: .utf8)!)
+            let marker = Data("Current session".utf8)
+            return buffer.contains(marker)
         }
 
         func containsWeek() -> Bool {
-            buffer.contains("Current week (all models)".data(using: .utf8)!)
+            let marker = Data("Current week (all models)".utf8)
+            return buffer.contains(marker)
         }
 
         if script == "/usage" {
@@ -93,10 +95,14 @@ struct TTYCommandRunner {
                 if lower.contains("telemetry") && lower.contains("(y/n)") {
                     try send("n\r"); buffer.removeAll(); usleep(300_000); continue
                 }
-                if lower.contains("sign in") || lower.contains("login") || (lower.contains("please run") && lower.contains("claude login")) {
+                if lower.contains("sign in") || lower
+                    .contains("login") || (lower.contains("please run") && lower.contains("claude login"))
+                {
                     throw Error.launchFailed("Claude CLI requires login (`claude login`).")
                 }
-                if lower.contains("claude code") || lower.contains("tab to toggle") || lower.contains("try ") || !lower.isEmpty {
+                if lower.contains("claude code") || lower.contains("tab to toggle") || lower.contains("try ") || !lower
+                    .isEmpty
+                {
                     break
                 }
                 usleep(150_000)
@@ -125,10 +131,10 @@ struct TTYCommandRunner {
                 readChunk()
                 if containsSession() { gotSession = true }
                 if containsWeek() { gotWeek = true }
-                if gotSession && gotWeek { break }
+                if gotSession, gotWeek { break }
 
                 // Re-press Enter roughly once per 1.5s until usage shows up or retries are exhausted.
-                if Date().timeIntervalSince(lastEnter) >= 1.5 && enterRetries < 10 {
+                if Date().timeIntervalSince(lastEnter) >= 1.5, enterRetries < 10 {
                     try? send("\r")
                     enterRetries += 1
                     lastEnter = Date()
@@ -140,7 +146,8 @@ struct TTYCommandRunner {
                 // re-typing the command when the palette ignored Enter because it was busy.
                 if Date().timeIntervalSince(lastEnter) >= 3.0,
                    enterRetries >= 2,
-                   resendUsageRetries < 3 {
+                   resendUsageRetries < 3
+                {
                     try? send("/usage")
                     usleep(100_000)
                     try? send("\r")
@@ -157,7 +164,7 @@ struct TTYCommandRunner {
             let settleDeadline = Date().addingTimeInterval(2.0)
             while Date() < settleDeadline {
                 readChunk()
-                usleep(80_000)
+                usleep(80000)
             }
         } else {
             // Generic behavior for other commands.
@@ -176,10 +183,11 @@ struct TTYCommandRunner {
         }
 
         // try to exit gracefully
-        try? masterHandle.write(contentsOf: "/exit\n".data(using: .utf8)!)
+        let exitData = Data("/exit\n".utf8)
+        try? primaryHandle.write(contentsOf: exitData)
         proc.terminate()
         let waitDeadline = Date().addingTimeInterval(2.0)
-        while proc.isRunning && Date() < waitDeadline {
+        while proc.isRunning, Date() < waitDeadline {
             usleep(100_000)
         }
         if proc.isRunning {
@@ -194,6 +202,8 @@ struct TTYCommandRunner {
         return Result(text: text)
     }
 
+    // swiftlint:enable cyclomatic_complexity
+
     static func which(_ tool: String) -> String? {
         // First try system PATH
         if let path = runWhich(tool) { return path }
@@ -203,7 +213,7 @@ struct TTYCommandRunner {
             "/opt/homebrew/bin/\(tool)",
             "/usr/local/bin/\(tool)",
             "\(home)/.local/bin/\(tool)",
-            "\(home)/bin/\(tool)"
+            "\(home)/bin/\(tool)",
         ]
         for c in candidates where FileManager.default.isExecutableFile(atPath: c) {
             return c
@@ -221,7 +231,9 @@ struct TTYCommandRunner {
         proc.waitUntilExit()
         guard proc.terminationStatus == 0 else { return nil }
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        let path = String(decoding: data, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
-        return path.isEmpty ? nil : path
+        guard let path = String(data: data, encoding: .utf8)?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+            !path.isEmpty else { return nil }
+        return path
     }
 }

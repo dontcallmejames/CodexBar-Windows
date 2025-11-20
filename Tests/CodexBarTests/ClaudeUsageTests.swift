@@ -37,33 +37,35 @@ struct ClaudeUsageTests {
         let data = Data(json.utf8)
         let snap = ClaudeUsageFetcher.parse(json: data)
         #expect(snap?.opus?.usedPercent == 0)
-        #expect(snap?.opus?.resetDescription == "")
+        #expect(snap?.opus?.resetDescription?.isEmpty == true)
         #expect(snap?.accountEmail == "steipete@gmail.com")
         #expect(snap?.accountOrganization == nil)
     }
 
     @Test
-    func trimsAccountFields() {
+    func trimsAccountFields() throws {
         let cases: [[String: String?]] = [
             ["email": " steipete@gmail.com ", "org": "  Org  "],
             ["email": "", "org": " Claude Max Account "],
-            ["email": nil, "org": " "]
+            ["email": nil, "org": " "],
         ]
 
         for entry in cases {
             var payload = [
                 "ok": true,
                 "session_5h": ["pct_used": 0, "resets": ""],
-                "week_all_models": ["pct_used": 0, "resets": ""]
+                "week_all_models": ["pct_used": 0, "resets": ""],
             ] as [String: Any]
-            if let email = entry["email"] ?? nil { payload["account_email"] = email }
-            if let org = entry["org"] ?? nil { payload["account_org"] = org }
-            let data = try! JSONSerialization.data(withJSONObject: payload)
+            if let email = entry["email"] { payload["account_email"] = email }
+            if let org = entry["org"] { payload["account_org"] = org }
+            let data = try JSONSerialization.data(withJSONObject: payload)
             let snap = ClaudeUsageFetcher.parse(json: data)
-            let expectedEmail = (entry["email"] ?? nil)?.trimmingCharacters(in: .whitespacesAndNewlines)
+            let emailRaw: String? = entry["email"] ?? nil
+            let expectedEmail = emailRaw?.trimmingCharacters(in: .whitespacesAndNewlines)
             let normalizedEmail = (expectedEmail?.isEmpty ?? true) ? nil : expectedEmail
             #expect(snap?.accountEmail == normalizedEmail)
-            let expectedOrg = (entry["org"] ?? nil)?.trimmingCharacters(in: .whitespacesAndNewlines)
+            let orgRaw: String? = entry["org"] ?? nil
+            let expectedOrg = orgRaw?.trimmingCharacters(in: .whitespacesAndNewlines)
             let normalizedOrg = (expectedOrg?.isEmpty ?? true) ? nil : expectedOrg
             #expect(snap?.accountOrganization == normalizedOrg)
         }
@@ -77,12 +79,25 @@ struct ClaudeUsageTests {
         let fetcher = ClaudeUsageFetcher()
         do {
             let snap = try await fetcher.loadLatestUsage()
-            print("Live Claude usage (PTY): session used \(snap.primary.usedPercent)% week used \(snap.secondary.usedPercent)% opus \(snap.opus?.usedPercent ?? -1)% email \(snap.accountEmail ?? "nil") org \(snap.accountOrganization ?? "nil")")
+            let opusUsed = snap.opus?.usedPercent ?? -1
+            let email = snap.accountEmail ?? "nil"
+            let org = snap.accountOrganization ?? "nil"
+            print(
+                """
+                Live Claude usage (PTY):
+                session used \(snap.primary.usedPercent)% 
+                week used \(snap.secondary.usedPercent)% 
+                opus \(opusUsed)% 
+                email \(email) org \(org)
+                """)
             #expect(snap.primary.usedPercent >= 0)
         } catch {
             // Dump raw PTY text to help debug.
             let runner = TTYCommandRunner()
-            let res = try runner.run(binary: "claude", send: "/usage", options: .init(rows: 60, cols: 200, timeout: 15))
+            let res = try runner.run(
+                binary: "claude",
+                send: "/usage",
+                options: .init(rows: 60, cols: 200, timeout: 15))
             print("RAW PTY OUTPUT BEGIN\n\(res.text)\nRAW PTY OUTPUT END")
             throw error
         }
