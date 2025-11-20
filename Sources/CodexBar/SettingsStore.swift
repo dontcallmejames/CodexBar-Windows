@@ -33,7 +33,7 @@ enum RefreshFrequency: String, CaseIterable, Identifiable {
 @MainActor
 final class SettingsStore: ObservableObject {
     @Published var refreshFrequency: RefreshFrequency {
-        didSet { UserDefaults.standard.set(self.refreshFrequency.rawValue, forKey: "refreshFrequency") }
+        didSet { self.userDefaults.set(self.refreshFrequency.rawValue, forKey: "refreshFrequency") }
     }
 
     @AppStorage("launchAtLogin") var launchAtLogin: Bool = false {
@@ -56,9 +56,11 @@ final class SettingsStore: ObservableObject {
     }
 
     private static let providerToggleKey = "providerToggles"
+    private let userDefaults: UserDefaults
     private var providerToggles: [String: Bool]
 
     init(userDefaults: UserDefaults = .standard) {
+        self.userDefaults = userDefaults
         let raw = userDefaults.string(forKey: "refreshFrequency") ?? RefreshFrequency.twoMinutes.rawValue
         self.refreshFrequency = RefreshFrequency(rawValue: raw) ?? .twoMinutes
         if let dict = userDefaults.dictionary(forKey: Self.providerToggleKey) as? [String: Bool] {
@@ -82,7 +84,7 @@ final class SettingsStore: ObservableObject {
     func setProviderEnabled(provider: UsageProvider, metadata: ProviderMetadata, enabled: Bool) {
         self.objectWillChange.send()
         self.providerToggles[metadata.cliName] = enabled
-        UserDefaults.standard.set(self.providerToggles, forKey: Self.providerToggleKey)
+        self.userDefaults.set(self.providerToggles, forKey: Self.providerToggleKey)
     }
 }
 
