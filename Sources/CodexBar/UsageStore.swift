@@ -90,6 +90,7 @@ final class UsageStore: ObservableObject {
     var claudeSnapshot: UsageSnapshot? { self.snapshots[.claude] }
     var lastCodexError: String? { self.errors[.codex] }
     var lastClaudeError: String? { self.errors[.claude] }
+    func error(for provider: UsageProvider) -> String? { self.errors[provider] }
 
     var preferredSnapshot: UsageSnapshot? {
         if self.settings.showCodexUsage, let codexSnapshot {
