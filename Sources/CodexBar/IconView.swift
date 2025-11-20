@@ -34,17 +34,12 @@ struct IconView: View {
                     .padding(.horizontal, 2)
             } else if self.showLoadingAnimation {
                 // Loading: animate bars with the current pattern until data arrives.
-                Image(nsImage: IconRenderer.makeIcon(
-                    primaryRemaining: self.loadingPrimary,
-                    weeklyRemaining: self.loadingSecondary,
-                    creditsRemaining: nil,
-                    stale: false,
-                    style: self.style))
+                Image(nsImage: self.loadingImage)
                     .renderingMode(.original)
                     .frame(width: 20, height: 18, alignment: .center)
                     .padding(.horizontal, 2)
                     .onReceive(self.displayLink.$tick) { _ in
-                        self.phase += 0.18
+                        self.phase += 0.09 // half-speed animation
                         if self.debugCycle {
                             self.cycleCounter += 1
                             if self.cycleCounter >= self.cycleIntervalTicks {
@@ -80,11 +75,19 @@ struct IconView: View {
             }
         }
         .onDisappear { self.displayLink.stop() }
-        .onReceive(NotificationCenter.default.publisher(for: .codexbarDebugReplayAllAnimations)) { _ in
-            self.debugCycle = true
-            self.cycleIndex = 0
+        .onReceive(NotificationCenter.default.publisher(for: .codexbarDebugReplayAllAnimations)) { notification in
+            if let raw = notification.userInfo?["pattern"] as? String,
+               let selected = LoadingPattern(rawValue: raw) {
+                self.debugCycle = false
+                self.pattern = selected
+                self.cycleIndex = self.patterns.firstIndex(of: selected) ?? 0
+            } else {
+                self.debugCycle = true
+                self.cycleIndex = 0
+                self.pattern = self.patterns.first ?? .knightRider
+            }
             self.cycleCounter = 0
-            self.pattern = self.patterns.first ?? .knightRider
+            self.phase = 0
         }
     }
 
@@ -94,5 +97,19 @@ struct IconView: View {
 
     private var loadingSecondary: Double {
         self.pattern.value(phase: Double(self.phase + self.pattern.secondaryOffset))
+    }
+
+    private var loadingImage: NSImage {
+        if self.pattern == .unbraid {
+            let progress = self.loadingPrimary / 100
+            return IconRenderer.makeMorphIcon(progress: progress, style: self.style)
+        } else {
+            return IconRenderer.makeIcon(
+                primaryRemaining: self.loadingPrimary,
+                weeklyRemaining: self.loadingSecondary,
+                creditsRemaining: nil,
+                stale: false,
+                style: self.style)
+        }
     }
 }

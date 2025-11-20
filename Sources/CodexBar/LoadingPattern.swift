@@ -1,11 +1,25 @@
 import Foundation
 
-enum LoadingPattern: CaseIterable {
+enum LoadingPattern: String, CaseIterable, Identifiable {
     case knightRider
     case cylon
     case outsideIn
     case race
     case pulse
+    case unbraid
+
+    var id: String { self.rawValue }
+
+    var displayName: String {
+        switch self {
+        case .knightRider: "Knight Rider"
+        case .cylon: "Cylon"
+        case .outsideIn: "Outside-In"
+        case .race: "Race"
+        case .pulse: "Pulse"
+        case .unbraid: "Unbraid (logo → bars)"
+        }
+    }
 
     // Secondary offset so the lower bar moves differently.
     var secondaryOffset: Double {
@@ -15,6 +29,7 @@ enum LoadingPattern: CaseIterable {
         case .outsideIn: .pi
         case .race: .pi / 3
         case .pulse: .pi / 2
+        case .unbraid: .pi / 2
         }
     }
 
@@ -33,6 +48,8 @@ enum LoadingPattern: CaseIterable {
             v = t
         case .pulse:
             v = 0.4 + 0.6 * (0.5 + 0.5 * sin(phase)) // 40–100%
+        case .unbraid:
+            v = 0.5 + 0.5 * sin(phase) // smooth 0→1 for morph
         }
         return max(0, min(v * 100, 100))
     }

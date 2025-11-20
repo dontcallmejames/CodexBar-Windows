@@ -68,4 +68,23 @@ struct ClaudeUsageTests {
             #expect(snap?.accountOrganization == normalizedOrg)
         }
     }
+
+    @Test
+    func liveClaudeFetchPTY() async throws {
+        guard ProcessInfo.processInfo.environment["LIVE_CLAUDE_FETCH"] == "1" else {
+            return
+        }
+        let fetcher = ClaudeUsageFetcher()
+        do {
+            let snap = try await fetcher.loadLatestUsage()
+            print("Live Claude usage (PTY): session used \(snap.primary.usedPercent)% week used \(snap.secondary.usedPercent)% opus \(snap.opus?.usedPercent ?? -1)% email \(snap.accountEmail ?? "nil") org \(snap.accountOrganization ?? "nil")")
+            #expect(snap.primary.usedPercent >= 0)
+        } catch {
+            // Dump raw PTY text to help debug.
+            let runner = TTYCommandRunner()
+            let res = try runner.run(binary: "claude", send: "/usage", options: .init(rows: 60, cols: 200, timeout: 15))
+            print("RAW PTY OUTPUT BEGIN\n\(res.text)\nRAW PTY OUTPUT END")
+            throw error
+        }
+    }
 }

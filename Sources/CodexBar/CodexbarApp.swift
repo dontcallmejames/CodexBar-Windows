@@ -183,7 +183,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         self.wireBindings()
         self.updateIcons()
         self.updateVisibility()
-        NotificationCenter.default.addObserver(self, selector: #selector(self.handleDebugReplayNotification), name: .codexbarDebugReplayAllAnimations, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(self.handleDebugReplayNotification(_:)), name: .codexbarDebugReplayAllAnimations, object: nil)
     }
 
     private func wireBindings() {
@@ -191,6 +191,13 @@ final class StatusItemController: NSObject, NSMenuDelegate {
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in
                 self?.updateIcons()
+            }
+            .store(in: &self.cancellables)
+
+        self.store.$debugForceAnimation
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.updateVisibility()
             }
             .store(in: &self.cancellables)
 
@@ -215,8 +222,9 @@ final class StatusItemController: NSObject, NSMenuDelegate {
 
     private func updateVisibility() {
         let fallback = self.fallbackProvider
-        self.codexItem.isVisible = self.settings.showCodexUsage || fallback == .codex
-        self.claudeItem.isVisible = self.settings.showClaudeUsage
+        let forceShowCodex = self.store.debugForceAnimation
+        self.codexItem.isVisible = self.settings.showCodexUsage || fallback == .codex || forceShowCodex
+        self.claudeItem.isVisible = self.settings.showClaudeUsage || self.store.debugForceAnimation
         self.attachMenus(fallback: fallback)
         self.updateAnimationState()
     }
@@ -244,43 +252,74 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         var weekly = snapshot?.secondary.remainingPercent
         var credits: Double? = provider == .codex ? self.store.credits?.remaining : nil
         var stale = self.store.isStale(provider: provider)
+        var morphProgress: Double?
 
         if let phase, self.shouldAnimate(provider: provider) {
-            let pattern = self.animationPattern
-            primary = pattern.value(phase: phase)
-            weekly = pattern.value(phase: phase + pattern.secondaryOffset)
-            credits = nil
-            stale = false
+            var pattern = self.animationPattern
+            if provider == .claude, pattern == .unbraid {
+                pattern = .cylon
+            }
+            if pattern == .unbraid {
+                morphProgress = pattern.value(phase: phase) / 100
+                primary = nil
+                weekly = nil
+                credits = nil
+                stale = false
+            } else {
+                primary = pattern.value(phase: phase)
+                weekly = pattern.value(phase: phase + pattern.secondaryOffset)
+                credits = nil
+                stale = false
+            }
         }
 
-        button.image = IconRenderer.makeIcon(
-            primaryRemaining: primary,
-            weeklyRemaining: weekly,
-            creditsRemaining: credits,
-            stale: stale,
-            style: provider == .codex ? .codex : .claude)
+        let style: IconStyle = provider == .codex ? .codex : .claude
+        if let morphProgress {
+            button.image = IconRenderer.makeMorphIcon(progress: morphProgress, style: style)
+        } else {
+            button.image = IconRenderer.makeIcon(
+                primaryRemaining: primary,
+                weeklyRemaining: weekly,
+                creditsRemaining: credits,
+                stale: stale,
+                style: style)
+        }
     }
 
     private func shouldAnimate(provider: UsageProvider) -> Bool {
+        if self.store.debugForceAnimation { return true }
+
+        let visible: Bool
         switch provider {
         case .codex:
-            guard self.settings.showCodexUsage else { return false }
+            visible = self.store.debugForceAnimation || self.settings.showCodexUsage || self.fallbackProvider == .codex
         case .claude:
-            guard self.settings.showClaudeUsage else { return false }
+            visible = self.store.debugForceAnimation || self.settings.showClaudeUsage
         }
-        return self.store.snapshot(for: provider) == nil && !self.store.isStale(provider: provider)
+        guard visible else { return false }
+
+        let isStale = self.store.isStale(provider: provider)
+        let hasData = self.store.snapshot(for: provider) != nil
+        return !hasData && !isStale
     }
 
     private func updateAnimationState() {
         let needsAnimation = self.shouldAnimate(provider: .codex) || self.shouldAnimate(provider: .claude)
         if needsAnimation {
             if self.animationDisplayLink == nil {
-                self.animationPattern = LoadingPattern.allCases.randomElement() ?? .knightRider
+                if let forced = self.settings.debugLoadingPattern {
+                    self.animationPattern = forced
+                } else if !LoadingPattern.allCases.contains(self.animationPattern) {
+                    self.animationPattern = .knightRider
+                }
                 self.animationPhase = 0
                 if let link = NSScreen.main?.displayLink(target: self, selector: #selector(self.animateIcons(_:))) {
                     link.add(to: .main, forMode: .common)
                     self.animationDisplayLink = link
                 }
+            } else if let forced = self.settings.debugLoadingPattern, forced != self.animationPattern {
+                self.animationPattern = forced
+                self.animationPhase = 0
             }
         } else {
             self.animationDisplayLink?.invalidate()
@@ -292,18 +331,29 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     }
 
     @objc private func animateIcons(_ link: CADisplayLink) {
-        self.animationPhase += 0.09
+        self.animationPhase += 0.045 // half-speed animation
         self.applyIcon(for: .codex, phase: self.animationPhase)
         self.applyIcon(for: .claude, phase: self.animationPhase)
     }
 
-    @objc private func handleDebugReplayNotification() {
+    private func advanceAnimationPattern() {
         let patterns = LoadingPattern.allCases
         if let idx = patterns.firstIndex(of: self.animationPattern) {
             let next = patterns.indices.contains(idx + 1) ? patterns[idx + 1] : patterns.first
             self.animationPattern = next ?? .knightRider
         } else {
             self.animationPattern = .knightRider
+        }
+    }
+
+    @objc private func handleDebugReplayNotification(_ notification: Notification) {
+        if let raw = notification.userInfo?["pattern"] as? String,
+           let selected = LoadingPattern(rawValue: raw) {
+            self.animationPattern = selected
+        } else if let forced = self.settings.debugLoadingPattern {
+            self.animationPattern = forced
+        } else {
+            self.advanceAnimationPattern()
         }
         self.animationPhase = 0
         self.updateAnimationState()

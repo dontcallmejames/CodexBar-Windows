@@ -2,10 +2,10 @@ import AppKit
 
 enum IconRenderer {
     private static let creditsCap: Double = 1000
+    private static let size = NSSize(width: 20, height: 18)
 
     static func makeIcon(primaryRemaining: Double?, weeklyRemaining: Double?, creditsRemaining: Double?, stale: Bool, style: IconStyle) -> NSImage {
-        let size = NSSize(width: 20, height: 18)
-        let image = NSImage(size: size)
+        let image = NSImage(size: Self.size)
         image.lockFocus()
 
         // Keep monochrome template icons; Claude uses subtle shape cues only.
@@ -98,5 +98,128 @@ enum IconRenderer {
         image.unlockFocus()
         image.isTemplate = true
         return image
+    }
+
+    /// Morph helper: unbraids a simplified knot into our bar icon.
+    static func makeMorphIcon(progress: Double, style: IconStyle) -> NSImage {
+        let clamped = max(0, min(progress, 1))
+        let image = NSImage(size: Self.size)
+        image.lockFocus()
+        drawUnbraidMorph(t: clamped, style: style)
+        image.unlockFocus()
+        image.isTemplate = true
+        return image
+    }
+
+    private static func drawUnbraidMorph(t: Double, style: IconStyle) {
+        let t = CGFloat(max(0, min(t, 1)))
+        let size = Self.size
+        let center = CGPoint(x: size.width / 2, y: size.height / 2)
+        let baseColor = NSColor.labelColor
+
+        struct Segment {
+            let startCenter: CGPoint
+            let endCenter: CGPoint
+            let startAngle: CGFloat
+            let endAngle: CGFloat
+            let startLength: CGFloat
+            let endLength: CGFloat
+            let startThickness: CGFloat
+            let endThickness: CGFloat
+            let fadeOut: Bool
+        }
+
+        let segments: [Segment] = [
+            // Upper ribbon -> top bar
+            .init(
+                startCenter: center.offset(dx: 0, dy: 2),
+                endCenter: CGPoint(x: center.x, y: 9.0),
+                startAngle: -30,
+                endAngle: 0,
+                startLength: 16,
+                endLength: 14,
+                startThickness: 3.4,
+                endThickness: 3.0,
+                fadeOut: false),
+            // Lower ribbon -> bottom bar
+            .init(
+                startCenter: center.offset(dx: 0, dy: -2),
+                endCenter: CGPoint(x: center.x, y: 4.0),
+                startAngle: 210,
+                endAngle: 0,
+                startLength: 16,
+                endLength: 12,
+                startThickness: 3.4,
+                endThickness: 2.4,
+                fadeOut: false),
+            // Side ribbon fades away
+            .init(
+                startCenter: center,
+                endCenter: center.offset(dx: 0, dy: 6),
+                startAngle: 90,
+                endAngle: 0,
+                startLength: 16,
+                endLength: 8,
+                startThickness: 3.4,
+                endThickness: 1.8,
+                fadeOut: true)
+        ]
+
+        for seg in segments {
+            let p = seg.fadeOut ? t * 1.1 : t
+            let c = seg.startCenter.lerp(to: seg.endCenter, p: p)
+            let angle = seg.startAngle.lerp(to: seg.endAngle, p: p)
+            let length = seg.startLength.lerp(to: seg.endLength, p: p)
+            let thickness = seg.startThickness.lerp(to: seg.endThickness, p: p)
+            let alpha = seg.fadeOut ? (1 - p) : 1
+
+            drawRoundedRibbon(center: c, length: length, thickness: thickness, angle: angle, color: baseColor.withAlphaComponent(alpha))
+        }
+
+        // Cross-fade in bar fill emphasis near the end of the morph.
+        if t > 0.55 {
+            let barT = (t - 0.55) / 0.45
+            let bars = makeIcon(
+                primaryRemaining: 100,
+                weeklyRemaining: 100,
+                creditsRemaining: nil,
+                stale: false,
+                style: style)
+            bars.draw(in: CGRect(origin: .zero, size: size), from: .zero, operation: .sourceOver, fraction: barT)
+        }
+    }
+
+    private static func drawRoundedRibbon(center: CGPoint, length: CGFloat, thickness: CGFloat, angle: CGFloat, color: NSColor) {
+        var transform = AffineTransform.identity
+        transform.translate(x: center.x, y: center.y)
+        transform.rotate(byDegrees: angle)
+        transform.translate(x: -center.x, y: -center.y)
+
+        let rect = CGRect(
+            x: center.x - length / 2,
+            y: center.y - thickness / 2,
+            width: length,
+            height: thickness)
+
+        let path = NSBezierPath(roundedRect: rect, xRadius: thickness / 2, yRadius: thickness / 2)
+        path.transform(using: transform)
+        color.setFill()
+        path.fill()
+    }
+}
+
+private extension CGPoint {
+    func lerp(to other: CGPoint, p: CGFloat) -> CGPoint {
+        CGPoint(x: self.x + (other.x - self.x) * p, y: self.y + (other.y - self.y) * p)
+    }
+
+    func offset(dx: CGFloat, dy: CGFloat) -> CGPoint {
+        CGPoint(x: self.x + dx, y: self.y + dy)
+    }
+}
+
+private extension CGFloat {
+    func lerp(to other: CGFloat, p: CGFloat) -> CGFloat {
+        self + (other - self) * p
     }
 }

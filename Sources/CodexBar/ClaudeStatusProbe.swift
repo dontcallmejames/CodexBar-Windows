@@ -1,4 +1,5 @@
 import Foundation
+import os.log
 
 struct ClaudeStatusSnapshot {
     let sessionPercentLeft: Int?
@@ -34,23 +35,40 @@ struct ClaudeStatusProbe {
     func fetch() async throws -> ClaudeStatusSnapshot {
         guard TTYCommandRunner.which(claudeBinary) != nil else { throw ClaudeStatusProbeError.claudeNotInstalled }
         let runner = TTYCommandRunner()
-        let result = try runner.run(binary: claudeBinary, send: "/usage\n", options: .init(rows: 50, cols: 160, timeout: timeout))
-        return try Self.parse(text: result.text)
+        // Send command without trailing newline; TTY runner will submit with CRs.
+        let result = try runner.run(
+            binary: claudeBinary,
+            send: "/usage",
+            options: .init(
+                rows: 50,
+                cols: 160,
+                timeout: timeout,
+                extraArgs: ["--dangerously-skip-permissions"]))
+        let snap = try Self.parse(text: result.text)
+        if #available(macOS 13.0, *) {
+            os_log("[ClaudeStatusProbe] PTY scrape ok — session %d%% left, week %d%% left, opus %d%% left",
+                   log: .default, type: .info,
+                   snap.sessionPercentLeft ?? -1,
+                   snap.weeklyPercentLeft ?? -1,
+                   snap.opusPercentLeft ?? -1)
+        }
+        return snap
     }
 
     // MARK: - Parsing helpers
 
     static func parse(text: String) throws -> ClaudeStatusSnapshot {
-        guard !text.isEmpty else { throw ClaudeStatusProbeError.timedOut }
+        let clean = stripANSICodes(text)
+        guard !clean.isEmpty else { throw ClaudeStatusProbeError.timedOut }
 
-        let sessionPct = extractPercent(labelSubstring: "Current session", text: text)
-        let weeklyPct = extractPercent(labelSubstring: "Current week (all models)", text: text)
-        let opusPct = extractPercent(labelSubstring: "Current week (Opus)", text: text)
-        let email = extractFirst(pattern: #"(?i)Account:\s+([^\s@]+@[^\s@]+)"#, text: text)
-        let org = extractFirst(pattern: #"(?i)Org:\s*(.+)"#, text: text)
+        let sessionPct = extractPercent(labelSubstring: "Current session", text: clean)
+        let weeklyPct = extractPercent(labelSubstring: "Current week (all models)", text: clean)
+        let opusPct = extractPercent(labelSubstring: "Current week (Opus)", text: clean)
+        let email = extractFirst(pattern: #"(?i)Account:\s+([^\s@]+@[^\s@]+)"#, text: clean)
+        let org = extractFirst(pattern: #"(?i)Org:\s*(.+)"#, text: clean)
 
-        if sessionPct == nil && weeklyPct == nil && opusPct == nil {
-            throw ClaudeStatusProbeError.parseFailed(text.prefix(400).description)
+        guard let sessionPct, let weeklyPct else {
+            throw ClaudeStatusProbeError.parseFailed("Missing Current session or Current week (all models)")
         }
 
         return ClaudeStatusSnapshot(
@@ -61,6 +79,13 @@ struct ClaudeStatusProbe {
             accountOrganization: org,
             rawText: text
         )
+    }
+
+    private static func stripANSICodes(_ text: String) -> String {
+        let ansiPattern = #"\u001B\[[0-9;?]*[A-Za-z]"#
+        guard let regex = try? NSRegularExpression(pattern: ansiPattern, options: []) else { return text }
+        let range = NSRange(text.startIndex..<text.endIndex, in: text)
+        return regex.stringByReplacingMatches(in: text, options: [], range: range, withTemplate: "")
     }
 
     private static func extractPercent(labelSubstring: String, text: String) -> Int? {
