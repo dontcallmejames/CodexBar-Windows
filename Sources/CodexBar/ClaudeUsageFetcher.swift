@@ -1,6 +1,12 @@
 import Foundation
 import os.log
 
+protocol ClaudeUsageFetching: Sendable {
+    func loadLatestUsage(model: String) async throws -> ClaudeUsageSnapshot
+    func debugRawProbe(model: String) async -> String
+    func detectVersion() -> String?
+}
+
 struct ClaudeUsageSnapshot {
     let primary: RateWindow
     let secondary: RateWindow
@@ -13,48 +19,23 @@ struct ClaudeUsageSnapshot {
 
 enum ClaudeUsageError: LocalizedError {
     case claudeNotInstalled
-    case tmuxNotInstalled
     case parseFailed(String)
-    case scriptFailed(Int32, String)
 
     var errorDescription: String? {
         switch self {
         case .claudeNotInstalled:
             "Claude CLI is not installed. Install it from https://docs.claude.ai/claude-code."
-        case .tmuxNotInstalled:
-            "tmux is required to probe Claude usage. Install via Homebrew: brew install tmux"
         case .parseFailed(let details):
             "Could not parse Claude usage: \(details)"
-        case .scriptFailed(let code, let output):
-            "Claude usage probe failed (exit \(code)). Output: \(output)"
         }
     }
 }
 
-struct ClaudeUsageFetcher: Sendable {
+struct ClaudeUsageFetcher: ClaudeUsageFetching, Sendable {
     private let environment: [String: String]
 
     init(environment: [String: String] = ProcessInfo.processInfo.environment) {
         self.environment = environment
-    }
-
-    func detectVersion() -> String? {
-        guard let path = Self.which("claude") else { return nil }
-        return Self.readString(cmd: path, args: ["--version"])?.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    func debugRawProbe(model: String = "sonnet") async -> String {
-        do {
-            let snap = try await self.loadViaPTY(model: model)
-            return "session_left=\(snap.primary.remainingPercent) weekly_left=\(snap.secondary.remainingPercent) opus_left=\(snap.opus?.remainingPercent ?? -1) email=\(snap.accountEmail ?? "nil") org=\(snap.accountOrganization ?? "nil")\n\(snap)"
-        } catch {
-            return "Probe failed: \(error)"
-        }
-    }
-
-    func loadLatestUsage(model: String = "sonnet") async throws -> ClaudeUsageSnapshot {
-        // Pure PTY path (no tmux dependency).
-        return try await self.loadViaPTY(model: model)
     }
 
     // MARK: - Parsing helpers
@@ -101,10 +82,14 @@ struct ClaudeUsageFetcher: Sendable {
         let org = (rawOrg?.isEmpty ?? true) ? nil : rawOrg
         let loginMethod = (obj["login_method"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
         let opusWindow: RateWindow? = {
-            guard let opus = obj["week_opus"] as? [String: Any],
-                  let pct = opus["pct_used"] as? Double else { return nil }
+            guard let opus = obj["week_opus"] as? [String: Any] else { return nil }
+            let pct = (opus["pct_used"] as? NSNumber)?.doubleValue ?? 0
             let resets = opus["resets"] as? String
-            return RateWindow(usedPercent: pct, windowMinutes: nil, resetsAt: Self.parseReset(text: resets), resetDescription: resets)
+            return RateWindow(
+                usedPercent: pct,
+                windowMinutes: nil,
+                resetsAt: Self.parseReset(text: resets),
+                resetDescription: resets)
         }()
         return ClaudeUsageSnapshot(
             primary: session,
@@ -131,6 +116,62 @@ struct ClaudeUsageFetcher: Sendable {
             if let t = timePart, let date = df.date(from: t) { return date }
         }
         return nil
+    }
+
+    // MARK: - Public API
+
+    func detectVersion() -> String? {
+        guard let path = Self.which("claude") else { return nil }
+        return Self.readString(cmd: path, args: ["--version"])?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    func debugRawProbe(model: String = "sonnet") async -> String {
+        do {
+            let snap = try await self.loadViaPTY(model: model, timeout: 10)
+            return "session_left=\(snap.primary.remainingPercent) weekly_left=\(snap.secondary.remainingPercent) opus_left=\(snap.opus?.remainingPercent ?? -1) email=\(snap.accountEmail ?? "nil") org=\(snap.accountOrganization ?? "nil")\n\(snap)"
+        } catch {
+            return "Probe failed: \(error)"
+        }
+    }
+
+    func loadLatestUsage(model: String = "sonnet") async throws -> ClaudeUsageSnapshot {
+        do {
+            return try await self.loadViaPTY(model: model, timeout: 10)
+        } catch {
+            return try await self.loadViaPTY(model: model, timeout: 24)
+        }
+    }
+
+    // MARK: - PTY-based probe (no tmux)
+
+    private func loadViaPTY(model: String, timeout: TimeInterval = 10) async throws -> ClaudeUsageSnapshot {
+        guard TTYCommandRunner.which("claude") != nil else { throw ClaudeUsageError.claudeNotInstalled }
+        let probe = ClaudeStatusProbe(claudeBinary: "claude", timeout: timeout)
+        let snap = try await probe.fetch()
+
+        guard let sessionPctLeft = snap.sessionPercentLeft else {
+            throw ClaudeUsageError.parseFailed("missing session data")
+        }
+
+        func makeWindow(pctLeft: Int?) -> RateWindow? {
+            guard let left = pctLeft else { return nil }
+            let used = max(0, min(100, 100 - Double(left)))
+            return RateWindow(usedPercent: used, windowMinutes: nil, resetsAt: nil, resetDescription: nil)
+        }
+
+        let primary = makeWindow(pctLeft: sessionPctLeft)!
+        let weekly = makeWindow(pctLeft: snap.weeklyPercentLeft)!
+        let opus = makeWindow(pctLeft: snap.opusPercentLeft)
+
+        return ClaudeUsageSnapshot(
+            primary: primary,
+            secondary: weekly,
+            opus: opus,
+            updatedAt: Date(),
+            accountEmail: snap.accountEmail,
+            accountOrganization: snap.accountOrganization,
+            loginMethod: nil)
     }
 
     // MARK: - Process helpers
@@ -161,217 +202,4 @@ struct ClaudeUsageFetcher: Sendable {
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
         return String(decoding: data, as: UTF8.self)
     }
-
-    private func runProbe(model: String, claudePath: String? = nil, tmuxPath: String? = nil) async throws -> (status: Int32, output: String) {
-        let claudePath = claudePath ?? (Self.which("claude") ?? "")
-        let tmuxPath = tmuxPath ?? (Self.which("tmux") ?? "")
-        let scriptURL = try Self.writeProbeScript()
-        let task = Process()
-        task.executableURL = URL(fileURLWithPath: "/bin/bash")
-        task.arguments = [scriptURL.path]
-        var env = self.environment
-        env["PATH"] = (env["PATH"] ?? "") + ":" + URL(fileURLWithPath: claudePath).deletingLastPathComponent().path
-        env["CODEXBAR_CLAUDE_MODEL"] = model
-        env["CODEXBAR_CLAUDE_BIN"] = claudePath
-        env["CODEXBAR_TMUX_BIN"] = tmuxPath
-        let workdir = FileManager.default.temporaryDirectory.appendingPathComponent("cb-claude-usage", isDirectory: true)
-        try? FileManager.default.createDirectory(at: workdir, withIntermediateDirectories: true)
-        env["CODEXBAR_WORKDIR"] = workdir.path
-        if env["CODEXBAR_CLAUDE_TIMEOUT"] == nil { env["CODEXBAR_CLAUDE_TIMEOUT"] = "30" }
-        if env["CODEXBAR_CLAUDE_SLEEP_BOOT"] == nil { env["CODEXBAR_CLAUDE_SLEEP_BOOT"] = "0.2" }
-        if env["CODEXBAR_CLAUDE_SLEEP_AFTER"] == nil { env["CODEXBAR_CLAUDE_SLEEP_AFTER"] = "1.6" }
-        if env["LC_ALL"] == nil { env["LC_ALL"] = "C" }
-        task.environment = env
-
-        let pipe = Pipe()
-        task.standardOutput = pipe
-        task.standardError = pipe
-
-        try task.run()
-        task.waitUntilExit()
-
-        let outputData = pipe.fileHandleForReading.readDataToEndOfFile()
-        let output = String(decoding: outputData, as: UTF8.self)
-        return (task.terminationStatus, output)
-    }
-
-    // MARK: - PTY-based probe (no tmux)
-
-    private func loadViaPTY(model: String) async throws -> ClaudeUsageSnapshot {
-        let probe = ClaudeStatusProbe(claudeBinary: "claude", timeout: 10)
-        let snap = try await probe.fetch()
-
-        guard let sessionPctLeft = snap.sessionPercentLeft else {
-            throw ClaudeUsageError.parseFailed("missing session data")
-        }
-
-        func makeWindow(pctLeft: Int?) -> RateWindow? {
-            guard let left = pctLeft else { return nil }
-            let used = max(0, min(100, 100 - Double(left)))
-            return RateWindow(usedPercent: used, windowMinutes: nil, resetsAt: nil, resetDescription: nil)
-        }
-
-        let primary = makeWindow(pctLeft: sessionPctLeft)!
-        let weekly = makeWindow(pctLeft: snap.weeklyPercentLeft)!
-        let opus = makeWindow(pctLeft: snap.opusPercentLeft)
-
-        return ClaudeUsageSnapshot(
-            primary: primary,
-            secondary: weekly,
-            opus: opus,
-            updatedAt: Date(),
-            accountEmail: snap.accountEmail,
-            accountOrganization: snap.accountOrganization,
-            loginMethod: nil)
-    }
-
-    // tmux helper removed; PTY path is authoritative to avoid external deps.
-
-    private static func writeProbeScript() throws -> URL {
-        let temp = FileManager.default.temporaryDirectory
-            .appendingPathComponent("claude_usage_\(UUID().uuidString).sh")
-        try script.write(to: temp, atomically: true, encoding: String.Encoding.utf8)
-        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: temp.path)
-        return temp
-    }
-
-    // Robust tmux probe emitting JSON always.
-    private static let script = #"""
-#!/usr/bin/env bash
-set -Eeuo pipefail
-
-exec 3>&1 4>&2
-
-CLAUDE_BIN="${CODEXBAR_CLAUDE_BIN:-claude}"
-TMUX_BIN="${CODEXBAR_TMUX_BIN:-tmux}"
-MODEL="${CODEXBAR_CLAUDE_MODEL:-sonnet}"
-TIMEOUT_SECS="${CODEXBAR_CLAUDE_TIMEOUT:-30}"
-SLEEP_BOOT="${CODEXBAR_CLAUDE_SLEEP_BOOT:-0.2}"
-SLEEP_AFTER_USAGE="${CODEXBAR_CLAUDE_SLEEP_AFTER:-1.6}"
-WORKDIR="${CODEXBAR_WORKDIR:-$PWD}"
-
-LABEL="cb-cc-$$"
-SESSION="usage"
-CAPTURE_LINES=400
-LOG_TAIL_BYTES=12288
-LOG_DIR="$WORKDIR/cb-claude-usage-$LABEL"
-mkdir -p "$LOG_DIR"
-STDOUT_LOG="$LOG_DIR/script.stdout.log"
-STDERR_LOG="$LOG_DIR/script.stderr.log"
-PANE_FILE="$LOG_DIR/pane.txt"
-
-exec 1>>"$STDOUT_LOG"
-exec 2>>"$STDERR_LOG"
-
-cleanup() { "$TMUX_BIN" -L "$LABEL" kill-server >/dev/null 2>&1 || true; }
-trap cleanup EXIT
-
-b64_tail() {
-  local f="$1"; local limit="${2:-$LOG_TAIL_BYTES}"; if [ -f "$f" ]; then tail -c "$limit" "$f" | base64 | tr -d '\n'; fi;
-}
-
-capture_pane() {
-  "$TMUX_BIN" -L "$LABEL" capture-pane -t "$TARGET" -p -S -$CAPTURE_LINES -J 2>>"$STDERR_LOG" > "$PANE_FILE.tmp" || true
-  head -n $CAPTURE_LINES "$PANE_FILE.tmp" > "$PANE_FILE" 2>>"$STDERR_LOG" || true
-  rm -f "$PANE_FILE.tmp" 2>>"$STDERR_LOG" || true
-}
-
-pane_preview() {
-  if [ -f "$PANE_FILE" ]; then
-    tr -cd '\11\12\15\40-\176' < "$PANE_FILE" | tr '\n' ' ' | sed -E 's/[[:space:]]+/ /g' | head -c 400
-  fi
-}
-
-error_json() {
-  local code="$1"; local hint="$2"; local pane="$3"; local out_tail="$4"; local err_tail="$5"
-  echo "{\"ok\":false,\"error\":\"$code\",\"hint\":\"$hint\",\"pane_preview\":\"$pane\",\"stdout_b64\":\"$out_tail\",\"stderr_b64\":\"$err_tail\"}" >&3
-  exit 1
-}
-
-if ! command -v "$TMUX_BIN" >/dev/null 2>&1; then error_json "tmux_not_found" "Install tmux" "" "" ""; fi
-if ! command -v "$CLAUDE_BIN" >/dev/null 2>&1; then error_json "claude_cli_not_found" "Install Claude CLI" "" "" ""; fi
-
-mkdir -p "$WORKDIR"
-"$TMUX_BIN" -L "$LABEL" new-session -d -s "$SESSION" "cd '$WORKDIR' && \"$CLAUDE_BIN\" --model $MODEL" >/dev/null 2>&1 || true
-WIN_IDX=$("$TMUX_BIN" -L "$LABEL" list-windows -t "$SESSION" -F '#{window_index}' 2>>"$STDERR_LOG" | head -n1)
-PANE_IDX=$("$TMUX_BIN" -L "$LABEL" list-panes -t "$SESSION:$WIN_IDX" -F '#{pane_index}' 2>>"$STDERR_LOG" | head -n1)
-TARGET="$SESSION:$WIN_IDX.$PANE_IDX"
-"$TMUX_BIN" -L "$LABEL" resize-pane -t "$TARGET" -x 120 -y 32 >/dev/null 2>&1 || true
-
-iterations=0; max_iterations=$((TIMEOUT_SECS * 10 / 4)); booted=false
-while [ $iterations -lt $max_iterations ]; do
-  sleep "$SLEEP_BOOT"
-  output=$("$TMUX_BIN" -L "$LABEL" capture-pane -t "$TARGET" -p -J 2>/dev/null || true)
-  lower=$(echo "$output" | tr '[:upper:]' '[:lower:]')
-  if echo "$lower" | grep -q "do you trust the files in this folder"; then "$TMUX_BIN" -L "$LABEL" send-keys -t "$SESSION:0.0" "1" Enter; sleep 1; continue; fi
-  if echo "$lower" | grep -q "select a workspace"; then "$TMUX_BIN" -L "$LABEL" send-keys -t "$SESSION:0.0" Enter; sleep 1; continue; fi
-  if echo "$lower" | grep -q "telemetry" && echo "$lower" | grep -q "(y/n)"; then "$TMUX_BIN" -L "$LABEL" send-keys -t "$SESSION:0.0" "n" Enter; sleep 1; continue; fi
-  if echo "$lower" | grep -qE '(sign in|login|please run.*claude login)'; then capture_pane; error_json "auth_required" "Run: claude login" "$(pane_preview)" "$(b64_tail "$STDOUT_LOG")" "$(b64_tail "$STDERR_LOG")"; fi
-  if echo "$lower" | grep -qiE '(claude code|tab to toggle|try )'; then booted=true; break; fi
-  if [ $iterations -gt 5 ] && [ -n "$output" ]; then booted=true; break; fi
-  iterations=$((iterations+1))
-done
-
-if [ "$booted" = false ]; then
-  capture_pane
-  error_json "tui_failed_to_boot" "TUI did not boot within ${TIMEOUT_SECS}s" "$(pane_preview)" "$(b64_tail "$STDOUT_LOG")" "$(b64_tail "$STDERR_LOG")"
-fi
-
-"$TMUX_BIN" -L "$LABEL" send-keys -t "$TARGET" "/" >/dev/null 2>&1; sleep 0.2
-"$TMUX_BIN" -L "$LABEL" send-keys -t "$TARGET" "usage" >/dev/null 2>&1; sleep 0.3
-"$TMUX_BIN" -L "$LABEL" send-keys -t "$TARGET" Enter >/dev/null 2>&1
-
-tries=0; usage_output=""
-while [ $tries -lt 6 ]; do
-  sleep "$SLEEP_AFTER_USAGE"
-  "$TMUX_BIN" -L "$LABEL" send-keys -t "$TARGET" Tab Tab Tab >/dev/null 2>&1
-  sleep 0.2
-  usage_output=$("$TMUX_BIN" -L "$LABEL" capture-pane -t "$TARGET" -p -S -200 -J 2>/dev/null || true)
-  if echo "$usage_output" | grep -qi "current session"; then break; fi
-  tries=$((tries+1))
-done
-
-capture_pane
-
-"$TMUX_BIN" -L "$LABEL" send-keys -t "$TARGET" Escape >/dev/null 2>&1; sleep 0.3
-"$TMUX_BIN" -L "$LABEL" send-keys -t "$TARGET" "/" >/dev/null 2>&1; sleep 0.2
-"$TMUX_BIN" -L "$LABEL" send-keys -t "$TARGET" "status" >/dev/null 2>&1; sleep 0.3
-"$TMUX_BIN" -L "$LABEL" send-keys -t "$TARGET" Enter >/dev/null 2>&1
-sleep 1.0
-status_output=$("$TMUX_BIN" -L "$LABEL" capture-pane -t "$TARGET" -p -S -800 -J 2>/dev/null || true)
-status_clean=$(printf "%s" "$status_output" | perl -pe 's/\x1B\[[0-9;?]*[[:alpha:]]//g')
-account_email=$(echo "$status_clean" | awk '/Email/ {print $0; exit}' | sed -E 's/.*Email[^A-Za-z0-9@+_.-]*//' | xargs)
-if [ -z "$account_email" ]; then
-  account_email=$(echo "$status_clean" | awk '/Organization/ {sub(/.*Organization[^A-Za-z0-9@+_.-]*/, ""); sub(/".*$/, ""); print; exit}' | xargs)
-fi
-if [ -z "$account_email" ]; then
-  account_email=$(echo "$status_clean" | awk 'BEGIN{IGNORECASE=1}/Login method/ {sub(/.*Login method[^A-Za-z0-9@+_.-]*/,""); print; exit}' | xargs)
-fi
-account_org=$(echo "$status_clean" | awk '/Organization/ {print $0; exit}' | sed -E 's/.*Organization[^A-Za-z0-9@+_.-]*//' | xargs)
-login_method=$(echo "$status_clean" | awk 'BEGIN{IGNORECASE=1}/Login method/ {sub(/.*Login method[^A-Za-z0-9 @+_.-]*/,""); print; exit}' | xargs)
-
-parse_block() {
-  local label="$1"
-  local block=$(echo "$usage_output" | awk "/$label/{flag=1;next}/^$/{flag=0}flag")
-  local pct=$(echo "$block" | grep -i "% used" | sed -E 's/.*[^0-9]([0-9]{1,3})% used.*/\1/' || echo "")
-  local reset=$(echo "$block" | grep -i "Resets" | sed 's/.*Resets *//' | xargs || echo "")
-  echo "$pct|$reset"
-}
-
-session_data=$(parse_block "Current session"); week_all_data=$(parse_block "Current week \(all models\)"); week_opus_data=$(parse_block "Current week \(Opus\)")
-
-session_pct=${session_data%%|*}; session_reset=${session_data#*|}; week_all_pct=${week_all_data%%|*}; week_all_reset=${week_all_data#*|}
-
-if [ -z "$session_pct" ] || [ -z "$week_all_pct" ]; then
-  error_json "parsing_failed" "Failed to extract usage data from TUI" "$(pane_preview)" "$(b64_tail "$STDOUT_LOG")" "$(b64_tail "$STDERR_LOG")"
-fi
-
-if [ -n "$week_opus_data" ]; then
-  opus_pct=${week_opus_data%%|*}; opus_reset=${week_opus_data#*|}; opus_json="{\"pct_used\": $opus_pct, \"resets\": \"$opus_reset\"}"
-else
-  opus_json=null
-fi
-
-echo "{\"ok\":true,\"session_5h\":{\"pct_used\":$session_pct,\"resets\":\"$session_reset\"},\"week_all_models\":{\"pct_used\":$week_all_pct,\"resets\":\"$week_all_reset\"},\"week_opus\":$opus_json,\"account_email\":\"$account_email\",\"account_org\":\"$account_org\",\"login_method\":\"$login_method\",\"pane_preview\":\"$(pane_preview)\",\"stdout_b64\":\"$(b64_tail "$STDOUT_LOG")\",\"stderr_b64\":\"$(b64_tail "$STDERR_LOG")\"}" >&3
-"""#
 }
