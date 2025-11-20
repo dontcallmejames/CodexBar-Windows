@@ -29,8 +29,8 @@ struct UsageSnapshot {
         updatedAt: Date,
         accountEmail: String? = nil,
         accountOrganization: String? = nil,
-        loginMethod: String? = nil
-    ) {
+        loginMethod: String? = nil)
+    {
         self.primary = primary
         self.secondary = secondary
         self.tertiary = tertiary
@@ -84,8 +84,8 @@ struct UsageFetcher: Sendable {
     // MARK: - Sync helper for detached task
 
     private static func loadLatestUsageSync(fileManager: FileManager, codexHome: URL) throws -> UsageSnapshot {
-        for sessionFile in try Self.sessionFilesSorted(fileManager: fileManager, codexHome: codexHome) {
-            if let snapshot = try Self.loadUsage(from: sessionFile) {
+        for sessionFile in try self.sessionFilesSorted(fileManager: fileManager, codexHome: codexHome) {
+            if let snapshot = try loadUsage(from: sessionFile) {
                 return snapshot
             }
         }
@@ -96,7 +96,8 @@ struct UsageFetcher: Sendable {
     private static func loadUsage(from url: URL) throws -> UsageSnapshot? {
         // First try the tail of the newest file to avoid loading multi-MB logs.
         if let tail = try self.tailLines(url: url, bytes: self.tailReadBytes),
-           let snapshot = self.parse(lines: tail) {
+           let snapshot = self.parse(lines: tail)
+        {
             return snapshot
         }
 
@@ -172,13 +173,13 @@ struct UsageFetcher: Sendable {
 
     private static func decodeFlexibleDate(_ any: Any?) -> Date? {
         guard let any else { return nil }
-        if let d = any as? Double { return Date(timeIntervalSince1970: normalizeEpochSeconds(d)) }
-        if let i = any as? Int { return Date(timeIntervalSince1970: normalizeEpochSeconds(Double(i))) }
-        if let n = any as? NSNumber { return Date(timeIntervalSince1970: normalizeEpochSeconds(n.doubleValue)) }
+        if let d = any as? Double { return Date(timeIntervalSince1970: self.normalizeEpochSeconds(d)) }
+        if let i = any as? Int { return Date(timeIntervalSince1970: self.normalizeEpochSeconds(Double(i))) }
+        if let n = any as? NSNumber { return Date(timeIntervalSince1970: self.normalizeEpochSeconds(n.doubleValue)) }
         if let s = any as? String {
             // Support numeric epochs that may be seconds/millis/micros.
             if CharacterSet.decimalDigits.isSuperset(of: CharacterSet(charactersIn: s)), let val = Double(s) {
-                return Date(timeIntervalSince1970: normalizeEpochSeconds(val))
+                return Date(timeIntervalSince1970: self.normalizeEpochSeconds(val))
             }
             // Fallback to ISO8601 with/without fractional seconds.
             let iso1 = ISO8601DateFormatter(); iso1.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
@@ -191,7 +192,7 @@ struct UsageFetcher: Sendable {
 
     private static func normalizeEpochSeconds(_ value: Double) -> Double {
         if value > 1e14 { return value / 1_000_000 }
-        if value > 1e11 { return value / 1_000 }
+        if value > 1e11 { return value / 1000 }
         return value
     }
 
@@ -216,19 +217,19 @@ struct UsageFetcher: Sendable {
             guard let raw = dict[key] else { continue }
             if key.hasSuffix("_ms") {
                 if let num = raw as? NSNumber {
-                    resetsAt = Date(timeIntervalSince1970: normalizeEpochSeconds(num.doubleValue))
+                    resetsAt = Date(timeIntervalSince1970: self.normalizeEpochSeconds(num.doubleValue))
                     break
                 }
                 if let num = raw as? Double {
-                    resetsAt = Date(timeIntervalSince1970: normalizeEpochSeconds(num))
+                    resetsAt = Date(timeIntervalSince1970: self.normalizeEpochSeconds(num))
                     break
                 }
                 if let num = raw as? Int {
-                    resetsAt = Date(timeIntervalSince1970: normalizeEpochSeconds(Double(num)))
+                    resetsAt = Date(timeIntervalSince1970: self.normalizeEpochSeconds(Double(num)))
                     break
                 }
                 if let s = raw as? String, let num = Double(s) {
-                    resetsAt = Date(timeIntervalSince1970: normalizeEpochSeconds(num))
+                    resetsAt = Date(timeIntervalSince1970: self.normalizeEpochSeconds(num))
                     break
                 }
             } else if let date = decodeFlexibleDate(raw) {
@@ -247,7 +248,7 @@ struct UsageFetcher: Sendable {
             resetDescription: nil)
     }
 
-    private static func parse<S: Sequence>(lines: S) -> UsageSnapshot? where S.Element == String {
+    private static func parse(lines: some Sequence<String>) -> UsageSnapshot? {
         for rawLine in lines.reversed() {
             guard let data = rawLine.data(using: .utf8) else { continue }
             guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { continue }
@@ -255,16 +256,17 @@ struct UsageFetcher: Sendable {
             // Prefer nested payload for consistency, but fall back to top-level.
             let payload = (json["payload"] as? [String: Any]) ?? json
             // Timestamps show up in multiple places depending on emitter; pick the first valid one.
-            let createdAt = decodeFlexibleDate(json["timestamp"]) ??
-                decodeFlexibleDate(payload["timestamp"]) ??
-                decodeFlexibleDate(payload["created_at"]) ??
+            let createdAt = self.decodeFlexibleDate(json["timestamp"]) ??
+                self.decodeFlexibleDate(payload["timestamp"]) ??
+                self.decodeFlexibleDate(payload["created_at"]) ??
                 Date()
 
             // Accept modern token_count and account/rateLimits update shapes.
             let type = (payload["type"] as? String)?.lowercased()
             guard type == "token_count" ||
                 type?.contains("ratelimits") == true ||
-                type?.contains("rate_limits") == true else {
+                type?.contains("rate_limits") == true
+            else {
                 continue
             }
 
@@ -273,9 +275,9 @@ struct UsageFetcher: Sendable {
                 json["rate_limits"] as? [String: Any]
             guard let rate else { continue }
 
-            let capturedAt = decodeFlexibleDate(rate["captured_at"]) ?? createdAt
-            let primary = decodeWindow(rate["primary"], created: createdAt, capturedAt: capturedAt)
-            let secondary = decodeWindow(rate["secondary"], created: createdAt, capturedAt: capturedAt)
+            let capturedAt = self.decodeFlexibleDate(rate["captured_at"]) ?? createdAt
+            let primary = self.decodeWindow(rate["primary"], created: createdAt, capturedAt: capturedAt)
+            let secondary = self.decodeWindow(rate["secondary"], created: createdAt, capturedAt: capturedAt)
 
             return UsageSnapshot(
                 primary: primary,
@@ -289,13 +291,13 @@ struct UsageFetcher: Sendable {
         let handle = try FileHandle(forReadingFrom: url)
         defer { try? handle.close() }
 
-        let fileSize = (try handle.seekToEnd()) as UInt64
+        let fileSize = try (handle.seekToEnd()) as UInt64
         guard fileSize > 0 else { return [] }
 
         let start = fileSize > bytes ? fileSize - UInt64(bytes) : 0
         try handle.seek(toOffset: start)
         let data = try handle.readToEnd() ?? Data()
-        var string = String(decoding: data, as: UTF8.self)
+        guard var string = String(data: data, encoding: .utf8) else { return nil }
         if start > 0 {
             // Drop the potentially partial first line when starting mid-file.
             if let newlineRange = string.range(of: "\n") {

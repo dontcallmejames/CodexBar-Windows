@@ -25,7 +25,7 @@ enum ClaudeUsageError: LocalizedError {
         switch self {
         case .claudeNotInstalled:
             "Claude CLI is not installed. Install it from https://docs.claude.ai/claude-code."
-        case .parseFailed(let details):
+        case let .parseFailed(details):
             "Could not parse Claude usage: \(details)"
         }
     }
@@ -105,7 +105,9 @@ struct ClaudeUsageFetcher: ClaudeUsageFetching, Sendable {
         guard let text, !text.isEmpty else { return nil }
         let parts = text.split(separator: "(")
         let timePart = parts.first?.trimmingCharacters(in: .whitespaces)
-        let tzPart = parts.count > 1 ? parts[1].replacingOccurrences(of: ")", with: "").trimmingCharacters(in: .whitespaces) : nil
+        let tzPart = parts.count > 1
+            ? parts[1].replacingOccurrences(of: ")", with: "").trimmingCharacters(in: .whitespaces)
+            : nil
         let tz = tzPart.flatMap(TimeZone.init(identifier:))
         let formats = ["ha", "h:mma", "MMM d 'at' ha", "MMM d 'at' h:mma"]
         for format in formats {
@@ -129,7 +131,14 @@ struct ClaudeUsageFetcher: ClaudeUsageFetching, Sendable {
     func debugRawProbe(model: String = "sonnet") async -> String {
         do {
             let snap = try await self.loadViaPTY(model: model, timeout: 10)
-            return "session_left=\(snap.primary.remainingPercent) weekly_left=\(snap.secondary.remainingPercent) opus_left=\(snap.opus?.remainingPercent ?? -1) email=\(snap.accountEmail ?? "nil") org=\(snap.accountOrganization ?? "nil")\n\(snap)"
+            let opus = snap.opus?.remainingPercent ?? -1
+            let email = snap.accountEmail ?? "nil"
+            let org = snap.accountOrganization ?? "nil"
+            return """
+            session_left=\(snap.primary.remainingPercent) weekly_left=\(snap.secondary.remainingPercent)
+            opus_left=\(opus) email \(email) org \(org)
+            \(snap)
+            """
         } catch {
             return "Probe failed: \(error)"
         }
@@ -186,8 +195,10 @@ struct ClaudeUsageFetcher: ClaudeUsageFetching, Sendable {
         process.waitUntilExit()
         guard process.terminationStatus == 0 else { return nil }
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        let path = String(decoding: data, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
-        return path.isEmpty ? nil : path
+        guard let path = String(data: data, encoding: .utf8)?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+            !path.isEmpty else { return nil }
+        return path
     }
 
     private static func readString(cmd: String, args: [String]) -> String? {
@@ -200,6 +211,6 @@ struct ClaudeUsageFetcher: ClaudeUsageFetching, Sendable {
         task.waitUntilExit()
         guard task.terminationStatus == 0 else { return nil }
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        return String(decoding: data, as: UTF8.self)
+        return String(data: data, encoding: .utf8)
     }
 }
