@@ -390,15 +390,11 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         let preferred = self.lastMenuProvider
             ?? (self.store.isEnabled(.codex) ? .codex : self.store.enabledProviders().first)
 
-        let urlString: String
-        switch preferred {
-        case .claude?:
-            urlString = "https://console.anthropic.com/settings/billing"
-        default:
-            urlString = "https://chatgpt.com/codex/settings/usage"
-        }
-
-        guard let url = URL(string: urlString) else { return }
+        let provider = preferred ?? .codex
+        guard
+            let urlString = self.store.metadata(for: provider).dashboardURL,
+            let url = URL(string: urlString)
+        else { return }
         NSWorkspace.shared.open(url)
     }
 
