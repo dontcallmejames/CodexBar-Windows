@@ -4,7 +4,13 @@ enum IconRenderer {
     private static let creditsCap: Double = 1000
     private static let size = NSSize(width: 20, height: 18)
 
-    static func makeIcon(primaryRemaining: Double?, weeklyRemaining: Double?, creditsRemaining: Double?, stale: Bool, style: IconStyle) -> NSImage {
+    static func makeIcon(
+        primaryRemaining: Double?,
+        weeklyRemaining: Double?,
+        creditsRemaining: Double?,
+        stale: Bool,
+        style: IconStyle) -> NSImage
+    {
         let image = NSImage(size: Self.size)
         image.lockFocus()
 
@@ -14,13 +20,14 @@ enum IconRenderer {
         let fillColor = baseFill.withAlphaComponent(stale ? 0.55 : 1.0)
 
         func drawBar(y: CGFloat, remaining: Double?, height: CGFloat, alpha: CGFloat = 1.0, addNotches: Bool = false) {
-            let width: CGFloat = 14
+            // Slightly narrower bars to give more breathing room on the sides.
+            let width: CGFloat = 12
             let x: CGFloat = (size.width - width) / 2
             let radius = height / 2
             let trackRect = CGRect(x: x, y: y, width: width, height: height)
             let trackPath = NSBezierPath(roundedRect: trackRect, xRadius: radius, yRadius: radius)
             trackColor.setStroke()
-            trackPath.lineWidth = 1
+            trackPath.lineWidth = 1.2
             trackPath.stroke()
 
             guard let rawRemaining = remaining ?? (addNotches ? 100 : nil) else { return }
@@ -40,22 +47,48 @@ enum IconRenderer {
                 let eyeY = y + height * 0.50
                 let eyeOffset: CGFloat = 3.2
                 let center = x + width / 2
-                ctx?.addEllipse(in: CGRect(x: center - eyeOffset - eyeSize / 2, y: eyeY - eyeSize / 2, width: eyeSize, height: eyeSize))
-                ctx?.addEllipse(in: CGRect(x: center + eyeOffset - eyeSize / 2, y: eyeY - eyeSize / 2, width: eyeSize, height: eyeSize))
+                ctx?.addEllipse(in: CGRect(
+                    x: center - eyeOffset - eyeSize / 2,
+                    y: eyeY - eyeSize / 2,
+                    width: eyeSize,
+                    height: eyeSize))
+                ctx?.addEllipse(in: CGRect(
+                    x: center + eyeOffset - eyeSize / 2,
+                    y: eyeY - eyeSize / 2,
+                    width: eyeSize,
+                    height: eyeSize))
                 ctx?.fillPath()
 
                 // Ears: outward bumps on both ends (clear to carve) then refill to accent edges.
                 let earWidth: CGFloat = 2.6
                 let earHeight: CGFloat = height * 0.9
                 ctx?.addRect(CGRect(x: x - 0.6, y: y + (height - earHeight) / 2, width: earWidth, height: earHeight))
-                ctx?.addRect(CGRect(x: x + width - earWidth + 0.6, y: y + (height - earHeight) / 2, width: earWidth, height: earHeight))
+                ctx?.addRect(CGRect(
+                    x: x + width - earWidth + 0.6,
+                    y: y + (height - earHeight) / 2,
+                    width: earWidth,
+                    height: earHeight))
                 ctx?.fillPath()
                 ctx?.restoreGState()
 
                 // Refill outward “ears” so they protrude slightly beyond the bar using the fill color.
                 fillColor.withAlphaComponent(alpha).setFill()
-                NSBezierPath(roundedRect: CGRect(x: x - 0.8, y: y + (height - earHeight) / 2, width: earWidth * 0.8, height: earHeight), xRadius: 0.9, yRadius: 0.9).fill()
-                NSBezierPath(roundedRect: CGRect(x: x + width - earWidth * 0.8 + 0.8, y: y + (height - earHeight) / 2, width: earWidth * 0.8, height: earHeight), xRadius: 0.9, yRadius: 0.9).fill()
+                NSBezierPath(
+                    roundedRect: CGRect(
+                        x: x - 0.8,
+                        y: y + (height - earHeight) / 2,
+                        width: earWidth * 0.8,
+                        height: earHeight),
+                    xRadius: 0.9,
+                    yRadius: 0.9).fill()
+                NSBezierPath(
+                    roundedRect: CGRect(
+                        x: x + width - earWidth * 0.8 + 0.8,
+                        y: y + (height - earHeight) / 2,
+                        width: earWidth * 0.8,
+                        height: earHeight),
+                    xRadius: 0.9,
+                    yRadius: 0.9).fill()
 
                 // Tiny legs under the bar.
                 let legWidth: CGFloat = 1.4
@@ -87,7 +120,12 @@ enum IconRenderer {
         } else {
             // Weekly exhausted/missing: show credits on top (thicker), weekly (likely 0) on bottom.
             if let ratio = creditsRatio {
-                drawBar(y: 9.0, remaining: ratio, height: creditsHeight, alpha: creditsAlpha, addNotches: style == .claude)
+                drawBar(
+                    y: 9.0,
+                    remaining: ratio,
+                    height: creditsHeight,
+                    alpha: creditsAlpha,
+                    addNotches: style == .claude)
             } else {
                 // No credits available; fall back to 5h if present.
                 drawBar(y: 9.5, remaining: topValue, height: topHeight, addNotches: style == .claude)
@@ -105,7 +143,7 @@ enum IconRenderer {
         let clamped = max(0, min(progress, 1))
         let image = NSImage(size: Self.size)
         image.lockFocus()
-        drawUnbraidMorph(t: clamped, style: style)
+        self.drawUnbraidMorph(t: clamped, style: style)
         image.unlockFocus()
         image.isTemplate = true
         return image
@@ -162,7 +200,7 @@ enum IconRenderer {
                 endLength: 8,
                 startThickness: 3.4,
                 endThickness: 1.8,
-                fadeOut: true)
+                fadeOut: true),
         ]
 
         for seg in segments {
@@ -173,13 +211,18 @@ enum IconRenderer {
             let thickness = seg.startThickness.lerp(to: seg.endThickness, p: p)
             let alpha = seg.fadeOut ? (1 - p) : 1
 
-            drawRoundedRibbon(center: c, length: length, thickness: thickness, angle: angle, color: baseColor.withAlphaComponent(alpha))
+            self.drawRoundedRibbon(
+                center: c,
+                length: length,
+                thickness: thickness,
+                angle: angle,
+                color: baseColor.withAlphaComponent(alpha))
         }
 
         // Cross-fade in bar fill emphasis near the end of the morph.
         if t > 0.55 {
             let barT = (t - 0.55) / 0.45
-            let bars = makeIcon(
+            let bars = self.makeIcon(
                 primaryRemaining: 100,
                 weeklyRemaining: 100,
                 creditsRemaining: nil,
@@ -189,7 +232,13 @@ enum IconRenderer {
         }
     }
 
-    private static func drawRoundedRibbon(center: CGPoint, length: CGFloat, thickness: CGFloat, angle: CGFloat, color: NSColor) {
+    private static func drawRoundedRibbon(
+        center: CGPoint,
+        length: CGFloat,
+        thickness: CGFloat,
+        angle: CGFloat,
+        color: NSColor)
+    {
         var transform = AffineTransform.identity
         transform.translate(x: center.x, y: center.y)
         transform.rotate(byDegrees: angle)
@@ -208,18 +257,18 @@ enum IconRenderer {
     }
 }
 
-private extension CGPoint {
-    func lerp(to other: CGPoint, p: CGFloat) -> CGPoint {
+extension CGPoint {
+    fileprivate func lerp(to other: CGPoint, p: CGFloat) -> CGPoint {
         CGPoint(x: self.x + (other.x - self.x) * p, y: self.y + (other.y - self.y) * p)
     }
 
-    func offset(dx: CGFloat, dy: CGFloat) -> CGPoint {
+    fileprivate func offset(dx: CGFloat, dy: CGFloat) -> CGPoint {
         CGPoint(x: self.x + dx, y: self.y + dy)
     }
 }
 
-private extension CGFloat {
-    func lerp(to other: CGFloat, p: CGFloat) -> CGFloat {
+extension CGFloat {
+    fileprivate func lerp(to other: CGFloat, p: CGFloat) -> CGFloat {
         self + (other - self) * p
     }
 }
