@@ -137,29 +137,26 @@ final class UsageStore: ObservableObject {
     }
 
     var preferredSnapshot: UsageSnapshot? {
-        if self.settings.showCodexUsage, let codexSnapshot {
+        if self.isEnabled(.codex), let codexSnapshot {
             return codexSnapshot
         }
-        if self.settings.showClaudeUsage, let claudeSnapshot {
+        if self.isEnabled(.claude), let claudeSnapshot {
             return claudeSnapshot
         }
         return nil
     }
 
     var iconStyle: IconStyle {
-        self.settings.showClaudeUsage ? .claude : .codex
+        self.isEnabled(.claude) ? .claude : .codex
     }
 
     var isStale: Bool {
-        (self.settings.showCodexUsage && self.lastCodexError != nil) ||
-            (self.settings.showClaudeUsage && self.lastClaudeError != nil)
+        (self.isEnabled(.codex) && self.lastCodexError != nil) ||
+            (self.isEnabled(.claude) && self.lastClaudeError != nil)
     }
 
     func enabledProviders() -> [UsageProvider] {
-        var result: [UsageProvider] = []
-        if self.settings.showCodexUsage { result.append(.codex) }
-        if self.settings.showClaudeUsage { result.append(.claude) }
-        return result
+        UsageProvider.allCases.filter { self.isEnabled($0) }
     }
 
     func snapshot(for provider: UsageProvider) -> UsageSnapshot? {
@@ -172,6 +169,13 @@ final class UsageStore: ObservableObject {
 
     func isStale(provider: UsageProvider) -> Bool {
         self.errors[provider] != nil
+    }
+
+    func isEnabled(_ provider: UsageProvider) -> Bool {
+        switch provider {
+        case .codex: self.settings.showCodexUsage
+        case .claude: self.settings.showClaudeUsage
+        }
     }
 
     func refresh() async {
