@@ -1,6 +1,5 @@
 import Combine
 import Foundation
-import WebKit
 import AppKit
 
 enum IconStyle {
@@ -31,7 +30,6 @@ final class UsageStore: ObservableObject {
 
     private let codexFetcher: UsageFetcher
     private let claudeFetcher: ClaudeUsageFetcher
-    private let creditsFetcher: CreditsFetcher
     private let settings: SettingsStore
     private var timerTask: Task<Void, Never>?
     private var cancellables = Set<AnyCancellable>()
@@ -39,12 +37,10 @@ final class UsageStore: ObservableObject {
     init(
         fetcher: UsageFetcher,
         claudeFetcher: ClaudeUsageFetcher = .init(),
-        creditsFetcher: CreditsFetcher = .init(),
         settings: SettingsStore
     ) {
         self.codexFetcher = fetcher
         self.claudeFetcher = claudeFetcher
-        self.creditsFetcher = creditsFetcher
         self.settings = settings
         self.bindSettings()
         self.detectVersions()
@@ -126,17 +122,6 @@ final class UsageStore: ObservableObject {
                 }
             }
             self.debugForceAnimation = false
-        }
-    }
-
-    func clearCookies() async {
-        let dataStore = WKWebsiteDataStore.default()
-        let types = WKWebsiteDataStore.allWebsiteDataTypes()
-        await dataStore.removeData(ofTypes: types, modifiedSince: Date.distantPast)
-        await MainActor.run {
-            self.codexSnapshot = nil
-            self.credits = nil
-            self.lastCreditsError = "Cleared cookies; sign in again to fetch credits."
         }
     }
 
@@ -228,11 +213,17 @@ final class UsageStore: ObservableObject {
     private func refreshCreditsIfNeeded() async {
         guard self.settings.showCodexUsage else { return }
         do {
-            let credits = try await self.creditsFetcher.loadLatestCredits(debugDump: self.settings.creditsDebugDump)
-            self.credits = credits
-            self.lastCreditsError = nil
+            let snap = try await CodexStatusProbe().fetch()
+            let credits = CreditsSnapshot(remaining: snap.credits ?? 0, events: [], updatedAt: Date())
+            await MainActor.run {
+                self.credits = credits
+                self.lastCreditsError = nil
+            }
         } catch {
-            self.lastCreditsError = error.localizedDescription
+            await MainActor.run {
+                self.lastCreditsError = error.localizedDescription
+                self.credits = nil
+            }
         }
     }
 
