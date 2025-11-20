@@ -19,7 +19,14 @@ enum IconRenderer {
         let trackColor = NSColor.labelColor.withAlphaComponent(stale ? 0.28 : 0.5)
         let fillColor = baseFill.withAlphaComponent(stale ? 0.55 : 1.0)
 
-        func drawBar(y: CGFloat, remaining: Double?, height: CGFloat, alpha: CGFloat = 1.0, addNotches: Bool = false) {
+        func drawBar(
+            y: CGFloat,
+            remaining: Double?,
+            height: CGFloat,
+            alpha: CGFloat = 1.0,
+            addNotches: Bool = false,
+            addFace: Bool = false)
+        {
             // Slightly narrower bars to give more breathing room on the sides.
             let width: CGFloat = 12
             let x: CGFloat = (size.width - width) / 2
@@ -37,6 +44,52 @@ enum IconRenderer {
             let fillPath = NSBezierPath(roundedRect: fillRect, xRadius: radius, yRadius: radius)
             fillColor.withAlphaComponent(alpha).setFill()
             fillPath.fill()
+
+            // Codex face: eye cutouts plus faint eyelids to give the prompt some personality.
+            if addFace {
+                let ctx = NSGraphicsContext.current?.cgContext
+                let eyeSize = height * 0.58
+                let eyeY = y + height * 0.55
+                let eyeOffset: CGFloat = width * 0.22
+                let center = x + width / 2
+
+                ctx?.saveGState()
+                ctx?.setBlendMode(.clear)
+                ctx?.addEllipse(in: CGRect(
+                    x: center - eyeOffset - eyeSize / 2,
+                    y: eyeY - eyeSize / 2,
+                    width: eyeSize,
+                    height: eyeSize))
+                ctx?.addEllipse(in: CGRect(
+                    x: center + eyeOffset - eyeSize / 2,
+                    y: eyeY - eyeSize / 2,
+                    width: eyeSize,
+                    height: eyeSize))
+                ctx?.fillPath()
+                ctx?.restoreGState()
+
+                // Eyelids sit slightly above the eyes; barely-there stroke to keep the icon template-friendly.
+                let lidWidth = eyeSize * 1.2
+                let lidHeight = eyeSize * 0.35
+                let lidYOffset = eyeSize * 0.05
+                let lidThickness: CGFloat = 0.8
+                let lidColor = fillColor.withAlphaComponent(alpha * 0.9)
+
+                func drawLid(at cx: CGFloat) {
+                    let lidRect = CGRect(
+                        x: cx - lidWidth / 2,
+                        y: eyeY + lidYOffset,
+                        width: lidWidth,
+                        height: lidHeight)
+                    let lidPath = NSBezierPath(ovalIn: lidRect)
+                    lidPath.lineWidth = lidThickness
+                    lidColor.setStroke()
+                    lidPath.stroke()
+                }
+
+                drawLid(at: center - eyeOffset)
+                drawLid(at: center + eyeOffset)
+            }
 
             // Claude twist: tiny eye cutouts + side “ears” and small legs to feel more characterful.
             if addNotches {
@@ -108,14 +161,19 @@ enum IconRenderer {
 
         let weeklyAvailable = (weeklyRemaining ?? 0) > 0
         let claudeExtraHeight: CGFloat = style == .claude ? 0.6 : 0
-        let creditsHeight: CGFloat = 6.5 + claudeExtraHeight
-        let topHeight: CGFloat = 3.2 + claudeExtraHeight
-        let bottomHeight: CGFloat = 2.0
+        let creditsHeight: CGFloat = 7.0 + claudeExtraHeight
+        let topHeight: CGFloat = 3.8 + claudeExtraHeight
+        let bottomHeight: CGFloat = 2.6
         let creditsAlpha: CGFloat = 1.0
 
         if weeklyAvailable {
             // Normal: top=5h, bottom=weekly, no credits.
-            drawBar(y: 9.5, remaining: topValue, height: topHeight, addNotches: style == .claude)
+            drawBar(
+                y: 9.5,
+                remaining: topValue,
+                height: topHeight,
+                addNotches: style == .claude,
+                addFace: style == .codex)
             drawBar(y: 4.0, remaining: bottomValue, height: bottomHeight)
         } else {
             // Weekly exhausted/missing: show credits on top (thicker), weekly (likely 0) on bottom.
@@ -125,10 +183,16 @@ enum IconRenderer {
                     remaining: ratio,
                     height: creditsHeight,
                     alpha: creditsAlpha,
-                    addNotches: style == .claude)
+                    addNotches: style == .claude,
+                    addFace: style == .codex)
             } else {
                 // No credits available; fall back to 5h if present.
-                drawBar(y: 9.5, remaining: topValue, height: topHeight, addNotches: style == .claude)
+                drawBar(
+                    y: 9.5,
+                    remaining: topValue,
+                    height: topHeight,
+                    addNotches: style == .claude,
+                    addFace: style == .codex)
             }
             drawBar(y: 2.5, remaining: bottomValue, height: bottomHeight)
         }
