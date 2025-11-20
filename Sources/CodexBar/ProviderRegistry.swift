@@ -59,7 +59,8 @@ struct ProviderRegistry {
             creditsHint: "Credits: run Codex in Terminal",
             toggleTitle: "Show Codex usage",
             cliName: "codex",
-            defaultEnabled: true),
+            defaultEnabled: true,
+            dashboardURL: "https://chatgpt.com/codex/settings/usage"),
         .claude: ProviderMetadata(
             id: .claude,
             displayName: "Claude",
@@ -71,6 +72,7 @@ struct ProviderRegistry {
             creditsHint: "",
             toggleTitle: "Show Claude Code usage",
             cliName: "claude",
-            defaultEnabled: false),
+            defaultEnabled: false,
+            dashboardURL: "https://console.anthropic.com/settings/billing"),
     ]
 }

@@ -25,6 +25,7 @@ struct ProviderMetadata {
     let toggleTitle: String
     let cliName: String
     let defaultEnabled: Bool
+    let dashboardURL: String?
 }
 
 /// Tracks consecutive failures so we can ignore a single flake when we previously had fresh data.
