@@ -97,20 +97,30 @@ struct MenuDescriptor {
             return Section(entries: entries)
         }
 
-        /// Builds the account section. Prefer Claude-derived account info when available to avoid
-        /// showing stale Codex details while the Claude provider is active.
-        func accountSection(preferred claude: UsageSnapshot?) -> Section {
+        /// Builds the account section.
+        /// - If a Claude snapshot is provided, we only trust its account fields (email/loginMethod).
+        ///   This prevents leaking Codex plan/email when the user is looking at Claude.
+        /// - If no Claude snapshot is available, fall back to Codex auth info.
+        func accountSection(preferred claude: UsageSnapshot?, preferClaude: Bool) -> Section {
             var entries: [Entry] = []
             let emailFromClaude = claude?.accountEmail
             let planFromClaude = claude?.loginMethod
 
-            // Claude takes precedence; fall back to Codex account if Claude did not expose email.
-            let emailText = (emailFromClaude?.isEmpty == false ? emailFromClaude
-                             : account.email?.isEmpty == false ? account.email
-                             : "Unknown") ?? "Unknown"
+            // Email: Claude wins when requested; otherwise Codex auth.
+            let emailText: String = {
+                if preferClaude, let e = emailFromClaude, !e.isEmpty { return e }
+                if let codexEmail = account.email, !codexEmail.isEmpty { return codexEmail }
+                if let e = emailFromClaude, !e.isEmpty { return e }
+                return "Unknown"
+            }()
             entries.append(.text("Account: \(emailText)", .secondary))
 
-            if let plan = (planFromClaude?.isEmpty == false ? planFromClaude : account.plan) {
+            // Plan: show only Claude plan when in Claude mode; otherwise Codex plan.
+            if preferClaude {
+                if let plan = planFromClaude, !plan.isEmpty {
+                    entries.append(.text("Plan: \(plan)", .secondary))
+                }
+            } else if let plan = account.plan, !plan.isEmpty {
                 entries.append(.text("Plan: \(plan)", .secondary))
             }
             return Section(entries: entries)
@@ -134,11 +144,11 @@ struct MenuDescriptor {
         switch provider {
         case .codex?:
             sections.append(codexSection())
-            sections.append(accountSection(preferred: nil))
+            sections.append(accountSection(preferred: nil, preferClaude: false))
         case .claude?:
             let claudeSnap = store.snapshot(for: .claude)
             sections.append(claudeSection())
-            sections.append(accountSection(preferred: claudeSnap))
+            sections.append(accountSection(preferred: claudeSnap, preferClaude: true))
         case nil:
             var hasUsageSection = false
             if settings.showCodexUsage {
@@ -151,7 +161,7 @@ struct MenuDescriptor {
             }
             if hasUsageSection {
                 let claudeSnap = settings.showClaudeUsage ? store.snapshot(for: .claude) : nil
-                sections.append(accountSection(preferred: claudeSnap))
+                sections.append(accountSection(preferred: claudeSnap, preferClaude: settings.showClaudeUsage))
             } else {
                 sections.append(Section(entries: [.text("No usage configured.", .secondary)]))
             }
