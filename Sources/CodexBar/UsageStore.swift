@@ -13,6 +13,19 @@ enum UsageProvider: CaseIterable {
     case claude
 }
 
+struct ProviderMetadata {
+    let id: UsageProvider
+    let displayName: String
+    let sessionLabel: String
+    let weeklyLabel: String
+    let opusLabel: String?
+    let supportsOpus: Bool
+    let supportsCredits: Bool
+    let creditsHint: String
+    let toggleTitle: String
+    let cliName: String
+}
+
 /// Tracks consecutive failures so we can ignore a single flake when we previously had fresh data.
 struct ConsecutiveFailureGate {
     private(set) var streak: Int = 0
@@ -58,6 +71,30 @@ final class UsageStore: ObservableObject {
     private let settings: SettingsStore
     private var failureGates: [UsageProvider: ConsecutiveFailureGate] = [:]
     private var providerSpecs: [UsageProvider: ProviderSpec] = [:]
+    private let providerMetadata: [UsageProvider: ProviderMetadata] = [
+        .codex: ProviderMetadata(
+            id: .codex,
+            displayName: "Codex",
+            sessionLabel: "5h limit",
+            weeklyLabel: "Weekly limit",
+            opusLabel: nil,
+            supportsOpus: false,
+            supportsCredits: true,
+            creditsHint: "Credits: run Codex in Terminal",
+            toggleTitle: "Show Codex usage",
+            cliName: "codex"),
+        .claude: ProviderMetadata(
+            id: .claude,
+            displayName: "Claude",
+            sessionLabel: "Session",
+            weeklyLabel: "Weekly",
+            opusLabel: "Opus",
+            supportsOpus: true,
+            supportsCredits: false,
+            creditsHint: "",
+            toggleTitle: "Show Claude Code usage",
+            cliName: "claude"),
+    ]
     private var timerTask: Task<Void, Never>?
     private var cancellables = Set<AnyCancellable>()
 
@@ -91,6 +128,13 @@ final class UsageStore: ObservableObject {
     var lastCodexError: String? { self.errors[.codex] }
     var lastClaudeError: String? { self.errors[.claude] }
     func error(for provider: UsageProvider) -> String? { self.errors[provider] }
+    func metadata(for provider: UsageProvider) -> ProviderMetadata { self.providerMetadata[provider]! }
+    func version(for provider: UsageProvider) -> String? {
+        switch provider {
+        case .codex: self.codexVersion
+        case .claude: self.claudeVersion
+        }
+    }
 
     var preferredSnapshot: UsageSnapshot? {
         if self.settings.showCodexUsage, let codexSnapshot {

@@ -38,25 +38,26 @@ struct MenuDescriptor {
         var sections: [Section] = []
 
         func usageSection(for provider: UsageProvider, titlePrefix: String) -> Section {
+            let meta = store.metadata(for: provider)
             var entries: [Entry] = []
-            let headline = { (text: String) in Entry.text("\(titlePrefix) · \(text)", .headline) }
+            let headline = { (text: String) in Entry.text("\(meta.displayName) · \(text)", .headline) }
 
-            entries.append(headline(provider == .codex ? "5h limit" : "Session"))
+            entries.append(headline(meta.sessionLabel))
             if let snap = store.snapshot(for: provider) {
                 entries.append(.text(
                     UsageFormatter.usageLine(remaining: snap.primary.remainingPercent, used: snap.primary.usedPercent),
                     .primary))
                 if let reset = snap.primary.resetDescription { entries.append(.text("Resets \(reset)", .secondary)) }
 
-                entries.append(headline(provider == .codex ? "Weekly limit" : "Weekly"))
+                entries.append(headline(meta.weeklyLabel))
                 entries.append(.text(
                     UsageFormatter
                         .usageLine(remaining: snap.secondary.remainingPercent, used: snap.secondary.usedPercent),
                     .primary))
                 if let reset = snap.secondary.resetDescription { entries.append(.text("Resets \(reset)", .secondary)) }
 
-                if let opus = snap.tertiary {
-                    entries.append(headline("Opus"))
+                if meta.supportsOpus, let opus = snap.tertiary {
+                    entries.append(headline(meta.opusLabel ?? "Opus"))
                     entries.append(.text(
                         UsageFormatter.usageLine(remaining: opus.remainingPercent, used: opus.usedPercent),
                         .primary))
@@ -78,14 +79,14 @@ struct MenuDescriptor {
                 }
             }
 
-            if provider == .codex {
+            if meta.supportsCredits, provider == .codex {
                 if let credits = store.credits {
                     entries.append(.text("Credits: \(UsageFormatter.creditsString(from: credits.remaining))", .primary))
                     if let latest = credits.events.first {
                         entries.append(.text("Last spend: \(UsageFormatter.creditEventSummary(latest))", .secondary))
                     }
                 } else {
-                    entries.append(.text("Credits: run Codex in Terminal", .secondary))
+                    entries.append(.text(meta.creditsHint, .secondary))
                 }
             }
             return Section(entries: entries)
