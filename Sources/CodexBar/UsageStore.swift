@@ -35,11 +35,9 @@ struct ConsecutiveFailureGate {
 
 @MainActor
 final class UsageStore: ObservableObject {
-    @Published var codexSnapshot: UsageSnapshot?
-    @Published var claudeSnapshot: UsageSnapshot?
+    @Published private var snapshots: [UsageProvider: UsageSnapshot] = [:]
+    @Published private var errors: [UsageProvider: String] = [:]
     @Published var credits: CreditsSnapshot?
-    @Published var lastCodexError: String?
-    @Published var lastClaudeError: String?
     @Published var lastCreditsError: String?
     @Published var codexVersion: String?
     @Published var claudeVersion: String?
@@ -48,10 +46,18 @@ final class UsageStore: ObservableObject {
     @Published var isRefreshing = false
     @Published var debugForceAnimation = false
 
+    private struct ProviderSpec {
+        let style: IconStyle
+        let isEnabled: () -> Bool
+        let fetch: () async throws -> UsageSnapshot
+        let onSuccess: ((UsageSnapshot) -> Void)?
+    }
+
     private let codexFetcher: UsageFetcher
     private let claudeFetcher: any ClaudeUsageFetching
     private let settings: SettingsStore
-    private var claudeFailureGate = ConsecutiveFailureGate()
+    private var failureGates: [UsageProvider: ConsecutiveFailureGate] = [:]
+    private var providerSpecs: [UsageProvider: ProviderSpec] = [:]
     private var timerTask: Task<Void, Never>?
     private var cancellables = Set<AnyCancellable>()
 
@@ -63,11 +69,27 @@ final class UsageStore: ObservableObject {
         self.codexFetcher = fetcher
         self.claudeFetcher = claudeFetcher
         self.settings = settings
+        self
+            .failureGates = Dictionary(uniqueKeysWithValues: UsageProvider.allCases
+                .map { ($0, ConsecutiveFailureGate()) })
+        self.providerSpecs = Self.makeProviderSpecs(
+            settings: settings,
+            codexFetcher: fetcher,
+            claudeFetcher: claudeFetcher,
+            onClaudeSuccess: { [weak self] snap in
+                self?.claudeAccountEmail = snap.accountEmail
+                self?.claudeAccountOrganization = snap.accountOrganization
+            })
         self.bindSettings()
         self.detectVersions()
         Task { await self.refresh() }
         self.startTimer()
     }
+
+    var codexSnapshot: UsageSnapshot? { self.snapshots[.codex] }
+    var claudeSnapshot: UsageSnapshot? { self.snapshots[.claude] }
+    var lastCodexError: String? { self.errors[.codex] }
+    var lastClaudeError: String? { self.errors[.claude] }
 
     var preferredSnapshot: UsageSnapshot? {
         if self.settings.showCodexUsage, let codexSnapshot {
@@ -96,24 +118,15 @@ final class UsageStore: ObservableObject {
     }
 
     func snapshot(for provider: UsageProvider) -> UsageSnapshot? {
-        switch provider {
-        case .codex: self.codexSnapshot
-        case .claude: self.claudeSnapshot
-        }
+        self.snapshots[provider]
     }
 
     func style(for provider: UsageProvider) -> IconStyle {
-        switch provider {
-        case .codex: .codex
-        case .claude: .claude
-        }
+        self.providerSpecs[provider]?.style ?? .codex
     }
 
     func isStale(provider: UsageProvider) -> Bool {
-        switch provider {
-        case .codex: self.lastCodexError != nil
-        case .claude: self.lastClaudeError != nil
-        }
+        self.errors[provider] != nil
     }
 
     func refresh() async {
@@ -121,25 +134,26 @@ final class UsageStore: ObservableObject {
         self.isRefreshing = true
         defer { self.isRefreshing = false }
 
-        async let codexTask: Void = self.refreshCodexIfNeeded()
-        async let claudeTask: Void = self.refreshClaudeIfNeeded()
-        async let creditsTask: Void = self.refreshCreditsIfNeeded()
-        _ = await (codexTask, claudeTask, creditsTask)
+        await withTaskGroup(of: Void.self) { group in
+            for provider in UsageProvider.allCases {
+                group.addTask { await self.refreshProvider(provider) }
+            }
+            group.addTask { await self.refreshCreditsIfNeeded() }
+        }
     }
 
     /// For demo/testing: drop the snapshot so the loading animation plays, then restore the last snapshot.
     func replayLoadingAnimation(duration: TimeInterval = 3) {
         let current = self.preferredSnapshot
-        self.codexSnapshot = nil
-        self.claudeSnapshot = nil
+        self.snapshots.removeAll()
         self.debugForceAnimation = true
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(duration))
             if let current {
                 if self.settings.showCodexUsage {
-                    self.codexSnapshot = current
+                    self.snapshots[.codex] = current
                 } else if self.settings.showClaudeUsage {
-                    self.claudeSnapshot = current
+                    self.snapshots[.claude] = current
                 }
             }
             self.debugForceAnimation = false
@@ -179,73 +193,38 @@ final class UsageStore: ObservableObject {
         self.timerTask?.cancel()
     }
 
-    private func refreshCodexIfNeeded() async {
-        guard self.settings.showCodexUsage else {
-            self.codexSnapshot = nil
-            self.lastCodexError = nil
+    private func refreshProvider(_ provider: UsageProvider) async {
+        guard let spec = self.providerSpecs[provider] else { return }
+
+        if !spec.isEnabled() {
+            await MainActor.run {
+                self.snapshots.removeValue(forKey: provider)
+                self.errors[provider] = nil
+                self.failureGates[provider]?.reset()
+            }
             return
         }
 
         do {
-            let usage = try await self.codexFetcher.loadLatestUsage()
+            let snapshot = try await spec.fetch()
             await MainActor.run {
-                self.codexSnapshot = usage
-                self.lastCodexError = nil
+                self.snapshots[provider] = snapshot
+                self.errors[provider] = nil
+                self.failureGates[provider]?.recordSuccess()
+                spec.onSuccess?(snapshot)
             }
         } catch {
             await MainActor.run {
-                self.lastCodexError = error.localizedDescription
-                self.codexSnapshot = nil
-            }
-        }
-    }
-
-    private func refreshClaudeIfNeeded() async {
-        guard self.settings.showClaudeUsage else {
-            self.claudeSnapshot = nil
-            self.lastClaudeError = nil
-            self.claudeFailureGate.reset()
-            return
-        }
-
-        do {
-            let usage = try await self.fetchClaudeWithRetry()
-            await MainActor.run {
-                let snapshot = UsageSnapshot(
-                    primary: usage.primary,
-                    secondary: usage.secondary,
-                    tertiary: usage.opus,
-                    updatedAt: usage.updatedAt,
-                    accountEmail: usage.accountEmail,
-                    accountOrganization: usage.accountOrganization,
-                    loginMethod: usage.loginMethod)
-                self.claudeSnapshot = snapshot
-                self.claudeAccountEmail = usage.accountEmail
-                self.claudeAccountOrganization = usage.accountOrganization
-                self.lastClaudeError = nil
-                self.claudeFailureGate.recordSuccess()
-            }
-        } catch {
-            await MainActor.run {
-                let hadPriorData = self.claudeSnapshot != nil
-                let shouldSurface = self.claudeFailureGate.shouldSurfaceError(onFailureWithPriorData: hadPriorData)
+                let hadPriorData = self.snapshots[provider] != nil
+                let shouldSurface = self.failureGates[provider]?
+                    .shouldSurfaceError(onFailureWithPriorData: hadPriorData) ?? true
                 if shouldSurface {
-                    self.lastClaudeError = error.localizedDescription
-                    self.claudeSnapshot = nil
+                    self.errors[provider] = error.localizedDescription
+                    self.snapshots.removeValue(forKey: provider)
                 } else {
-                    // Keep showing the last good snapshot and suppress the single flake.
-                    self.lastClaudeError = nil
+                    self.errors[provider] = nil
                 }
             }
-        }
-    }
-
-    private func fetchClaudeWithRetry() async throws -> ClaudeUsageSnapshot {
-        do {
-            return try await self.claudeFetcher.loadLatestUsage(model: "sonnet")
-        } catch {
-            // Retry once to ride out slow renders or dropped keystrokes.
-            return try await self.claudeFetcher.loadLatestUsage(model: "sonnet")
         }
     }
 
@@ -272,9 +251,40 @@ final class UsageStore: ObservableObject {
         try? output.write(to: url, atomically: true, encoding: String.Encoding.utf8)
         await MainActor.run {
             let snippet = String(output.prefix(180)).replacingOccurrences(of: "\n", with: " ")
-            self.lastClaudeError = "[Claude] \(snippet) (saved: \(url.path))"
+            self.errors[.claude] = "[Claude] \(snippet) (saved: \(url.path))"
             NSWorkspace.shared.open(url)
         }
+    }
+
+    private static func makeProviderSpecs(
+        settings: SettingsStore,
+        codexFetcher: UsageFetcher,
+        claudeFetcher: any ClaudeUsageFetching,
+        onClaudeSuccess: @escaping (UsageSnapshot) -> Void) -> [UsageProvider: ProviderSpec]
+    {
+        let codexSpec = ProviderSpec(
+            style: .codex,
+            isEnabled: { settings.showCodexUsage },
+            fetch: { try await codexFetcher.loadLatestUsage() },
+            onSuccess: nil)
+
+        let claudeSpec = ProviderSpec(
+            style: .claude,
+            isEnabled: { settings.showClaudeUsage },
+            fetch: {
+                let usage = try await claudeFetcher.loadLatestUsage(model: "sonnet")
+                return UsageSnapshot(
+                    primary: usage.primary,
+                    secondary: usage.secondary,
+                    tertiary: usage.opus,
+                    updatedAt: usage.updatedAt,
+                    accountEmail: usage.accountEmail,
+                    accountOrganization: usage.accountOrganization,
+                    loginMethod: usage.loginMethod)
+            },
+            onSuccess: onClaudeSuccess)
+
+        return [.codex: codexSpec, .claude: claudeSpec]
     }
 
     private func detectVersions() {
