@@ -80,7 +80,7 @@ struct TTYCommandRunner {
             // Boot loop: wait for TUI to be ready and handle first-run prompts.
             let bootDeadline = Date().addingTimeInterval(4.0)
             while Date() < bootDeadline {
-                try readChunk()
+                readChunk()
                 guard let text = String(data: buffer, encoding: .utf8) else { break }
                 let lower = text.lowercased()
 
@@ -102,29 +102,24 @@ struct TTYCommandRunner {
                 usleep(150_000)
             }
 
-            // Send `/usage` like the tmux script: open palette, type usage, then select.
-            usleep(800_000) // give CLI a bit more breathing room before sending keys
+            // Send `/usage`: open the command palette, type "usage", then press Enter.
+            // Claude sometimes drops the very first Enter when the system is busy, so we
+            // keep retrying Enter later instead of spamming other navigation keys.
+            usleep(800_000) // let the CLI finish booting before we start typing
             try send("/")
             usleep(200_000)
             try send("usage")
-            usleep(300_000)
-            let performSelection: () -> Void = {
-                try? send("\u{1b}[Z") // shift+tab -> move focus to suggestion list
-                usleep(150_000)
-                try? send("\u{1b}[B") // down -> highlight first entry
-                usleep(150_000)
-                try? send("\r")       // enter -> run /usage
-                usleep(250_000)
-                try? send("\t\t\t")   // small tab nudge toward Usage tab
-                usleep(200_000)
-            }
-            performSelection()
+            usleep(250_000)
+            try send("\r") // initial Enter to execute the command palette entry
 
-            // Read until we see both session and weekly blocks (or retry selection).
+            // Read until we see both session and weekly blocks. The CLI occasionally ignores Enter
+            // when the host is under load, so we keep re-sending Enter at a sane cadence instead of
+            // spraying tabs/escapes that can leave us in autocomplete.
             var gotSession = false
             var gotWeek = false
-            var selectionRetries = 0
-            let start = Date()
+            var enterRetries = 0
+            var lastEnter = Date()
+            var resendUsageRetries = 0
             usleep(600_000) // allow usage view to render before detection
             while Date() < deadline {
                 readChunk()
@@ -132,20 +127,31 @@ struct TTYCommandRunner {
                 if containsWeek() { gotWeek = true }
                 if gotSession && gotWeek { break }
 
-                let elapsed = Date().timeIntervalSince(start)
-                if elapsed > Double(selectionRetries + 1) * 1.2, selectionRetries < 5 {
-                    // Re-run selection: shift+tab to suggestions, down, enter, then a small tab nudge.
-                    try? send("\u{1b}[Z")
-                    usleep(120_000)
-                    try? send("\u{1b}[B")
-                    usleep(120_000)
+                // Re-press Enter roughly once per 1.5s until usage shows up or retries are exhausted.
+                if Date().timeIntervalSince(lastEnter) >= 1.5 && enterRetries < 10 {
                     try? send("\r")
-                    usleep(250_000)
-                    try? send("\t\t\t")
-                    selectionRetries += 1
-                } else {
-                    usleep(150_000)
+                    enterRetries += 1
+                    lastEnter = Date()
+                    usleep(120_000)
+                    continue
                 }
+
+                // As a stronger nudge, re-send "/usage" + Enter a few times. This mirrors a human
+                // re-typing the command when the palette ignored Enter because it was busy.
+                if Date().timeIntervalSince(lastEnter) >= 3.0,
+                   enterRetries >= 2,
+                   resendUsageRetries < 3 {
+                    try? send("/usage")
+                    usleep(100_000)
+                    try? send("\r")
+                    resendUsageRetries += 1
+                    enterRetries += 1
+                    lastEnter = Date()
+                    usleep(200_000)
+                    continue
+                }
+
+                usleep(150_000)
             }
             // After usage appears, read a bit longer to capture percent lines.
             let settleDeadline = Date().addingTimeInterval(2.0)
