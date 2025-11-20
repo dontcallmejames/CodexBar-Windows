@@ -2,6 +2,8 @@
 
 SwiftPM-only; package/sign/notarize manually (no Xcode project). Sparkle feed is served from GitHub Releases. Checklist below merges Trimmy’s release flow with CodexBar specifics.
 
+**Must read first:** open the master macOS release guide at `~/Projects/agent-scripts/docs/RELEASING-MAC.md` alongside this file and reconcile any differences in favor of CodexBar specifics before starting a release.
+
 ## Expectations
 - When someone says “release CodexBar”, do the entire end-to-end flow: bump versions/CHANGELOG, build, sign and notarize, upload the zip to the GitHub release, generate/update the appcast with the new signature, publish the tag/release, and verify the enclosure URL responds with 200/OK and installs via Sparkle (no 404s or stale feeds).
 
@@ -53,6 +55,7 @@ git tag v<version>
 ```
 
 ## Checklist (quick)
+- [ ] Read both this file and `~/Projects/agent-scripts/docs/RELEASING-MAC.md`; resolve any conflicts toward CodexBar’s specifics.
 - [ ] Update versions (scripts/Info.plist, CHANGELOG, About text)
 - [ ] `swiftformat`, `swiftlint`, `swift test` (zero warnings/errors)
 - [ ] `./Scripts/build_icon.sh` if icon changed

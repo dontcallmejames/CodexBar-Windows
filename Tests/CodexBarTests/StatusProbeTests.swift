@@ -18,6 +18,19 @@ struct StatusProbeTests {
     }
 
     @Test
+    func parseCodexStatusWithAnsiAndResets() throws {
+        let sample = """
+        \u{001B}[38;5;245mCredits:\u{001B}[0m 557 credits
+        5h limit: [█████     ] 50% left (resets 09:01)
+        Weekly limit: [███████   ] 85% left (resets 04:01 on 27 Nov)
+        """
+        let snap = try CodexStatusProbe.parse(text: sample)
+        #expect(snap.credits == 557)
+        #expect(snap.fiveHourPercentLeft == 50)
+        #expect(snap.weeklyPercentLeft == 85)
+    }
+
+    @Test
     func parseClaudeStatus() throws {
         let sample = """
         Current session
@@ -35,5 +48,24 @@ struct StatusProbeTests {
         #expect(snap.opusPercentLeft == 95)
         #expect(snap.accountEmail == "user@example.com")
         #expect(snap.accountOrganization == "Example Org")
+    }
+
+    @Test
+    func parseClaudeStatusWithANSI() throws {
+        let sample = """
+        \u{001B}[35mCurrent session\u{001B}[0m
+        40% used  (Resets 11am)
+        Current week (all models)
+        10% used  (Resets Nov 27)
+        Current week (Opus)
+        0% used (Resets Nov 27)
+        Account: user@example.com
+        Org: ACME
+        \u{001B}[0m
+        """
+        let snap = try ClaudeStatusProbe.parse(text: sample)
+        #expect(snap.sessionPercentLeft == 60)
+        #expect(snap.weeklyPercentLeft == 90)
+        #expect(snap.opusPercentLeft == 100)
     }
 }

@@ -77,7 +77,8 @@ struct IconView: View {
         .onDisappear { self.displayLink.stop() }
         .onReceive(NotificationCenter.default.publisher(for: .codexbarDebugReplayAllAnimations)) { notification in
             if let raw = notification.userInfo?["pattern"] as? String,
-               let selected = LoadingPattern(rawValue: raw) {
+               let selected = LoadingPattern(rawValue: raw)
+            {
                 self.debugCycle = false
                 self.pattern = selected
                 self.cycleIndex = self.patterns.firstIndex(of: selected) ?? 0
