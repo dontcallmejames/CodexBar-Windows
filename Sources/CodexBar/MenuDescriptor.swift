@@ -97,12 +97,21 @@ struct MenuDescriptor {
             return Section(entries: entries)
         }
 
-        func accountSection() -> Section {
+        /// Builds the account section. Prefer Claude-derived account info when available to avoid
+        /// showing stale Codex details while the Claude provider is active.
+        func accountSection(preferred claude: UsageSnapshot?) -> Section {
             var entries: [Entry] = []
-            let emailText = account.email?.isEmpty == false ? account.email! : "Unknown"
+            let emailFromClaude = claude?.accountEmail
+            let planFromClaude = claude?.loginMethod
+
+            // Claude takes precedence; fall back to Codex account if Claude did not expose email.
+            let emailText = (emailFromClaude?.isEmpty == false ? emailFromClaude
+                             : account.email?.isEmpty == false ? account.email
+                             : "Unknown") ?? "Unknown"
             entries.append(.text("Account: \(emailText)", .secondary))
-            if let plan = account.plan {
-                entries.append(.text("Plan: \(plan.capitalized)", .secondary))
+
+            if let plan = (planFromClaude?.isEmpty == false ? planFromClaude : account.plan) {
+                entries.append(.text("Plan: \(plan)", .secondary))
             }
             return Section(entries: entries)
         }
@@ -125,9 +134,11 @@ struct MenuDescriptor {
         switch provider {
         case .codex?:
             sections.append(codexSection())
+            sections.append(accountSection(preferred: nil))
         case .claude?:
+            let claudeSnap = store.snapshot(for: .claude)
             sections.append(claudeSection())
-            sections.append(accountSection())
+            sections.append(accountSection(preferred: claudeSnap))
         case nil:
             var hasUsageSection = false
             if settings.showCodexUsage {
@@ -139,7 +150,8 @@ struct MenuDescriptor {
                 hasUsageSection = true
             }
             if hasUsageSection {
-                sections.append(accountSection())
+                let claudeSnap = settings.showClaudeUsage ? store.snapshot(for: .claude) : nil
+                sections.append(accountSection(preferred: claudeSnap))
             } else {
                 sections.append(Section(entries: [.text("No usage configured.", .secondary)]))
             }
