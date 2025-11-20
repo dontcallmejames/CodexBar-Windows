@@ -1,5 +1,5 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
 enum PreferencesTab: String, Hashable {
     case general
@@ -67,7 +67,7 @@ struct PreferencesView: View {
     }
 
     private func ensureValidTabSelection() {
-        if !self.settings.debugMenuEnabled && self.selection.tab == .debug {
+        if !self.settings.debugMenuEnabled, self.selection.tab == .debug {
             self.selection.tab = .general
             self.updateHeight(for: .general, animate: true)
         }
@@ -87,7 +87,7 @@ private struct GeneralPane: View {
                 SettingsSection(contentSpacing: 8) {
                     VStack(alignment: .leading, spacing: 8) {
                         PreferenceToggleRow(
-                            title: "Show Codex usage",
+                            title: self.store.metadata(for: .codex).toggleTitle,
                             subtitle: self.providerSubtitle(.codex),
                             binding: self.codexBinding)
 
@@ -96,7 +96,7 @@ private struct GeneralPane: View {
                     .padding(.bottom, 18)
 
                     PreferenceToggleRow(
-                        title: "Show Claude Code usage",
+                        title: self.store.metadata(for: .claude).toggleTitle,
                         subtitle: self.providerSubtitle(.claude),
                         binding: self.claudeBinding)
                 }
@@ -142,7 +142,6 @@ private struct GeneralPane: View {
                     }
                     .padding(.top, 16)
                 }
-
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 20)
@@ -167,8 +166,9 @@ private struct GeneralPane: View {
     }
 
     private func providerSubtitle(_ provider: UsageProvider) -> String {
-        let cliName = provider == .codex ? "codex" : "claude"
-        let version = provider == .codex ? self.store.codexVersion : self.store.claudeVersion
+        let meta = self.store.metadata(for: provider)
+        let cliName = meta.cliName
+        let version = self.store.version(for: provider)
         var versionText = version ?? "not detected"
         if provider == .claude, let parenRange = versionText.range(of: "(") {
             versionText = versionText[..<parenRange.lowerBound].trimmingCharacters(in: .whitespaces)
@@ -297,7 +297,10 @@ private struct AboutPane: View {
             }
 
             VStack(alignment: .center, spacing: 6) {
-                AboutLinkRow(icon: "chevron.left.slash.chevron.right", title: "GitHub", url: "https://github.com/steipete/CodexBar")
+                AboutLinkRow(
+                    icon: "chevron.left.slash.chevron.right",
+                    title: "GitHub",
+                    url: "https://github.com/steipete/CodexBar")
                 AboutLinkRow(icon: "globe", title: "Website", url: "https://steipete.me")
                 AboutLinkRow(icon: "bird", title: "Twitter", url: "https://twitter.com/steipete")
                 AboutLinkRow(icon: "envelope", title: "Email", url: "mailto:peter@steipete.me")
@@ -364,7 +367,8 @@ private struct DebugPane: View {
 
                 SettingsSection(
                     title: "Loading animations",
-                    caption: "Pick a pattern and replay to preview it in the menu bar. \"Random\" keeps the existing behavior.") {
+                    caption: "Pick a pattern and replay to preview it in the menu bar. \"Random\" keeps the existing behavior.")
+                {
                     Picker("Animation pattern", selection: self.animationPatternBinding) {
                         Text("Random (default)").tag(nil as LoadingPattern?)
                         ForEach(LoadingPattern.allCases) { pattern in
@@ -376,7 +380,6 @@ private struct DebugPane: View {
                     Button("Replay selected animation") {
                         self.replaySelectedAnimation()
                     }
-
                 }
 
                 SettingsSection(title: "Actions", caption: "One-off tools to debug UI/usage issues.") {
@@ -443,7 +446,12 @@ private struct SettingsSection<Content: View>: View {
     let contentSpacing: CGFloat
     private let content: () -> Content
 
-    init(title: String? = nil, caption: String? = nil, contentSpacing: CGFloat = 14, @ViewBuilder content: @escaping () -> Content) {
+    init(
+        title: String? = nil,
+        caption: String? = nil,
+        contentSpacing: CGFloat = 14,
+        @ViewBuilder content: @escaping () -> Content)
+    {
         self.title = title
         self.caption = caption
         self.contentSpacing = contentSpacing
