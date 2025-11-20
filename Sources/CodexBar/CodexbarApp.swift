@@ -170,6 +170,8 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     private let updater: UpdaterProviding
     private var statusItems: [UsageProvider: NSStatusItem] = [:]
     private var lastMenuProvider: UsageProvider?
+    private var blinkTask: Task<Void, Never>?
+    private var blinkAmount: CGFloat = 0
     private var cancellables = Set<AnyCancellable>()
     private let preferencesSelection: PreferencesSelection
     private var animationDisplayLink: CADisplayLink?
@@ -269,6 +271,40 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         }
     }
 
+    private func startBlinkingIfNeeded() {
+        let codexVisible = self.isEnabled(.codex) || self.fallbackProvider == .codex || self.store.debugForceAnimation
+        if codexVisible {
+            if self.blinkTask == nil {
+                self.blinkTask = Task { [weak self] in
+                    while !Task.isCancelled {
+                        try? await Task.sleep(for: .milliseconds(80))
+                        await MainActor.run { [weak self] in
+                            guard let self else { return }
+                            if self.shouldAnimate(provider: .codex) { return } // skip during loading anim
+                            self.blinkAmount = self.currentBlinkAmount()
+                            self.applyIcon(for: .codex, phase: nil)
+                        }
+                    }
+                }
+            }
+        } else {
+            self.blinkTask?.cancel()
+            self.blinkTask = nil
+            self.blinkAmount = 0
+        }
+    }
+
+    private func currentBlinkAmount(date: Date = .init()) -> CGFloat {
+        let cycle: TimeInterval = 6.0
+        let window: TimeInterval = 0.16
+        let t = date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: cycle)
+        guard t < window else { return 0 }
+        let mid = window / 2
+        let dist = abs(t - mid)
+        let normalized = max(0, 1 - dist / mid)
+        return CGFloat(normalized)
+    }
+
     private func applyIcon(for provider: UsageProvider, phase: Double?) {
         guard let button = self.statusItems[provider]?.button else { return }
         let snapshot = self.store.snapshot(for: provider)
@@ -298,6 +334,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         }
 
         let style: IconStyle = self.store.style(for: provider)
+        let blink = style == .codex ? self.blinkAmount : 0
         if let morphProgress {
             button.image = IconRenderer.makeMorphIcon(progress: morphProgress, style: style)
         } else {
@@ -306,7 +343,8 @@ final class StatusItemController: NSObject, NSMenuDelegate {
                 weeklyRemaining: weekly,
                 creditsRemaining: credits,
                 stale: stale,
-                style: style)
+                style: style,
+                blink: blink)
         }
     }
 
@@ -377,6 +415,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
     }
 
     deinit {
+        self.blinkTask?.cancel()
         NotificationCenter.default.removeObserver(self)
     }
 

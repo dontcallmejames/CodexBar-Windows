@@ -9,7 +9,8 @@ enum IconRenderer {
         weeklyRemaining: Double?,
         creditsRemaining: Double?,
         stale: Bool,
-        style: IconStyle) -> NSImage
+        style: IconStyle,
+        blink: CGFloat = 0) -> NSImage
     {
         let image = NSImage(size: Self.size)
         image.lockFocus()
@@ -25,7 +26,8 @@ enum IconRenderer {
             height: CGFloat,
             alpha: CGFloat = 1.0,
             addNotches: Bool = false,
-            addFace: Bool = false)
+            addFace: Bool = false,
+            blink: CGFloat = 0)
         {
             // Slightly narrower bars to give more breathing room on the sides.
             let width: CGFloat = 12
@@ -89,6 +91,37 @@ enum IconRenderer {
 
                 drawLid(at: center - eyeOffset)
                 drawLid(at: center + eyeOffset)
+
+                // Blink: refill eyes from the top down using the bar fill color.
+                if blink > 0.001 {
+                    let clamped = max(0, min(blink, 1))
+                    let blinkHeight = eyeSize * clamped
+                    fillColor.withAlphaComponent(alpha).setFill()
+                    let blinkRectLeft = CGRect(
+                        x: center - eyeOffset - eyeSize / 2,
+                        y: eyeY + eyeSize / 2 - blinkHeight,
+                        width: eyeSize,
+                        height: blinkHeight)
+                    let blinkRectRight = CGRect(
+                        x: center + eyeOffset - eyeSize / 2,
+                        y: eyeY + eyeSize / 2 - blinkHeight,
+                        width: eyeSize,
+                        height: blinkHeight)
+                    NSBezierPath(ovalIn: blinkRectLeft).fill()
+                    NSBezierPath(ovalIn: blinkRectRight).fill()
+                }
+
+                // Hat: a tiny cap hovering above the eyes to give the face more character.
+                let hatWidth = width * 0.68
+                let hatHeight = height * 0.28
+                let hatRect = CGRect(
+                    x: center - hatWidth / 2,
+                    y: y + height - hatHeight - 0.2,
+                    width: hatWidth,
+                    height: hatHeight)
+                let hatPath = NSBezierPath(roundedRect: hatRect, xRadius: hatHeight / 2, yRadius: hatHeight / 2)
+                fillColor.withAlphaComponent(alpha).setFill()
+                hatPath.fill()
             }
 
             // Claude twist: tiny eye cutouts + side “ears” and small legs to feel more characterful.
@@ -173,7 +206,8 @@ enum IconRenderer {
                 remaining: topValue,
                 height: topHeight,
                 addNotches: style == .claude,
-                addFace: style == .codex)
+                addFace: style == .codex,
+                blink: style == .codex ? blink : 0)
             drawBar(y: 4.0, remaining: bottomValue, height: bottomHeight)
         } else {
             // Weekly exhausted/missing: show credits on top (thicker), weekly (likely 0) on bottom.
@@ -184,7 +218,8 @@ enum IconRenderer {
                     height: creditsHeight,
                     alpha: creditsAlpha,
                     addNotches: style == .claude,
-                    addFace: style == .codex)
+                    addFace: style == .codex,
+                    blink: style == .codex ? blink : 0)
             } else {
                 // No credits available; fall back to 5h if present.
                 drawBar(
@@ -192,7 +227,8 @@ enum IconRenderer {
                     remaining: topValue,
                     height: topHeight,
                     addNotches: style == .claude,
-                    addFace: style == .codex)
+                    addFace: style == .codex,
+                    blink: style == .codex ? blink : 0)
             }
             drawBar(y: 2.5, remaining: bottomValue, height: bottomHeight)
         }
