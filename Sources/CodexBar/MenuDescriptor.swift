@@ -145,18 +145,19 @@ struct MenuDescriptor {
             sections.append(usageSection(for: .claude, titlePrefix: "Claude"))
             sections.append(accountSection(preferred: snap, preferClaude: true))
         case nil:
-            let claudeSnap = store.snapshot(for: .claude)
             var addedUsage = false
-            if settings.showCodexUsage {
+            if store.isEnabled(.codex) {
                 sections.append(usageSection(for: .codex, titlePrefix: "Codex"))
                 addedUsage = true
             }
-            if settings.showClaudeUsage {
+            if store.isEnabled(.claude) {
                 sections.append(usageSection(for: .claude, titlePrefix: "Claude"))
                 addedUsage = true
             }
             if addedUsage {
-                sections.append(accountSection(preferred: claudeSnap, preferClaude: settings.showClaudeUsage))
+                sections.append(accountSection(
+                    preferred: store.snapshot(for: .claude),
+                    preferClaude: store.isEnabled(.claude)))
             } else {
                 sections.append(Section(entries: [.text("No usage configured.", .secondary)]))
             }

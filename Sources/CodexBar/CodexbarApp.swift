@@ -152,11 +152,11 @@ extension CodexBarApp {
     private var codexSnapshot: UsageSnapshot? { self.store.snapshot(for: .codex) }
     private var claudeSnapshot: UsageSnapshot? { self.store.snapshot(for: .claude) }
     private var codexShouldAnimate: Bool {
-        self.settings.showCodexUsage && self.codexSnapshot == nil && !self.store.isStale(provider: .codex)
+        self.store.isEnabled(.codex) && self.codexSnapshot == nil && !self.store.isStale(provider: .codex)
     }
 
     private var claudeShouldAnimate: Bool {
-        self.settings.showClaudeUsage && self.claudeSnapshot == nil && !self.store.isStale(provider: .claude)
+        self.store.isEnabled(.claude) && self.claudeSnapshot == nil && !self.store.isStale(provider: .claude)
     }
 }
 
