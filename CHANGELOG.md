@@ -1,13 +1,11 @@
 # Changelog
 
 ## 0.4.0 — Unreleased
-- Claude support: separate menu-bar icon with crab-notch template, Claude `/usage` probing via embedded tmux script, settings toggle with version badge, and per-provider menu panes.
-- Dual icons when both providers are enabled; clicking each icon opens its own usage menu; credits remain on Codex only.
-- Probe errors surfaced inline with actionable hints; Claude settings include quick link to `~/.claude/projects`.
-- Debug builds now use bundle ID `com.steipete.codexbar.debug` and ship with Sparkle feed disabled so dev runs don’t interfere with Accessibility/Input Monitoring trust or update flow.
-- Settings window restyled to mirror Trimmy: tighter footprint, section dividers, inline credits/auth controls, and a refreshed About tagline pulled from the README. Added Start-at-login and Debug toggles, a Quit button, and a full Debug tab that now hosts diagnostics (loading animation replay, Claude probe dump, HTML dump).
-- Claude subtitles now show clean CLI versions (no "(Claude Code)" suffix) and the fallback menu displays "No usage configured" when both providers are disabled.
-- Status bar icons regained their loading animation and the "Replay loading animation" button cycles the patterns via the menu bar icons.
+- First cloud provider: Claude gets its own menu bar icon + native AppKit menu (dual icons when Codex is also enabled), showing email/org/plan and Opus usage with clickable errors and a gated plan line until data loads.
+- Credits/usage now read directly from PTY `/status` probes (base-index aware with awk fix), surviving provider toggles, handling empty usage, and keeping loading/status animations smooth at low CPU.
+- Settings/preferences: wider, better-padded window with per-provider enable toggles, clearer sign-in/logout copy, renamed Start-at-login switch, refreshed refresh label/subtitles, an always-visible Quit button, and a gated/exposed Debug tab with consolidated diagnostics.
+- Stability: menu architecture keeps SwiftUI settings alive, credits navigation guard avoids crashes, tiny keepalive window constraints fixed, and error/empty states are clearer.
+- Release quality: About panels show build timestamp; debug builds ship with a `.debug` bundle ID and Sparkle disabled; packaging scrubs AppleDouble files before signing to keep notarization happy.
 
 ## 0.3.0 — 2025-11-18
 - Credits support: reads Codex CLI `/status` via PTY (no browser login), shows remaining credits inline, and moves history to a submenu.
