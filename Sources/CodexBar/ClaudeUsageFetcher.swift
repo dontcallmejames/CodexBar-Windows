@@ -52,6 +52,12 @@ struct ClaudeUsageFetcher: Sendable {
     }
 
     func loadLatestUsage(model: String = "sonnet") async throws -> ClaudeUsageSnapshot {
+        // Preferred path: PTY probe (no tmux)
+        if let ptySnapshot = try? await self.loadViaPTY(model: model) {
+            return ptySnapshot
+        }
+
+        // Fallback: tmux-based probe
         guard let claudePath = Self.which("claude") else { throw ClaudeUsageError.claudeNotInstalled }
         guard let tmuxPath = Self.which("tmux") else { throw ClaudeUsageError.tmuxNotInstalled }
 
@@ -199,6 +205,36 @@ struct ClaudeUsageFetcher: Sendable {
         let outputData = pipe.fileHandleForReading.readDataToEndOfFile()
         let output = String(decoding: outputData, as: UTF8.self)
         return (task.terminationStatus, output)
+    }
+
+    // MARK: - PTY-based probe (no tmux)
+
+    private func loadViaPTY(model: String) async throws -> ClaudeUsageSnapshot {
+        let probe = ClaudeStatusProbe(claudeBinary: "claude", timeout: 10)
+        let snap = try await probe.fetch()
+
+        guard let sessionPctLeft = snap.sessionPercentLeft else {
+            throw ClaudeUsageError.parseFailed("missing session data")
+        }
+
+        func makeWindow(pctLeft: Int?) -> RateWindow? {
+            guard let left = pctLeft else { return nil }
+            let used = max(0, min(100, 100 - Double(left)))
+            return RateWindow(usedPercent: used, windowMinutes: nil, resetsAt: nil, resetDescription: nil)
+        }
+
+        let primary = makeWindow(pctLeft: sessionPctLeft)!
+        let weekly = makeWindow(pctLeft: snap.weeklyPercentLeft)!
+        let opus = makeWindow(pctLeft: snap.opusPercentLeft)
+
+        return ClaudeUsageSnapshot(
+            primary: primary,
+            secondary: weekly,
+            opus: opus,
+            updatedAt: Date(),
+            accountEmail: snap.accountEmail,
+            accountOrganization: snap.accountOrganization,
+            loginMethod: nil)
     }
 
     private static func writeProbeScript() throws -> URL {

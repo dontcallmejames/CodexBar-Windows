@@ -6,7 +6,7 @@ Tiny macOS 15+ menu bar app that shows how much Codex usage you have left (5‑h
 
 Login story
 - **No login needed** for the core rate-limit view: we read the latest `rollout-*.jsonl` session logs under `~/.codex/sessions/…` plus `~/.codex/auth.json` to show 5h/weekly limits, reset times, and your account email/plan.
-- **Login needed** only for credits: ChadGPT’s credits are not in the local logs, so we reuse your ChatGPT web session via an embedded WKWebView to scrape the Usage page. You sign in once in the in-app window; a “Log out / clear cookies” button wipes those cookies anytime.
+- **Credits auto-fetched**: We read the Codex CLI `/status` output directly via a local PTY (no browser/session login needed) to show credits and limits.
 
 Icon bar mapping (grayscale)
 - Top bar: 5‑hour window when available; if weekly is exhausted, the top becomes a thick credits bar (scaled to a 1k cap) to show paid credits left.

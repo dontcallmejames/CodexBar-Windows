@@ -195,13 +195,13 @@ private struct GeneralPane: View {
     private func codexSigningStatus() -> some View {
         VStack(alignment: .leading, spacing: 4) {
             if let credits = self.store.credits {
-                Text("Signed in to Codex.")
+                Text("Codex credits")
                     .font(.footnote.weight(.semibold))
                 Text(self.creditsSummary(credits))
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             } else {
-                Text("Sign in to OpenAI to see your available credits.")
+                Text("Credits unavailable; keep Codex running to refresh.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
@@ -212,13 +212,6 @@ private struct GeneralPane: View {
                     .lineLimit(3)
                     .truncationMode(.tail)
                     .fixedSize(horizontal: false, vertical: true)
-            }
-            if self.store.credits == nil {
-                Button("Sign in to fetch credits…") { CreditsSignInWindow.present() }
-            } else {
-                Button("Log out / clear cookies") {
-                    Task { await self.store.clearCookies() }
-                }
             }
         }
     }
@@ -362,18 +355,31 @@ private struct DebugPane: View {
     var body: some View {
         ScrollView(.vertical, showsIndicators: true) {
             VStack(alignment: .leading, spacing: 20) {
-                SettingsSection(title: "Toggles", caption: "Flip these on when you need additional data.") {
+                SettingsSection {
                     PreferenceToggleRow(
-                        title: "Dump credits HTML to /tmp",
-                        subtitle: "Writes the fetched usage page to /tmp for inspection.",
-                        binding: self.$settings.creditsDebugDump)
+                        title: "Force animation on next refresh",
+                        subtitle: "Temporarily shows the loading animation after the next refresh.",
+                        binding: self.$store.debugForceAnimation)
+                }
+
+                SettingsSection(
+                    title: "Loading animations",
+                    caption: "Pick a pattern and replay to preview it in the menu bar. \"Random\" keeps the existing behavior.") {
+                    Picker("Animation pattern", selection: self.animationPatternBinding) {
+                        Text("Random (default)").tag(nil as LoadingPattern?)
+                        ForEach(LoadingPattern.allCases) { pattern in
+                            Text(pattern.displayName).tag(Optional(pattern))
+                        }
+                    }
+                    .pickerStyle(.radioGroup)
+
+                    Button("Replay selected animation") {
+                        self.replaySelectedAnimation()
+                    }
+
                 }
 
                 SettingsSection(title: "Actions", caption: "One-off tools to debug UI/usage issues.") {
-                    Button("Replay loading animation") {
-                        NotificationCenter.default.post(name: .codexbarDebugReplayAllAnimations, object: nil)
-                        self.store.replayLoadingAnimation()
-                    }
                     Button("Dump Claude probe output") {
                         Task { await self.store.debugDumpClaude() }
                     }
@@ -383,6 +389,24 @@ private struct DebugPane: View {
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
         }
+    }
+
+    private var animationPatternBinding: Binding<LoadingPattern?> {
+        Binding(
+            get: { self.settings.debugLoadingPattern },
+            set: { self.settings.debugLoadingPattern = $0 })
+    }
+
+    private func replaySelectedAnimation() {
+        var userInfo: [AnyHashable: Any] = [:]
+        if let pattern = self.settings.debugLoadingPattern {
+            userInfo["pattern"] = pattern.rawValue
+        }
+        NotificationCenter.default.post(
+            name: .codexbarDebugReplayAllAnimations,
+            object: nil,
+            userInfo: userInfo.isEmpty ? nil : userInfo)
+        self.store.replayLoadingAnimation()
     }
 }
 

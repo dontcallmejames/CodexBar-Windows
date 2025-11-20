@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import ServiceManagement
 import SwiftUI
 
@@ -43,8 +44,16 @@ final class SettingsStore: ObservableObject {
     /// -bool YES).
     @AppStorage("debugMenuEnabled") var debugMenuEnabled: Bool = false
 
-    /// When enabled (via debug menu), dump the fetched credits page HTML to /tmp for diagnostics.
-    @AppStorage("creditsDebugDump") var creditsDebugDump: Bool = false
+    @AppStorage("debugLoadingPattern") private var debugLoadingPatternRaw: String?
+
+    /// Optional override for the loading animation pattern, exposed via the Debug tab.
+    var debugLoadingPattern: LoadingPattern? {
+        get { self.debugLoadingPatternRaw.flatMap(LoadingPattern.init(rawValue:)) }
+        set {
+            self.objectWillChange.send()
+            self.debugLoadingPatternRaw = newValue?.rawValue
+        }
+    }
 
     @AppStorage("showCodexUsage") var showCodexUsage: Bool = true
     @AppStorage("showClaudeUsage") var showClaudeUsage: Bool = false
@@ -53,12 +62,6 @@ final class SettingsStore: ObservableObject {
         let raw = userDefaults.string(forKey: "refreshFrequency") ?? RefreshFrequency.twoMinutes.rawValue
         self.refreshFrequency = RefreshFrequency(rawValue: raw) ?? .twoMinutes
         LaunchAtLoginManager.setEnabled(self.launchAtLogin)
-
-        // If debug flag not set, but a dump is requested via env, honor it.
-        if ProcessInfo.processInfo.environment["CODEXBAR_DEBUG_DUMP"] == "1" {
-            self.creditsDebugDump = true
-            self.debugMenuEnabled = true
-        }
 
     }
 }
