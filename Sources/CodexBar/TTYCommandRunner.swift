@@ -11,7 +11,8 @@ struct TTYCommandRunner {
     struct Options {
         var rows: UInt16 = 50
         var cols: UInt16 = 160
-        var timeout: TimeInterval = 8.0
+        var timeout: TimeInterval = 20.0
+        var extraArgs: [String] = []
     }
 
     enum Error: Swift.Error, LocalizedError {
@@ -38,40 +39,146 @@ struct TTYCommandRunner {
         guard openpty(&master, &slave, nil, &term, &win) == 0 else {
             throw Error.launchFailed("openpty failed")
         }
+        // Make master non-blocking so read loops don't hang when no data is available.
+        _ = fcntl(master, F_SETFL, O_NONBLOCK)
 
         let masterHandle = FileHandle(fileDescriptor: master, closeOnDealloc: true)
         let slaveHandle = FileHandle(fileDescriptor: slave, closeOnDealloc: true)
 
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: resolved)
+        proc.arguments = options.extraArgs
         proc.standardInput = slaveHandle
         proc.standardOutput = slaveHandle
         proc.standardError = slaveHandle
 
         try proc.run()
 
-        if let data = script.data(using: .utf8) {
-            try masterHandle.write(contentsOf: data)
+        func send(_ text: String) throws {
+            if let data = text.data(using: .utf8) {
+                try masterHandle.write(contentsOf: data)
+            }
         }
 
         let deadline = Date().addingTimeInterval(options.timeout)
         var buffer = Data()
-        while Date() < deadline {
-            let chunk = try masterHandle.read(upToCount: 8192) ?? Data()
-            buffer.append(chunk)
-            if chunk.isEmpty { break }
-            // heuristic: stop early if we saw two prompts
-            if buffer.contains("/status".data(using: .utf8)!) || buffer.contains("/usage".data(using: .utf8)!) {
-                if buffer.contains("Credits".data(using: .utf8)!) || buffer.contains("% left".data(using: .utf8)!) {
+        func readChunk() {
+            var tmp = [UInt8](repeating: 0, count: 8192)
+            let n = Darwin.read(master, &tmp, tmp.count)
+            if n > 0 { buffer.append(contentsOf: tmp.prefix(n)) }
+        }
+
+        func containsSession() -> Bool {
+            buffer.contains("Current session".data(using: .utf8)!)
+        }
+
+        func containsWeek() -> Bool {
+            buffer.contains("Current week (all models)".data(using: .utf8)!)
+        }
+
+        if script == "/usage" {
+            // Boot loop: wait for TUI to be ready and handle first-run prompts.
+            let bootDeadline = Date().addingTimeInterval(4.0)
+            while Date() < bootDeadline {
+                try readChunk()
+                guard let text = String(data: buffer, encoding: .utf8) else { break }
+                let lower = text.lowercased()
+
+                if lower.contains("do you trust the files in this folder") {
+                    try send("1\r"); buffer.removeAll(); usleep(300_000); continue
+                }
+                if lower.contains("select a workspace") {
+                    try send("\r"); buffer.removeAll(); usleep(300_000); continue
+                }
+                if lower.contains("telemetry") && lower.contains("(y/n)") {
+                    try send("n\r"); buffer.removeAll(); usleep(300_000); continue
+                }
+                if lower.contains("sign in") || lower.contains("login") || (lower.contains("please run") && lower.contains("claude login")) {
+                    throw Error.launchFailed("Claude CLI requires login (`claude login`).")
+                }
+                if lower.contains("claude code") || lower.contains("tab to toggle") || lower.contains("try ") || !lower.isEmpty {
                     break
                 }
+                usleep(150_000)
             }
-            usleep(120_000) // 120ms
+
+            // Send `/usage` like the tmux script: open palette, type usage, then select.
+            usleep(800_000) // give CLI a bit more breathing room before sending keys
+            try send("/")
+            usleep(200_000)
+            try send("usage")
+            usleep(300_000)
+            let performSelection: () -> Void = {
+                try? send("\u{1b}[Z") // shift+tab -> move focus to suggestion list
+                usleep(150_000)
+                try? send("\u{1b}[B") // down -> highlight first entry
+                usleep(150_000)
+                try? send("\r")       // enter -> run /usage
+                usleep(250_000)
+                try? send("\t\t\t")   // small tab nudge toward Usage tab
+                usleep(200_000)
+            }
+            performSelection()
+
+            // Read until we see both session and weekly blocks (or retry selection).
+            var gotSession = false
+            var gotWeek = false
+            var selectionRetries = 0
+            let start = Date()
+            usleep(600_000) // allow usage view to render before detection
+            while Date() < deadline {
+                readChunk()
+                if containsSession() { gotSession = true }
+                if containsWeek() { gotWeek = true }
+                if gotSession && gotWeek { break }
+
+                let elapsed = Date().timeIntervalSince(start)
+                if elapsed > Double(selectionRetries + 1) * 1.2, selectionRetries < 5 {
+                    // Re-run selection: shift+tab to suggestions, down, enter, then a small tab nudge.
+                    try? send("\u{1b}[Z")
+                    usleep(120_000)
+                    try? send("\u{1b}[B")
+                    usleep(120_000)
+                    try? send("\r")
+                    usleep(250_000)
+                    try? send("\t\t\t")
+                    selectionRetries += 1
+                } else {
+                    usleep(150_000)
+                }
+            }
+            // After usage appears, read a bit longer to capture percent lines.
+            let settleDeadline = Date().addingTimeInterval(2.0)
+            while Date() < settleDeadline {
+                readChunk()
+                usleep(80_000)
+            }
+        } else {
+            // Generic behavior for other commands.
+            usleep(400_000) // small boot grace
+            try send(script)
+            try send("\r")
+            usleep(150_000)
+            try send("\r")
+            try send("\u{1b}")
+
+            while Date() < deadline {
+                readChunk()
+                if containsSession() { break }
+                usleep(120_000)
+            }
         }
 
         // try to exit gracefully
         try? masterHandle.write(contentsOf: "/exit\n".data(using: .utf8)!)
         proc.terminate()
+        let waitDeadline = Date().addingTimeInterval(2.0)
+        while proc.isRunning && Date() < waitDeadline {
+            usleep(100_000)
+        }
+        if proc.isRunning {
+            kill(proc.processIdentifier, SIGKILL)
+        }
         proc.waitUntilExit()
 
         guard let text = String(data: buffer, encoding: .utf8), !text.isEmpty else {
@@ -82,6 +189,23 @@ struct TTYCommandRunner {
     }
 
     static func which(_ tool: String) -> String? {
+        // First try system PATH
+        if let path = runWhich(tool) { return path }
+        // Fallback to common locations (Homebrew, local bins)
+        let home = NSHomeDirectory()
+        let candidates = [
+            "/opt/homebrew/bin/\(tool)",
+            "/usr/local/bin/\(tool)",
+            "\(home)/.local/bin/\(tool)",
+            "\(home)/bin/\(tool)"
+        ]
+        for c in candidates where FileManager.default.isExecutableFile(atPath: c) {
+            return c
+        }
+        return nil
+    }
+
+    private static func runWhich(_ tool: String) -> String? {
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: "/usr/bin/which")
         proc.arguments = [tool]

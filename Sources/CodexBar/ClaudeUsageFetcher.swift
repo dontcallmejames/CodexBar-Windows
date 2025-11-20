@@ -1,4 +1,5 @@
 import Foundation
+import os.log
 
 struct ClaudeUsageSnapshot {
     let primary: RateWindow
@@ -44,29 +45,16 @@ struct ClaudeUsageFetcher: Sendable {
 
     func debugRawProbe(model: String = "sonnet") async -> String {
         do {
-            let result = try await self.runProbe(model: model)
-            return result.output
+            let snap = try await self.loadViaPTY(model: model)
+            return "session_left=\(snap.primary.remainingPercent) weekly_left=\(snap.secondary.remainingPercent) opus_left=\(snap.opus?.remainingPercent ?? -1) email=\(snap.accountEmail ?? "nil") org=\(snap.accountOrganization ?? "nil")\n\(snap)"
         } catch {
             return "Probe failed: \(error)"
         }
     }
 
     func loadLatestUsage(model: String = "sonnet") async throws -> ClaudeUsageSnapshot {
-        // Preferred path: PTY probe (no tmux)
-        if let ptySnapshot = try? await self.loadViaPTY(model: model) {
-            return ptySnapshot
-        }
-
-        // Fallback: tmux-based probe
-        guard let claudePath = Self.which("claude") else { throw ClaudeUsageError.claudeNotInstalled }
-        guard let tmuxPath = Self.which("tmux") else { throw ClaudeUsageError.tmuxNotInstalled }
-
-        let result = try await self.runProbe(model: model, claudePath: claudePath, tmuxPath: tmuxPath)
-        guard result.status == 0 else {
-            throw ClaudeUsageError.scriptFailed(result.status, result.output.trimmingCharacters(in: .whitespacesAndNewlines))
-        }
-
-        return try Self.parse(output: result.output)
+        // Pure PTY path (no tmux dependency).
+        return try await self.loadViaPTY(model: model)
     }
 
     // MARK: - Parsing helpers
@@ -236,6 +224,8 @@ struct ClaudeUsageFetcher: Sendable {
             accountOrganization: snap.accountOrganization,
             loginMethod: nil)
     }
+
+    // tmux helper removed; PTY path is authoritative to avoid external deps.
 
     private static func writeProbeScript() throws -> URL {
         let temp = FileManager.default.temporaryDirectory
