@@ -60,67 +60,35 @@ final class UsageStore: ObservableObject {
     @Published var isRefreshing = false
     @Published var debugForceAnimation = false
 
-    private struct ProviderSpec {
-        let style: IconStyle
-        let isEnabled: () -> Bool
-        let fetch: () async throws -> UsageSnapshot
-        let onSuccess: ((UsageSnapshot) -> Void)?
-    }
-
     private let codexFetcher: UsageFetcher
     private let claudeFetcher: any ClaudeUsageFetching
+    private let registry: ProviderRegistry
     private let settings: SettingsStore
     private var failureGates: [UsageProvider: ConsecutiveFailureGate] = [:]
     private var providerSpecs: [UsageProvider: ProviderSpec] = [:]
-    private let providerMetadata: [UsageProvider: ProviderMetadata] = [
-        .codex: ProviderMetadata(
-            id: .codex,
-            displayName: "Codex",
-            sessionLabel: "5h limit",
-            weeklyLabel: "Weekly limit",
-            opusLabel: nil,
-            supportsOpus: false,
-            supportsCredits: true,
-            creditsHint: "Credits: run Codex in Terminal",
-            toggleTitle: "Show Codex usage",
-            cliName: "codex",
-            defaultEnabled: true),
-        .claude: ProviderMetadata(
-            id: .claude,
-            displayName: "Claude",
-            sessionLabel: "Session",
-            weeklyLabel: "Weekly",
-            opusLabel: "Opus",
-            supportsOpus: true,
-            supportsCredits: false,
-            creditsHint: "",
-            toggleTitle: "Show Claude Code usage",
-            cliName: "claude",
-            defaultEnabled: false),
-    ]
+    private let providerMetadata: [UsageProvider: ProviderMetadata]
     private var timerTask: Task<Void, Never>?
     private var cancellables = Set<AnyCancellable>()
 
     init(
         fetcher: UsageFetcher,
         claudeFetcher: any ClaudeUsageFetching = ClaudeUsageFetcher(),
-        settings: SettingsStore)
+        settings: SettingsStore,
+        registry: ProviderRegistry = .shared)
     {
         self.codexFetcher = fetcher
         self.claudeFetcher = claudeFetcher
         self.settings = settings
+        self.registry = registry
+        self.providerMetadata = registry.metadata
         self
             .failureGates = Dictionary(uniqueKeysWithValues: UsageProvider.allCases
                 .map { ($0, ConsecutiveFailureGate()) })
-        self.providerSpecs = Self.makeProviderSpecs(
+        self.providerSpecs = registry.specs(
             settings: settings,
             metadata: self.providerMetadata,
             codexFetcher: fetcher,
-            claudeFetcher: claudeFetcher,
-            onClaudeSuccess: { [weak self] snap in
-                self?.claudeAccountEmail = snap.accountEmail
-                self?.claudeAccountOrganization = snap.accountOrganization
-            })
+            claudeFetcher: claudeFetcher)
         self.bindSettings()
         self.detectVersions()
         Task { await self.refresh() }
@@ -261,7 +229,10 @@ final class UsageStore: ObservableObject {
                 self.snapshots[provider] = snapshot
                 self.errors[provider] = nil
                 self.failureGates[provider]?.recordSuccess()
-                spec.onSuccess?(snapshot)
+                if provider == .claude {
+                    self.claudeAccountEmail = snapshot.accountEmail
+                    self.claudeAccountOrganization = snapshot.accountOrganization
+                }
             }
         } catch {
             await MainActor.run {
@@ -304,40 +275,6 @@ final class UsageStore: ObservableObject {
             self.errors[.claude] = "[Claude] \(snippet) (saved: \(url.path))"
             NSWorkspace.shared.open(url)
         }
-    }
-
-    private static func makeProviderSpecs(
-        settings: SettingsStore,
-        metadata: [UsageProvider: ProviderMetadata],
-        codexFetcher: UsageFetcher,
-        claudeFetcher: any ClaudeUsageFetching,
-        onClaudeSuccess: @escaping (UsageSnapshot) -> Void) -> [UsageProvider: ProviderSpec]
-    {
-        let codexMeta = metadata[.codex]!
-        let claudeMeta = metadata[.claude]!
-        let codexSpec = ProviderSpec(
-            style: .codex,
-            isEnabled: { settings.isProviderEnabled(provider: .codex, metadata: codexMeta) },
-            fetch: { try await codexFetcher.loadLatestUsage() },
-            onSuccess: nil)
-
-        let claudeSpec = ProviderSpec(
-            style: .claude,
-            isEnabled: { settings.isProviderEnabled(provider: .claude, metadata: claudeMeta) },
-            fetch: {
-                let usage = try await claudeFetcher.loadLatestUsage(model: "sonnet")
-                return UsageSnapshot(
-                    primary: usage.primary,
-                    secondary: usage.secondary,
-                    tertiary: usage.opus,
-                    updatedAt: usage.updatedAt,
-                    accountEmail: usage.accountEmail,
-                    accountOrganization: usage.accountOrganization,
-                    loginMethod: usage.loginMethod)
-            },
-            onSuccess: onClaudeSuccess)
-
-        return [.codex: codexSpec, .claude: claudeSpec]
     }
 
     private func detectVersions() {
