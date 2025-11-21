@@ -11,6 +11,7 @@ enum CodexStatusProbeError: LocalizedError {
     case codexNotInstalled
     case parseFailed(String)
     case timedOut
+    case updateRequired(String)
 
     var errorDescription: String? {
         switch self {
@@ -20,6 +21,8 @@ enum CodexStatusProbeError: LocalizedError {
             "Could not parse codex status: \(msg)"
         case .timedOut:
             "Codex status probe timed out."
+        case let .updateRequired(msg):
+            "Codex CLI update needed: \(msg)"
         }
     }
 }
@@ -46,8 +49,8 @@ struct CodexStatusProbe {
         let clean = TextParsing.stripANSICodes(text)
         guard !clean.isEmpty else { throw CodexStatusProbeError.timedOut }
         if self.containsUpdatePrompt(clean) {
-            throw CodexStatusProbeError.parseFailed(
-                "Codex CLI shows an update prompt. Run `bun install -g @openai/codex` then retry.")
+            throw CodexStatusProbeError.updateRequired(
+                "Run `bun install -g @openai/codex` to continue (update prompt blocking /status).")
         }
         let credits = TextParsing.firstNumber(pattern: #"Credits:\s*([0-9][0-9.,]*)"#, text: clean)
         let fivePct = TextParsing.firstInt(pattern: #"5h limit[^\\n]*?([0-9]{1,3})%\s+left"#, text: clean)

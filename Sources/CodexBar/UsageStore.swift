@@ -263,6 +263,12 @@ final class UsageStore: ObservableObject {
             await MainActor.run {
                 self.lastCreditsError = error.localizedDescription
                 self.credits = nil
+                // Surface update-required errors in the main codex error slot so the menu shows it.
+                if let codexError = error as? CodexStatusProbeError,
+                   case .updateRequired = codexError
+                {
+                    self.errors[.codex] = error.localizedDescription
+                }
             }
         }
     }
