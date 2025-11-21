@@ -60,6 +60,7 @@ final class UsageStore: ObservableObject {
     @Published var claudeAccountOrganization: String?
     @Published var isRefreshing = false
     @Published var debugForceAnimation = false
+    @Published private(set) var probeLogs: [UsageProvider: String] = [:]
 
     private let codexFetcher: UsageFetcher
     private let claudeFetcher: any ClaudeUsageFetching
@@ -258,8 +259,15 @@ final class UsageStore: ObservableObject {
             await MainActor.run {
                 self.credits = credits
                 self.lastCreditsError = nil
+                self.probeLogs[.codex] = snap.rawText
             }
         } catch {
+            // Best-effort raw log to aid debugging, even when parsing failed.
+            if let raw = try? TTYCommandRunner()
+                .run(binary: "codex", send: "/status\n", options: .init(rows: 60, cols: 200, timeout: 10)).text
+            {
+                await MainActor.run { self.probeLogs[.codex] = raw }
+            }
             await MainActor.run {
                 self.lastCreditsError = error.localizedDescription
                 self.credits = nil
@@ -292,6 +300,33 @@ final class UsageStore: ObservableObject {
                 self.codexVersion = codexVer
                 self.claudeVersion = claudeVer
             }
+        }
+    }
+
+    func debugLog(for provider: UsageProvider) async -> String {
+        if let cached = self.probeLogs[provider], !cached.isEmpty {
+            return cached
+        }
+
+        switch provider {
+        case .codex:
+            do {
+                let snap = try await CodexStatusProbe().fetch()
+                await MainActor.run { self.probeLogs[.codex] = snap.rawText }
+                return snap.rawText
+            } catch {
+                if let raw = try? TTYCommandRunner()
+                    .run(binary: "codex", send: "/status\n", options: .init(rows: 60, cols: 200, timeout: 12)).text
+                {
+                    await MainActor.run { self.probeLogs[.codex] = raw }
+                    return raw
+                }
+                return "Codex probe failed: \(error.localizedDescription)"
+            }
+        case .claude:
+            let text = await self.claudeFetcher.debugRawProbe(model: "sonnet")
+            await MainActor.run { self.probeLogs[.claude] = text }
+            return text
         }
     }
 
