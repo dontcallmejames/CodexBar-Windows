@@ -19,6 +19,7 @@ let package = Package(
             swiftSettings: [
                 // Opt into Swift 6 strict concurrency (approachable migration path).
                 .enableUpcomingFeature("StrictConcurrency"),
+                .define("ENABLE_SPARKLE"),
             ]),
         .testTarget(
             name: "CodexBarTests",

@@ -108,7 +108,7 @@ private func makeUpdaterController() -> UpdaterProviding {
         updaterDelegate: nil,
         userDriverDelegate: nil)
     controller.updater.automaticallyChecksForUpdates = false
-    controller.start()
+    controller.startUpdater()
     return controller
 }
 #else
