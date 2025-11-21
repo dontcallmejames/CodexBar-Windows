@@ -277,7 +277,8 @@ final class UsageStore: ObservableObject {
                 if let cached = self.lastCreditsSnapshot {
                     self.credits = cached
                     let stamp = cached.updatedAt.formatted(date: .abbreviated, time: .shortened)
-                    self.lastCreditsError = "Last Codex credits refresh failed: \(error.localizedDescription). Showing cached values from \(stamp)."
+                    self.lastCreditsError =
+                        "Last Codex credits refresh failed: \(error.localizedDescription). Cached values from \(stamp)."
                 } else {
                     self.lastCreditsError = error.localizedDescription
                     self.credits = nil
@@ -366,9 +367,10 @@ final class UsageStore: ObservableObject {
                 try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
                 return nil
             }
-            let result = await group.next() ?? nil
+            let result = await group.next()
             group.cancelAll()
-            return result ?? "Probe timed out after \(Int(seconds))s"
+            let flattened = result ?? nil
+            return flattened ?? "Probe timed out after \(Int(seconds))s"
         }
     }
 
