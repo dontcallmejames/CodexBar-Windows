@@ -388,7 +388,7 @@ final class UsageStore: ObservableObject {
                 try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
                 return nil
             }
-            let result = await group.next()?.flatMap { $0 }
+            let result = await group.next()?.flatMap(\.self)
             group.cancelAll()
             return result ?? "Probe timed out after \(Int(seconds))s"
         }
