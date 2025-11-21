@@ -126,7 +126,7 @@ struct ClaudeUsageFetcher: ClaudeUsageFetching, Sendable {
 
     func detectVersion() -> String? {
         guard let path = Self.which("claude") else { return nil }
-        return Self.readString(cmd: path, args: ["--version"])?
+        return Self.readString(cmd: path, args: ["--allowed-tools", "", "--version"])?
             .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 

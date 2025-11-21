@@ -75,7 +75,11 @@ struct CodexStatusProbe {
         let result = try runner.run(
             binary: self.codexBinary,
             send: script,
-            options: .init(rows: rows, cols: cols, timeout: timeout))
+            options: .init(
+                rows: rows,
+                cols: cols,
+                timeout: timeout,
+                extraArgs: ["-s", "read-only", "-a", "untrusted"]))
         return try Self.parse(text: result.text)
     }
 
