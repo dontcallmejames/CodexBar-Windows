@@ -50,7 +50,11 @@ struct MenuDescriptor {
         func usageSection(for provider: UsageProvider, titlePrefix: String) -> Section {
             let meta = store.metadata(for: provider)
             var entries: [Entry] = []
-            let headline = Entry.text(meta.displayName, .headline)
+            let headlineText: String = {
+                if let ver = versionNumber(for: provider) { return "\(meta.displayName) \(ver)" }
+                return meta.displayName
+            }()
+            let headline = Entry.text(headlineText, .headline)
 
             entries.append(headline)
             if let snap = store.snapshot(for: provider) {
@@ -104,7 +108,6 @@ struct MenuDescriptor {
             var entries: [Entry] = []
             let emailFromClaude = claude?.accountEmail
             let planFromClaude = claude?.loginMethod
-            let providerForMeta: UsageProvider = preferClaude ? .claude : .codex
 
             // Email: Claude wins when requested; otherwise Codex auth.
             let emailText: String = {
@@ -124,10 +127,6 @@ struct MenuDescriptor {
                 entries.append(.text("Plan: \(plan)", .secondary))
             }
 
-            if let version = versionNumber(for: providerForMeta) {
-                let cliName = store.metadata(for: providerForMeta).cliName
-                entries.append(.text("\(cliName) \(version)", .secondary))
-            }
             return Section(entries: entries)
         }
 
