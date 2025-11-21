@@ -45,6 +45,10 @@ struct CodexStatusProbe {
     static func parse(text: String) throws -> CodexStatusSnapshot {
         let clean = TextParsing.stripANSICodes(text)
         guard !clean.isEmpty else { throw CodexStatusProbeError.timedOut }
+        if self.containsUpdatePrompt(clean) {
+            throw CodexStatusProbeError.parseFailed(
+                "Codex CLI shows an update prompt. Run `bun install -g @openai/codex` then retry.")
+        }
         let credits = TextParsing.firstNumber(pattern: #"Credits:\s*([0-9][0-9.,]*)"#, text: clean)
         let fivePct = TextParsing.firstInt(pattern: #"5h limit[^\\n]*?([0-9]{1,3})%\s+left"#, text: clean)
         let weekPct = TextParsing.firstInt(pattern: #"Weekly limit[^\\n]*?([0-9]{1,3})%\s+left"#, text: clean)
@@ -56,5 +60,10 @@ struct CodexStatusProbe {
             fiveHourPercentLeft: fivePct,
             weeklyPercentLeft: weekPct,
             rawText: clean)
+    }
+
+    private static func containsUpdatePrompt(_ text: String) -> Bool {
+        let lower = text.lowercased()
+        return lower.contains("update available") && lower.contains("codex")
     }
 }

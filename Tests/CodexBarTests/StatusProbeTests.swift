@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import CodexBar
 
@@ -89,6 +90,23 @@ struct StatusProbeTests {
             #expect(lower.contains("login"))
         } catch {
             #expect(Bool(false), "Unexpected error: \(error)")
+        }
+    }
+
+    @Test
+    func liveCodexStatus() async throws {
+        guard ProcessInfo.processInfo.environment["LIVE_CODEX_STATUS"] == "1" else { return }
+
+        let probe = CodexStatusProbe()
+        do {
+            let snap = try await probe.fetch()
+            print("Live Codex status:\n\(snap.rawText)\nvalues: 5h \(snap.fiveHourPercentLeft ?? -1)% left, weekly \(snap.weeklyPercentLeft ?? -1)% left, credits \(snap.credits ?? -1)")
+        } catch {
+            // Dump raw PTY text to help debug.
+            let runner = TTYCommandRunner()
+            let res = try runner.run(binary: "codex", send: "/status\n", options: .init(rows: 60, cols: 200, timeout: 12))
+            print("RAW CODEX PTY OUTPUT BEGIN\n\(res.text)\nRAW CODEX PTY OUTPUT END")
+            throw error
         }
     }
 }
