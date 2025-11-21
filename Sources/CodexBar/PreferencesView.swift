@@ -476,7 +476,7 @@ private struct DebugPane: View {
             name: .codexbarDebugReplayAllAnimations,
             object: nil,
             userInfo: userInfo.isEmpty ? nil : userInfo)
-        self.store.replayLoadingAnimation()
+        self.store.replayLoadingAnimation(duration: 4)
     }
 
     private var displayedLog: String {
