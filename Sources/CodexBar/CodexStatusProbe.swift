@@ -17,8 +17,8 @@ enum CodexStatusProbeError: LocalizedError {
         switch self {
         case .codexNotInstalled:
             "Codex CLI is not installed or not on PATH."
-        case let .parseFailed(msg):
-            "Could not parse codex status: \(msg)"
+        case .parseFailed:
+            "Could not parse Codex status; will retry shortly."
         case .timedOut:
             "Codex status probe timed out."
         case let .updateRequired(msg):
