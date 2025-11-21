@@ -50,27 +50,24 @@ struct MenuDescriptor {
         func usageSection(for provider: UsageProvider, titlePrefix: String) -> Section {
             let meta = store.metadata(for: provider)
             var entries: [Entry] = []
-            let headline = { (text: String) in Entry.text("\(meta.displayName) · \(text)", .headline) }
+            let headline = Entry.text(meta.displayName, .headline)
 
-            entries.append(headline(meta.sessionLabel))
+            entries.append(headline)
             if let snap = store.snapshot(for: provider) {
-                entries.append(.text(
-                    UsageFormatter.usageLine(remaining: snap.primary.remainingPercent, used: snap.primary.usedPercent),
-                    .primary))
+                let sessionLine = UsageFormatter
+                    .usageLine(remaining: snap.primary.remainingPercent, used: snap.primary.usedPercent)
+                entries.append(.text("\(meta.sessionLabel): \(sessionLine)", .primary))
                 if let reset = snap.primary.resetDescription { entries.append(.text("Resets \(reset)", .secondary)) }
 
-                entries.append(headline(meta.weeklyLabel))
-                entries.append(.text(
-                    UsageFormatter
-                        .usageLine(remaining: snap.secondary.remainingPercent, used: snap.secondary.usedPercent),
-                    .primary))
+                let weeklyLine = UsageFormatter
+                    .usageLine(remaining: snap.secondary.remainingPercent, used: snap.secondary.usedPercent)
+                entries.append(.text("\(meta.weeklyLabel): \(weeklyLine)", .primary))
                 if let reset = snap.secondary.resetDescription { entries.append(.text("Resets \(reset)", .secondary)) }
 
                 if meta.supportsOpus, let opus = snap.tertiary {
-                    entries.append(headline(meta.opusLabel ?? "Opus"))
-                    entries.append(.text(
-                        UsageFormatter.usageLine(remaining: opus.remainingPercent, used: opus.usedPercent),
-                        .primary))
+                    let opusTitle = meta.opusLabel ?? "Opus"
+                    let opusLine = UsageFormatter.usageLine(remaining: opus.remainingPercent, used: opus.usedPercent)
+                    entries.append(.text("\(opusTitle): \(opusLine)", .primary))
                     if let reset = opus.resetDescription { entries.append(.text("Resets \(reset)", .secondary)) }
                 }
 
