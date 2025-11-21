@@ -72,3 +72,4 @@ See [CHANGELOG.md](CHANGELOG.md).
 
 ## Related
 - [Trimmy](https://github.com/steipete/Trimmy): menu-bar clipboard flattener for multi-line shell snippets.
+- Cross-promote: Download CodexBar at [codexbar.app](https://codexbar.app) and Trimmy at [trimmy.app](https://trimmy.app).
