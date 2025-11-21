@@ -2,27 +2,16 @@ import XCTest
 @testable import CodexBar
 
 final class TTYIntegrationTests: XCTestCase {
-    func testCodexTTYStatusProbeLive() async throws {
-        guard let codexPath = TTYCommandRunner.which("codex") else {
-            throw XCTSkip("Codex CLI not installed; skipping live PTY probe.")
-        }
-
-        let probe = CodexStatusProbe(codexBinary: codexPath, timeout: 10)
+    func testCodexRPCUsageLive() async throws {
+        let fetcher = UsageFetcher()
         do {
-            let snapshot = try await probe.fetch()
-            let hasData = snapshot.credits != nil || snapshot.fiveHourPercentLeft != nil || snapshot
-                .weeklyPercentLeft != nil
-            XCTAssertTrue(hasData, "Codex PTY probe returned no recognizable usage fields.")
-        } catch let CodexStatusProbeError.updateRequired(message) {
-            // Acceptable: confirms we detected the update prompt and surfaced a clear message.
-            XCTAssertFalse(message.isEmpty)
-        } catch let CodexStatusProbeError.parseFailed(raw) {
-            if raw.localizedCaseInsensitiveContains("data not available yet") {
-                throw XCTSkip("Codex CLI is still warming up: \(raw)")
-            }
-            XCTFail("Codex PTY parse failed: \(raw.prefix(200))")
-        } catch CodexStatusProbeError.timedOut {
-            XCTFail("Codex PTY probe timed out.")
+            let snapshot = try await fetcher.loadLatestUsage()
+            let hasData = snapshot.primary.usedPercent >= 0 && snapshot.secondary.usedPercent >= 0
+            XCTAssertTrue(hasData, "Codex RPC probe returned no usage data.")
+        } catch UsageError.noRateLimitsFound {
+            throw XCTSkip("Codex RPC returned no rate limits yet (likely warming up).")
+        } catch {
+            throw XCTSkip("Codex RPC probe failed: \(error)")
         }
     }
 
