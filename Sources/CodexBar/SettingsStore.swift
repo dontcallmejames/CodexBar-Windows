@@ -55,6 +55,8 @@ final class SettingsStore: ObservableObject {
         }
     }
 
+    @AppStorage("providerDetectionCompleted") private var providerDetectionCompleted: Bool = false
+
     private let userDefaults: UserDefaults
     private let toggleStore: ProviderToggleStore
 
@@ -65,6 +67,7 @@ final class SettingsStore: ObservableObject {
         self.toggleStore = ProviderToggleStore(userDefaults: userDefaults)
         self.toggleStore.purgeLegacyKeys()
         LaunchAtLoginManager.setEnabled(self.launchAtLogin)
+        self.runInitialProviderDetectionIfNeeded()
     }
 
     func isProviderEnabled(provider: UsageProvider, metadata: ProviderMetadata) -> Bool {
@@ -74,6 +77,30 @@ final class SettingsStore: ObservableObject {
     func setProviderEnabled(provider: UsageProvider, metadata: ProviderMetadata, enabled: Bool) {
         self.objectWillChange.send()
         self.toggleStore.setEnabled(enabled, metadata: metadata)
+    }
+
+    func rerunProviderDetection() {
+        self.runInitialProviderDetectionIfNeeded(force: true)
+    }
+
+    // MARK: - Private
+
+    private func runInitialProviderDetectionIfNeeded(force: Bool = false) {
+        guard force || !self.providerDetectionCompleted else { return }
+        guard let codexMeta = ProviderRegistry.shared.metadata[.codex],
+              let claudeMeta = ProviderRegistry.shared.metadata[.claude] else { return }
+
+        let codexInstalled = TTYCommandRunner.which("codex") != nil
+        let claudeInstalled = TTYCommandRunner.which("claude") != nil
+
+        // If neither is installed, keep Codex enabled to match previous behavior.
+        let enableCodex = codexInstalled || (!codexInstalled && !claudeInstalled)
+        let enableClaude = claudeInstalled
+
+        self.objectWillChange.send()
+        self.toggleStore.setEnabled(enableCodex, metadata: codexMeta)
+        self.toggleStore.setEnabled(enableClaude, metadata: claudeMeta)
+        self.providerDetectionCompleted = true
     }
 }
 
