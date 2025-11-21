@@ -52,6 +52,9 @@ struct CodexStatusProbe {
     static func parse(text: String) throws -> CodexStatusSnapshot {
         let clean = TextParsing.stripANSICodes(text)
         guard !clean.isEmpty else { throw CodexStatusProbeError.timedOut }
+        if clean.localizedCaseInsensitiveContains("data not available yet") {
+            throw CodexStatusProbeError.parseFailed("data not available yet")
+        }
         if self.containsUpdatePrompt(clean) {
             throw CodexStatusProbeError.updateRequired(
                 "Run `bun install -g @openai/codex` to continue (update prompt blocking /status).")
