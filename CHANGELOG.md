@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.4.4 — Unreleased
+## 0.5.0 — Unreleased
 - Claude probes/version detection now start with `--allowed-tools ""` (tool access disabled) while keeping interactive PTY mode working.
 - Codex probes and version detection now launch the CLI with `-s read-only -a untrusted` to keep PTY runs sandboxed.
 - Codex warm-up screens (“data not available yet”) are handled gracefully: cached credits stay visible and the menu skips the scary parse error.

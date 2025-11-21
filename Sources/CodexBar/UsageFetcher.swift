@@ -281,7 +281,7 @@ struct UsageFetcher: Sendable {
         let rpc = try CodexRPCClient()
         defer { rpc.shutdown() }
 
-        try await rpc.initialize(clientName: "codexbar", clientVersion: "0.4.4")
+        try await rpc.initialize(clientName: "codexbar", clientVersion: "0.5.0")
         let limits = try await rpc.fetchRateLimits().rateLimits
 
         guard let primary = Self.makeWindow(from: limits.primary),
@@ -303,7 +303,7 @@ struct UsageFetcher: Sendable {
     func loadLatestCredits() async throws -> CreditsSnapshot {
         let rpc = try CodexRPCClient()
         defer { rpc.shutdown() }
-        try await rpc.initialize(clientName: "codexbar", clientVersion: "0.4.4")
+        try await rpc.initialize(clientName: "codexbar", clientVersion: "0.5.0")
         let limits = try await rpc.fetchRateLimits().rateLimits
         guard let credits = limits.credits else { throw UsageError.noRateLimitsFound }
         let remaining = Self.parseCredits(credits.balance)
@@ -314,7 +314,7 @@ struct UsageFetcher: Sendable {
         do {
             let rpc = try CodexRPCClient()
             defer { rpc.shutdown() }
-            try await rpc.initialize(clientName: "codexbar", clientVersion: "0.4.4")
+            try await rpc.initialize(clientName: "codexbar", clientVersion: "0.5.0")
             let limits = try await rpc.fetchRateLimits()
             let data = try JSONEncoder().encode(limits)
             return String(data: data, encoding: .utf8) ?? "<unprintable>"
