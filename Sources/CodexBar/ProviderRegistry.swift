@@ -56,7 +56,7 @@ struct ProviderRegistry {
             opusLabel: nil,
             supportsOpus: false,
             supportsCredits: true,
-            creditsHint: "Credits: run Codex in Terminal",
+            creditsHint: "Credits unavailable; keep Codex running to refresh.",
             toggleTitle: "Show Codex usage",
             cliName: "codex",
             defaultEnabled: true,
