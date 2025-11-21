@@ -292,6 +292,20 @@ final class UsageStore: ObservableObject {
         }
     }
 
+    func dumpLog(toFileFor provider: UsageProvider) async -> URL? {
+        let text = await self.debugLog(for: provider)
+        let filename = "codexbar-\(provider.rawValue)-probe.txt"
+        let url = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(filename)
+        do {
+            try text.write(to: url, atomically: true, encoding: .utf8)
+            _ = await MainActor.run { NSWorkspace.shared.open(url) }
+            return url
+        } catch {
+            await MainActor.run { self.errors[provider] = "Failed to save log: \(error.localizedDescription)" }
+            return nil
+        }
+    }
+
     private func detectVersions() {
         Task.detached { [claudeFetcher] in
             let codexVer = Self.readCLI("codex", args: ["--version"])

@@ -401,12 +401,6 @@ private struct DebugPane: View {
                     .keyboardShortcut(.defaultAction)
                 }
 
-                SettingsSection(title: "Actions", caption: "One-off tools to debug UI/usage issues.") {
-                    Button("Dump Claude probe output") {
-                        Task { await self.store.debugDumpClaude() }
-                    }
-                }
-
                 SettingsSection(
                     title: "Probe logs",
                     caption: "Fetch the latest PTY scrape for Codex or Claude. Copy keeps the full text even when truncated.")
@@ -432,6 +426,13 @@ private struct DebugPane: View {
                             Label("Copy", systemImage: "doc.on.doc")
                         }
                         .disabled(self.logText.isEmpty)
+
+                        Button {
+                            self.saveLog(self.currentLogProvider)
+                        } label: {
+                            Label("Save to file", systemImage: "externaldrive.badge.plus")
+                        }
+                        .disabled(self.isLoadingLog && self.logText.isEmpty)
                     }
 
                     ZStack(alignment: .topLeading) {
@@ -494,6 +495,18 @@ private struct DebugPane: View {
                 self.logText = text
                 self.isLoadingLog = false
             }
+        }
+    }
+
+    private func saveLog(_ provider: UsageProvider) {
+        Task {
+            if self.logText.isEmpty {
+                self.isLoadingLog = true
+                let text = await self.store.debugLog(for: provider)
+                await MainActor.run { self.logText = text }
+                self.isLoadingLog = false
+            }
+            _ = await self.store.dumpLog(toFileFor: provider)
         }
     }
 
