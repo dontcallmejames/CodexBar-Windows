@@ -308,28 +308,30 @@ final class UsageStore: ObservableObject {
             return cached
         }
 
-        switch provider {
-        case .codex:
-            do {
-                let snap = try await CodexStatusProbe().fetch()
-                await MainActor.run { self.probeLogs[.codex] = snap.rawText }
-                return snap.rawText
-            } catch {
-                if let raw = try? TTYCommandRunner()
-                    .run(binary: "codex", send: "/status\n", options: .init(rows: 60, cols: 200, timeout: 12)).text
-                {
-                    await MainActor.run { self.probeLogs[.codex] = raw }
-                    return raw
+        return await Task.detached(priority: .utility) { () -> String in
+            switch provider {
+            case .codex:
+                do {
+                    let snap = try await CodexStatusProbe().fetch()
+                    await MainActor.run { self.probeLogs[.codex] = snap.rawText }
+                    return snap.rawText
+                } catch {
+                    if let raw = try? TTYCommandRunner()
+                        .run(binary: "codex", send: "/status\n", options: .init(rows: 60, cols: 200, timeout: 12)).text
+                    {
+                        await MainActor.run { self.probeLogs[.codex] = raw }
+                        return raw
+                    }
+                    return "Codex probe failed: \(error.localizedDescription)"
                 }
-                return "Codex probe failed: \(error.localizedDescription)"
+            case .claude:
+                let text = await self.runWithTimeout(seconds: 15) {
+                    await self.claudeFetcher.debugRawProbe(model: "sonnet")
+                }
+                await MainActor.run { self.probeLogs[.claude] = text }
+                return text
             }
-        case .claude:
-            let text = await self.runWithTimeout(seconds: 15) {
-                await self.claudeFetcher.debugRawProbe(model: "sonnet")
-            }
-            await MainActor.run { self.probeLogs[.claude] = text }
-            return text
-        }
+        }.value
     }
 
     private func runWithTimeout(seconds: Double, operation: @escaping @Sendable () async -> String) async -> String {
