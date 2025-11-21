@@ -293,6 +293,24 @@ final class UsageStore: ObservableObject {
             {
                 await MainActor.run { self.probeLogs[.codex] = raw }
             }
+
+            // Special-case the CLI "data not available yet" warmup state: keep cached credits and show a soft hint.
+            if let codexError = error as? CodexStatusProbeError,
+               case let .parseFailed(message) = codexError,
+               message.localizedCaseInsensitiveContains("data not available yet")
+            {
+                await MainActor.run {
+                    if let cached = self.lastCreditsSnapshot {
+                        self.credits = cached
+                        self.lastCreditsError = nil // keep quieter when we still have cached credits
+                    } else {
+                        self.credits = nil
+                        self.lastCreditsError = "Codex CLI is still loading credits; will retry shortly."
+                    }
+                }
+                return
+            }
+
             await MainActor.run {
                 self.creditsFailureStreak += 1
                 if let cached = self.lastCreditsSnapshot {

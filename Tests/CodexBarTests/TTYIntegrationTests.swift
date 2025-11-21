@@ -17,6 +17,9 @@ final class TTYIntegrationTests: XCTestCase {
             // Acceptable: confirms we detected the update prompt and surfaced a clear message.
             XCTAssertFalse(message.isEmpty)
         } catch let CodexStatusProbeError.parseFailed(raw) {
+            if raw.localizedCaseInsensitiveContains("data not available yet") {
+                throw XCTSkip("Codex CLI is still warming up: \(raw)")
+            }
             XCTFail("Codex PTY parse failed: \(raw.prefix(200))")
         } catch CodexStatusProbeError.timedOut {
             XCTFail("Codex PTY probe timed out.")
