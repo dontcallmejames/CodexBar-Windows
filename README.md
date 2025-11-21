@@ -71,6 +71,6 @@ Outputs `CodexBar-0.4.2.zip` ready to ship. Adjust `APP_IDENTITY` in the script 
 See [CHANGELOG.md](CHANGELOG.md).
 
 ## Related
-- [Trimmy](https://github.com/steipete/Trimmy) ✂️ “Paste once, run once” — flattens multi-line shell snippets so they actually run.
-- [MCPorter](https://mcporter.dev) 🧳 TypeScript runtime/CLI/codegen toolkit for the Model Context Protocol.
+- ✂️ [Trimmy](https://github.com/steipete/Trimmy) — “Paste once, run once.” Flatten multi-line shell snippets so they paste and run.
+- 🧳 [MCPorter](https://mcporter.dev) — TypeScript toolkit + CLI for Model Context Protocol servers.
 - Cross-promote: Download CodexBar at [codexbar.app](https://codexbar.app) and Trimmy at [trimmy.app](https://trimmy.app).
