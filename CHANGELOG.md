@@ -1,7 +1,7 @@
 # Changelog
 
 ## 0.4.0 — Unreleased
-- First cloud provider: Claude gets its own menu bar icon + native AppKit menu (dual icons when Codex is also enabled), showing email/org/plan and Opus usage with clickable errors and a gated plan line until data loads.
+- Claude Code support: dedicated menu bar icon + native AppKit menu (dual icons when Codex is also enabled), showing email/org/plan and Opus usage with clickable errors and a gated plan line until data loads.
 - Codex status probe retries through the CLI update dialog, auto-pressing down+enter, re-sending `/status`, and waiting for full bars/credits so menus stop getting stuck on “credits unavailable.”
 - Credits/usage now read directly from PTY `/status` probes (base-index aware with awk fix), surviving provider toggles, handling empty usage, and keeping loading/status animations smooth at low CPU.
 - Claude: PTY probe now surfaces CLI failures (e.g., token_expired) and Settings shows the last fetch reason inline beneath the Claude toggle.
