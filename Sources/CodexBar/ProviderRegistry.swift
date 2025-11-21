@@ -51,8 +51,8 @@ struct ProviderRegistry {
         .codex: ProviderMetadata(
             id: .codex,
             displayName: "Codex",
-            sessionLabel: "5h limit",
-            weeklyLabel: "Weekly limit",
+            sessionLabel: "Session",
+            weeklyLabel: "Weekly",
             opusLabel: nil,
             supportsOpus: false,
             supportsCredits: true,

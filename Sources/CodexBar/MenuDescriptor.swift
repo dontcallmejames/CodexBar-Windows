@@ -60,12 +60,12 @@ struct MenuDescriptor {
             if let snap = store.snapshot(for: provider) {
                 let sessionLine = UsageFormatter
                     .usageLine(remaining: snap.primary.remainingPercent, used: snap.primary.usedPercent)
-                entries.append(.text("\(meta.sessionLabel): \(sessionLine)", .primary))
+                entries.append(.text(sessionLine, .primary))
                 if let reset = snap.primary.resetDescription { entries.append(.text("Resets \(reset)", .secondary)) }
 
                 let weeklyLine = UsageFormatter
                     .usageLine(remaining: snap.secondary.remainingPercent, used: snap.secondary.usedPercent)
-                entries.append(.text("\(meta.weeklyLabel): \(weeklyLine)", .primary))
+                entries.append(.text(weeklyLine, .primary))
                 if let reset = snap.secondary.resetDescription { entries.append(.text("Resets \(reset)", .secondary)) }
 
                 if meta.supportsOpus, let opus = snap.tertiary {
