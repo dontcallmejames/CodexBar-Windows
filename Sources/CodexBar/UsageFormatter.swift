@@ -50,4 +50,13 @@ enum UsageFormatter {
         }
         return String(format: "%.0f", value)
     }
+
+    static func truncatedSingleLine(_ text: String, max: Int = 80) -> String {
+        let single = text
+            .replacingOccurrences(of: "\n", with: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard single.count > max else { return single }
+        let idx = single.index(single.startIndex, offsetBy: max)
+        return "\(single[..<idx])…"
+    }
 }
