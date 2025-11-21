@@ -4,6 +4,7 @@
 - Both Codex and Claude probes now run off the main thread (background PTY), avoiding menu/UI stalls during `/status` or `/usage` fetches.
 - Codex credits stay available even when `/status` times out: cached values are kept and errors are surfaced separately.
 - Claude/Codex provider autodetect runs on first launch (defaults to Codex if neither is installed) with a debug reset button.
+- Sparkle updates re-enabled in release builds (disabled only for debug bundle ID).
 - Claude probe now issues the `/usage` slash command directly to land on the Usage tab reliably and avoid palette misfires.
 
 ## 0.4.0 — 2025-11-21
