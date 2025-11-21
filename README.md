@@ -13,7 +13,7 @@ Icon bar mapping (grayscale)
 - Bottom bar: weekly window (a thin line). If weekly is zero you’ll see it empty under the credits bar; when weekly has budget it stays filled proportionally.
 - Errors/unknowns dim the icon; no text is drawn in the icon to stay legible.
 
-![CodexBar Screenshot](docs/codexbar-screenshot.png)
+![CodexBar Screenshot](docs/codexbar.png)
 
 ## Features
 - Reads the newest `rollout-*.jsonl` in `~/.codex/sessions/...` and extracts the latest `token_count` event (`used_percent`, `window_minutes`, `resets_at`).
