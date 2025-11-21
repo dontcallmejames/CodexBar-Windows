@@ -275,37 +275,23 @@ final class UsageStore: ObservableObject {
     private func refreshCreditsIfNeeded() async {
         guard self.isEnabled(.codex) else { return }
         do {
-            let snap = try await Task.detached(priority: .utility) {
-                try await CodexStatusProbe().fetch()
-            }.value
-            let credits = CreditsSnapshot(remaining: snap.credits ?? 0, events: [], updatedAt: Date())
+            let credits = try await self.codexFetcher.loadLatestCredits()
             await MainActor.run {
                 self.credits = credits
                 self.lastCreditsError = nil
                 self.lastCreditsSnapshot = credits
                 self.creditsFailureStreak = 0
-                self.probeLogs[.codex] = snap.rawText
             }
         } catch {
-            // Best-effort raw log to aid debugging, even when parsing failed.
-            if let raw = try? TTYCommandRunner()
-                .run(binary: "codex", send: "/status\n", options: .init(rows: 60, cols: 200, timeout: 10)).text
-            {
-                await MainActor.run { self.probeLogs[.codex] = raw }
-            }
-
-            // Special-case the CLI "data not available yet" warmup state: keep cached credits and show a soft hint.
-            if let codexError = error as? CodexStatusProbeError,
-               case let .parseFailed(message) = codexError,
-               message.localizedCaseInsensitiveContains("data not available yet")
-            {
+            let message = error.localizedDescription
+            if message.localizedCaseInsensitiveContains("data not available yet") {
                 await MainActor.run {
                     if let cached = self.lastCreditsSnapshot {
                         self.credits = cached
-                        self.lastCreditsError = nil // keep quieter when we still have cached credits
+                        self.lastCreditsError = nil
                     } else {
                         self.credits = nil
-                        self.lastCreditsError = "Codex CLI is still loading credits; will retry shortly."
+                        self.lastCreditsError = "Codex credits are still loading; will retry shortly."
                     }
                 }
                 return
@@ -317,16 +303,10 @@ final class UsageStore: ObservableObject {
                     self.credits = cached
                     let stamp = cached.updatedAt.formatted(date: .abbreviated, time: .shortened)
                     self.lastCreditsError =
-                        "Last Codex credits refresh failed: \(error.localizedDescription). Cached values from \(stamp)."
+                        "Last Codex credits refresh failed: \(message). Cached values from \(stamp)."
                 } else {
-                    self.lastCreditsError = error.localizedDescription
+                    self.lastCreditsError = message
                     self.credits = nil
-                }
-                // Surface update-required errors in the main codex error slot so the menu shows it.
-                if let codexError = error as? CodexStatusProbeError,
-                   case .updateRequired = codexError
-                {
-                    self.errors[.codex] = error.localizedDescription
                 }
             }
         }
@@ -376,27 +356,9 @@ final class UsageStore: ObservableObject {
         return await Task.detached(priority: .utility) { () -> String in
             switch provider {
             case .codex:
-                do {
-                    let snap = try await CodexStatusProbe().fetch()
-                    await MainActor.run { self.probeLogs[.codex] = snap.rawText }
-                    return snap.rawText
-                } catch {
-                    if let raw = try? TTYCommandRunner()
-                        .run(
-                            binary: "codex",
-                            send: "/status\n",
-                            options: .init(
-                                rows: 60,
-                                cols: 200,
-                                timeout: 12,
-                                extraArgs: ["-s", "read-only", "-a", "untrusted"]))
-                        .text
-                    {
-                        await MainActor.run { self.probeLogs[.codex] = raw }
-                        return raw
-                    }
-                    return "Codex probe failed: \(error.localizedDescription)"
-                }
+                let raw = await self.codexFetcher.debugRawRateLimits()
+                await MainActor.run { self.probeLogs[.codex] = raw }
+                return raw
             case .claude:
                 let text = await self.runWithTimeout(seconds: 15) {
                     await self.claudeFetcher.debugRawProbe(model: "sonnet")

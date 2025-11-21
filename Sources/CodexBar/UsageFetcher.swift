@@ -1,4 +1,3 @@
-import AppKit
 import Foundation
 
 struct RateWindow: Codable {
@@ -63,53 +62,271 @@ enum UsageError: LocalizedError {
     }
 }
 
+// MARK: - Codex RPC client (local process)
+
+private struct RPCAccountResponse: Decodable {
+    let account: RPCAccountDetails?
+    let requiresOpenaiAuth: Bool?
+}
+
+private enum RPCAccountDetails: Decodable {
+    case apiKey
+    case chatgpt(email: String, planType: String)
+
+    enum CodingKeys: String, CodingKey {
+        case type
+        case email
+        case planType
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let type = try container.decode(String.self, forKey: .type)
+        switch type.lowercased() {
+        case "apikey":
+            self = .apiKey
+        case "chatgpt":
+            let email = try container.decodeIfPresent(String.self, forKey: .email) ?? "unknown"
+            let plan = try container.decodeIfPresent(String.self, forKey: .planType) ?? "unknown"
+            self = .chatgpt(email: email, planType: plan)
+        default:
+            throw DecodingError.dataCorruptedError(
+                forKey: .type,
+                in: container,
+                debugDescription: "Unknown account type \(type)")
+        }
+    }
+}
+
+private struct RPCRateLimitsResponse: Decodable, Encodable {
+    let rateLimits: RPCRateLimitSnapshot
+}
+
+private struct RPCRateLimitSnapshot: Decodable, Encodable {
+    let primary: RPCRateLimitWindow?
+    let secondary: RPCRateLimitWindow?
+    let credits: RPCCreditsSnapshot?
+}
+
+private struct RPCRateLimitWindow: Decodable, Encodable {
+    let usedPercent: Double
+    let windowDurationMins: Int?
+    let resetsAt: Int?
+}
+
+private struct RPCCreditsSnapshot: Decodable, Encodable {
+    let hasCredits: Bool
+    let unlimited: Bool
+    let balance: String?
+}
+
+private enum RPCWireError: Error, CustomStringConvertible {
+    case startFailed(String)
+    case requestFailed(String)
+    case malformed(String)
+
+    var description: String {
+        switch self {
+        case let .startFailed(message):
+            "Failed to start codex app-server: \(message)"
+        case let .requestFailed(message):
+            "RPC request failed: \(message)"
+        case let .malformed(message):
+            "Malformed response: \(message)"
+        }
+    }
+}
+
+private final class CodexRPCClient {
+    private let process = Process()
+    private let stdinPipe = Pipe()
+    private let stdoutPipe = Pipe()
+    private let stderrPipe = Pipe()
+    private var nextID = 1
+
+    init(
+        executable: String = "codex",
+        arguments: [String] = ["-s", "read-only", "-a", "untrusted", "app-server"]) throws
+    {
+        self.process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+        self.process.arguments = [executable] + arguments
+        self.process.standardInput = self.stdinPipe
+        self.process.standardOutput = self.stdoutPipe
+        self.process.standardError = self.stderrPipe
+
+        do {
+            try self.process.run()
+        } catch {
+            throw RPCWireError.startFailed(error.localizedDescription)
+        }
+
+        let stderrHandle = self.stderrPipe.fileHandleForReading
+        stderrHandle.readabilityHandler = { handle in
+            let data = handle.availableData
+            guard let text = String(data: data, encoding: .utf8), !text.isEmpty else { return }
+            for line in text.split(whereSeparator: \.isNewline) {
+                fputs("[codex stderr] \(line)\n", stderr)
+            }
+        }
+    }
+
+    func initialize(clientName: String, clientVersion: String) async throws {
+        _ = try await self.request(
+            method: "initialize",
+            params: ["clientInfo": ["name": clientName, "version": clientVersion]])
+        try self.sendNotification(method: "initialized")
+    }
+
+    func fetchAccount() async throws -> RPCAccountResponse {
+        let message = try await self.request(method: "account/read")
+        return try self.decodeResult(from: message)
+    }
+
+    func fetchRateLimits() async throws -> RPCRateLimitsResponse {
+        let message = try await self.request(method: "account/rateLimits/read")
+        return try self.decodeResult(from: message)
+    }
+
+    func shutdown() {
+        if self.process.isRunning {
+            self.process.terminate()
+        }
+    }
+
+    // MARK: - JSON-RPC helpers
+
+    private func request(method: String, params: [String: Any]? = nil) async throws -> [String: Any] {
+        let id = self.nextID
+        self.nextID += 1
+        try self.sendRequest(id: id, method: method, params: params)
+
+        while true {
+            let message = try await self.readNextMessage()
+
+            if message["id"] == nil, let methodName = message["method"] as? String {
+                fputs("[codex notify] \(methodName)\n", stderr)
+                continue
+            }
+
+            guard let messageID = self.jsonID(message["id"]), messageID == id else { continue }
+
+            if let error = message["error"] as? [String: Any], let messageText = error["message"] as? String {
+                throw RPCWireError.requestFailed(messageText)
+            }
+
+            return message
+        }
+    }
+
+    private func sendNotification(method: String, params: [String: Any]? = nil) throws {
+        let paramsValue: Any = params ?? [:]
+        try self.sendPayload(["method": method, "params": paramsValue])
+    }
+
+    private func sendRequest(id: Int, method: String, params: [String: Any]?) throws {
+        let paramsValue: Any = params ?? [:]
+        let payload: [String: Any] = ["id": id, "method": method, "params": paramsValue]
+        try self.sendPayload(payload)
+    }
+
+    private func sendPayload(_ payload: [String: Any]) throws {
+        let data = try JSONSerialization.data(withJSONObject: payload)
+        self.stdinPipe.fileHandleForWriting.write(data)
+        self.stdinPipe.fileHandleForWriting.write(Data([0x0A]))
+    }
+
+    private func readNextMessage() async throws -> [String: Any] {
+        for try await lineData in self.stdoutPipe.fileHandleForReading.bytes.lines {
+            if lineData.isEmpty { continue }
+            let line = String(lineData)
+            guard let data = line.data(using: .utf8) else { continue }
+            if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                return json
+            }
+        }
+        throw RPCWireError.malformed("codex app-server closed stdout")
+    }
+
+    private func decodeResult<T: Decodable>(from message: [String: Any]) throws -> T {
+        guard let result = message["result"] else {
+            throw RPCWireError.malformed("missing result field")
+        }
+        let data = try JSONSerialization.data(withJSONObject: result)
+        let decoder = JSONDecoder()
+        return try decoder.decode(T.self, from: data)
+    }
+
+    private func jsonID(_ value: Any?) -> Int? {
+        switch value {
+        case let int as Int:
+            int
+        case let number as NSNumber:
+            number.intValue
+        default:
+            nil
+        }
+    }
+}
+
+// MARK: - Public fetcher used by the app
+
 struct UsageFetcher: Sendable {
-    private let codexHome: URL
-    // Read only the last chunk of the newest session file first; fall back to full file if needed.
-    private static let tailReadBytes: Int = 512 * 1024
+    private let environment: [String: String]
 
     init(environment: [String: String] = ProcessInfo.processInfo.environment) {
-        let home = environment["CODEX_HOME"] ?? "\(NSHomeDirectory())/.codex"
-        self.codexHome = URL(fileURLWithPath: home)
+        self.environment = environment
     }
 
     func loadLatestUsage() async throws -> UsageSnapshot {
-        let codexHome = self.codexHome
-        // Do file IO off the main actor so menu updates stay snappy.
-        return try await Task.detached(priority: .utility) {
-            try Self.loadLatestUsageSync(fileManager: FileManager(), codexHome: codexHome)
-        }.value
-    }
+        let rpc = try CodexRPCClient()
+        defer { rpc.shutdown() }
 
-    // MARK: - Sync helper for detached task
+        try await rpc.initialize(clientName: "codexbar", clientVersion: "0.4.4")
+        let limits = try await rpc.fetchRateLimits().rateLimits
 
-    private static func loadLatestUsageSync(fileManager: FileManager, codexHome: URL) throws -> UsageSnapshot {
-        for sessionFile in try self.sessionFilesSorted(fileManager: fileManager, codexHome: codexHome) {
-            if let snapshot = try loadUsage(from: sessionFile) {
-                return snapshot
-            }
+        guard let primary = Self.makeWindow(from: limits.primary),
+              let secondary = Self.makeWindow(from: limits.secondary)
+        else {
+            throw UsageError.noRateLimitsFound
         }
 
-        throw UsageError.noRateLimitsFound
+        return UsageSnapshot(
+            primary: primary,
+            secondary: secondary,
+            tertiary: nil,
+            updatedAt: Date(),
+            accountEmail: nil,
+            accountOrganization: nil,
+            loginMethod: nil)
     }
 
-    private static func loadUsage(from url: URL) throws -> UsageSnapshot? {
-        // First try the tail of the newest file to avoid loading multi-MB logs.
-        if let tail = try self.tailLines(url: url, bytes: self.tailReadBytes),
-           let snapshot = self.parse(lines: tail)
-        {
-            return snapshot
-        }
+    func loadLatestCredits() async throws -> CreditsSnapshot {
+        let rpc = try CodexRPCClient()
+        defer { rpc.shutdown() }
+        try await rpc.initialize(clientName: "codexbar", clientVersion: "0.4.4")
+        let limits = try await rpc.fetchRateLimits().rateLimits
+        guard let credits = limits.credits else { throw UsageError.noRateLimitsFound }
+        let remaining = Self.parseCredits(credits.balance)
+        return CreditsSnapshot(remaining: remaining, events: [], updatedAt: Date())
+    }
 
-        // Fallback to full file scan for safety.
-        let fullLines = try String(contentsOf: url, encoding: .utf8)
-            .split(whereSeparator: \.isNewline)
-            .map(String.init)
-        return self.parse(lines: fullLines)
+    func debugRawRateLimits() async -> String {
+        do {
+            let rpc = try CodexRPCClient()
+            defer { rpc.shutdown() }
+            try await rpc.initialize(clientName: "codexbar", clientVersion: "0.4.4")
+            let limits = try await rpc.fetchRateLimits()
+            let data = try JSONEncoder().encode(limits)
+            return String(data: data, encoding: .utf8) ?? "<unprintable>"
+        } catch {
+            return "Codex RPC probe failed: \(error)"
+        }
     }
 
     func loadAccountInfo() -> AccountInfo {
-        let authURL = self.codexHome.appendingPathComponent("auth.json")
+        // Keep using auth.json for quick startup (non-blocking, no RPC spin-up required).
+        let authURL = URL(fileURLWithPath: self.environment["CODEX_HOME"] ?? "\(NSHomeDirectory())/.codex")
+            .appendingPathComponent("auth.json")
         guard let data = try? Data(contentsOf: authURL),
               let auth = try? JSONDecoder().decode(AuthFile.self, from: data),
               let idToken = auth.tokens?.idToken
@@ -117,7 +334,7 @@ struct UsageFetcher: Sendable {
             return AccountInfo(email: nil, plan: nil)
         }
 
-        guard let payload = Self.parseJWT(idToken) else {
+        guard let payload = UsageFetcher.parseJWT(idToken) else {
             return AccountInfo(email: nil, plan: nil)
         }
 
@@ -133,24 +350,21 @@ struct UsageFetcher: Sendable {
         return AccountInfo(email: email, plan: plan)
     }
 
-    private static func sessionFilesSorted(fileManager: FileManager, codexHome: URL) throws -> [URL] {
-        let sessions = codexHome.appendingPathComponent("sessions")
-        guard let enumerator = fileManager.enumerator(
-            at: sessions,
-            includingPropertiesForKeys: [.contentModificationDateKey])
-        else {
-            throw UsageError.noSessions
-        }
+    // MARK: - Helpers
 
-        var files: [(url: URL, date: Date)] = []
-        for case let url as URL in enumerator where url.lastPathComponent.hasPrefix("rollout-") {
-            guard let date = try url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate
-            else { continue }
-            files.append((url, date))
-        }
+    private static func makeWindow(from rpc: RPCRateLimitWindow?) -> RateWindow? {
+        guard let rpc else { return nil }
+        let resetsAtDate = rpc.resetsAt.map { Date(timeIntervalSince1970: TimeInterval($0)) }
+        return RateWindow(
+            usedPercent: rpc.usedPercent,
+            windowMinutes: rpc.windowDurationMins,
+            resetsAt: resetsAtDate,
+            resetDescription: nil)
+    }
 
-        guard !files.isEmpty else { throw UsageError.noSessions }
-        return files.sorted { $0.date > $1.date }.map(\.url)
+    private static func parseCredits(_ balance: String?) -> Double {
+        guard let balance, let val = Double(balance) else { return 0 }
+        return val
     }
 
     private static func parseJWT(_ token: String) -> [String: Any]? {
@@ -168,157 +382,10 @@ struct UsageFetcher: Sendable {
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
         return json
     }
-
-    // MARK: - Decoding helpers
-
-    private static func decodeFlexibleDate(_ any: Any?) -> Date? {
-        guard let any else { return nil }
-        if let d = any as? Double { return Date(timeIntervalSince1970: self.normalizeEpochSeconds(d)) }
-        if let i = any as? Int { return Date(timeIntervalSince1970: self.normalizeEpochSeconds(Double(i))) }
-        if let n = any as? NSNumber { return Date(timeIntervalSince1970: self.normalizeEpochSeconds(n.doubleValue)) }
-        if let s = any as? String {
-            // Support numeric epochs that may be seconds/millis/micros.
-            if CharacterSet.decimalDigits.isSuperset(of: CharacterSet(charactersIn: s)), let val = Double(s) {
-                return Date(timeIntervalSince1970: self.normalizeEpochSeconds(val))
-            }
-            // Fallback to ISO8601 with/without fractional seconds.
-            let iso1 = ISO8601DateFormatter(); iso1.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-            if let d = iso1.date(from: s) { return d }
-            let iso2 = ISO8601DateFormatter(); iso2.formatOptions = [.withInternetDateTime]
-            if let d = iso2.date(from: s) { return d }
-        }
-        return nil
-    }
-
-    private static func normalizeEpochSeconds(_ value: Double) -> Double {
-        if value > 1e14 { return value / 1_000_000 }
-        if value > 1e11 { return value / 1000 }
-        return value
-    }
-
-    private static func decodeWindow(_ any: Any?, created: Date, capturedAt: Date?) -> RateWindow {
-        guard let dict = any as? [String: Any] else {
-            return RateWindow(usedPercent: 0, windowMinutes: nil, resetsAt: nil, resetDescription: nil)
-        }
-
-        let usedPercent: Double = {
-            if let d = dict["used_percent"] as? Double { return d }
-            if let i = dict["used_percent"] as? Int { return Double(i) }
-            if let n = dict["used_percent"] as? NSNumber { return n.doubleValue }
-            return 0
-        }()
-
-        let windowMinutes = (dict["window_minutes"] as? NSNumber)?.intValue
-
-        var resetsAt: Date?
-        // Accept absolute reset times in seconds or milliseconds under multiple server casings.
-        let keys = ["resets_at", "reset_at", "resetsAt", "resetAt", "resets_at_ms", "reset_at_ms"]
-        for key in keys {
-            guard let raw = dict[key] else { continue }
-            if key.hasSuffix("_ms") {
-                if let num = raw as? NSNumber {
-                    resetsAt = Date(timeIntervalSince1970: self.normalizeEpochSeconds(num.doubleValue))
-                    break
-                }
-                if let num = raw as? Double {
-                    resetsAt = Date(timeIntervalSince1970: self.normalizeEpochSeconds(num))
-                    break
-                }
-                if let num = raw as? Int {
-                    resetsAt = Date(timeIntervalSince1970: self.normalizeEpochSeconds(Double(num)))
-                    break
-                }
-                if let s = raw as? String, let num = Double(s) {
-                    resetsAt = Date(timeIntervalSince1970: self.normalizeEpochSeconds(num))
-                    break
-                }
-            } else if let date = decodeFlexibleDate(raw) {
-                resetsAt = date
-                break
-            }
-        }
-
-        // If captured_at is present and resetsAt was missing, assume capturedAt is the best freshness indicator.
-        let finalReset = resetsAt ?? capturedAt ?? created
-
-        return RateWindow(
-            usedPercent: usedPercent,
-            windowMinutes: windowMinutes,
-            resetsAt: finalReset,
-            resetDescription: nil)
-    }
-
-    private static func parse(lines: some Sequence<String>) -> UsageSnapshot? {
-        for rawLine in lines.reversed() {
-            guard let data = rawLine.data(using: .utf8) else { continue }
-            guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { continue }
-
-            // Prefer nested payload for consistency, but fall back to top-level.
-            let payload = (json["payload"] as? [String: Any]) ?? json
-            // Timestamps show up in multiple places depending on emitter; pick the first valid one.
-            let createdAt = self.decodeFlexibleDate(json["timestamp"]) ??
-                self.decodeFlexibleDate(payload["timestamp"]) ??
-                self.decodeFlexibleDate(payload["created_at"]) ??
-                Date()
-
-            // Accept modern token_count and account/rateLimits update shapes.
-            let type = (payload["type"] as? String)?.lowercased()
-            guard type == "token_count" ||
-                type?.contains("ratelimits") == true ||
-                type?.contains("rate_limits") == true
-            else {
-                continue
-            }
-
-            // Modern logs: rate_limits attached to payload (or top-level fallback for safety).
-            let rate = (payload["rate_limits"] as? [String: Any]) ??
-                json["rate_limits"] as? [String: Any]
-            guard let rate else { continue }
-
-            let capturedAt = self.decodeFlexibleDate(rate["captured_at"]) ?? createdAt
-            let primary = self.decodeWindow(rate["primary"], created: createdAt, capturedAt: capturedAt)
-            let secondary = self.decodeWindow(rate["secondary"], created: createdAt, capturedAt: capturedAt)
-
-            return UsageSnapshot(
-                primary: primary,
-                secondary: secondary,
-                updatedAt: capturedAt)
-        }
-        return nil
-    }
-
-    private static func tailLines(url: URL, bytes: Int) throws -> [String]? {
-        let handle = try FileHandle(forReadingFrom: url)
-        defer { try? handle.close() }
-
-        let fileSize = try (handle.seekToEnd()) as UInt64
-        guard fileSize > 0 else { return [] }
-
-        let start = fileSize > bytes ? fileSize - UInt64(bytes) : 0
-        try handle.seek(toOffset: start)
-        let data = try handle.readToEnd() ?? Data()
-        guard var string = String(data: data, encoding: .utf8) else { return nil }
-        if start > 0 {
-            // Drop the potentially partial first line when starting mid-file.
-            if let newlineRange = string.range(of: "\n") {
-                string = String(string[newlineRange.upperBound...])
-            } else {
-                // No newline at all; return nil to force fallback.
-                return nil
-            }
-        }
-        return string.split(whereSeparator: \.isNewline).map(String.init)
-    }
 }
 
+// Minimal auth.json struct preserved from previous implementation
 private struct AuthFile: Decodable {
+    struct Tokens: Decodable { let idToken: String? }
     let tokens: Tokens?
-}
-
-private struct Tokens: Decodable {
-    let idToken: String?
-
-    enum CodingKeys: String, CodingKey {
-        case idToken = "id_token"
-    }
 }
