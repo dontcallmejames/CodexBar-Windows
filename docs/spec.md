@@ -1,10 +1,9 @@
 # CodexBar – implementation notes
 
 ## Data source
-- Read newest `rollout-*.jsonl` from `~/.codex/sessions/**` (respects `CODEX_HOME`).
-- Parse lines bottom‑up for the latest `token_count` event: fields used are `rate_limits.primary|secondary.used_percent`, `window_minutes`, `resets_at` (epoch seconds), plus `timestamp`.
-- Account info is decoded locally from `~/.codex/auth.json` (`id_token` JWT → `email`, `chatgpt_plan_type`).
-- No browser scraping and no `/status` text parsing.
+- Codex: run `codex /status` inside a native PTY (no tmux, no web/cookie login). We parse the rendered rows for session/weekly limits and credits; when the CLI shows an update prompt we auto-press Down+Enter and retry.
+- Account info is decoded locally from `~/.codex/auth.json` (`id_token` JWT → `email`, `chatgpt_plan_type`); no browser scraping involved.
+- Claude: run `claude /usage` in a PTY and parse the text panel; retries enter and reports CLI errors verbosely.
 
 ## Refresh model
 - `RefreshFrequency` presets: Manual, 1m, 2m (default), 5m; persisted in `UserDefaults`.
