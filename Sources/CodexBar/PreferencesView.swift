@@ -99,6 +99,14 @@ private struct GeneralPane: View {
                         title: self.store.metadata(for: .claude).toggleTitle,
                         subtitle: self.providerSubtitle(.claude),
                         binding: self.claudeBinding)
+
+                    if let claudeError = self.providerError(.claude) {
+                        Text(claudeError)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(3)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
 
                 Divider()
@@ -190,6 +198,13 @@ private struct GeneralPane: View {
         }
     }
 
+    private func providerError(_ provider: UsageProvider) -> String? {
+        guard self.store.isStale(provider: provider), let raw = self.store.error(for: provider) else { return nil }
+        let meta = self.store.metadata(for: provider)
+        let prefix = "Last \(meta.displayName) fetch failed: "
+        return self.truncated(raw, prefix: prefix)
+    }
+
     @ViewBuilder
     private func codexSigningStatus() -> some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -205,7 +220,7 @@ private struct GeneralPane: View {
                     .foregroundStyle(.secondary)
             }
             if self.store.credits != nil, let lastError = self.store.lastCreditsError {
-                Text(self.truncatedError(lastError))
+                Text(self.truncated(lastError, prefix: "Sign-in issue: "))
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .lineLimit(3)
@@ -215,10 +230,8 @@ private struct GeneralPane: View {
         }
     }
 
-    private func truncatedError(_ error: String) -> String {
-        let prefix = "Sign-in issue: "
-        let maxLength = 160
-        var message = error.trimmingCharacters(in: .whitespacesAndNewlines)
+    private func truncated(_ text: String, prefix: String, maxLength: Int = 160) -> String {
+        var message = text.trimmingCharacters(in: .whitespacesAndNewlines)
         if message.count > maxLength {
             let idx = message.index(message.startIndex, offsetBy: maxLength)
             message = "\(message[..<idx])…"

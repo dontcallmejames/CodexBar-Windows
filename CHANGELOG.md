@@ -3,6 +3,7 @@
 ## 0.4.0 — Unreleased
 - First cloud provider: Claude gets its own menu bar icon + native AppKit menu (dual icons when Codex is also enabled), showing email/org/plan and Opus usage with clickable errors and a gated plan line until data loads.
 - Credits/usage now read directly from PTY `/status` probes (base-index aware with awk fix), surviving provider toggles, handling empty usage, and keeping loading/status animations smooth at low CPU.
+- Claude: PTY probe now surfaces CLI failures (e.g., token_expired) and Settings shows the last fetch reason inline beneath the Claude toggle.
 - Settings/preferences: wider, better-padded window with per-provider enable toggles, clearer sign-in/logout copy, renamed Start-at-login switch, refreshed refresh label/subtitles, an always-visible Quit button, and a gated/exposed Debug tab with consolidated diagnostics.
 - Stability: menu architecture keeps SwiftUI settings alive, credits navigation guard avoids crashes, tiny keepalive window constraints fixed, and error/empty states are clearer.
 - Release quality: About panels show build timestamp; debug builds ship with a `.debug` bundle ID and Sparkle disabled; packaging scrubs AppleDouble files before signing to keep notarization happy.

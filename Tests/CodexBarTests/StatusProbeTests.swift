@@ -68,4 +68,27 @@ struct StatusProbeTests {
         #expect(snap.weeklyPercentLeft == 90)
         #expect(snap.opusPercentLeft == 100)
     }
+
+    @Test
+    func surfacesClaudeTokenExpired() {
+        let sample = """
+        Settings:  Status   Config   Usage
+
+        Error: Failed to load usage data: {"type":"error","error":{"type":"authentication_error",
+        "message":"OAuth token has expired. Please obtain a new token or refresh your existing token.",
+        "details":{"error_visibility":"user_facing","error_code":"token_expired"}},\
+        "request_id":"req_123"}
+        """
+
+        do {
+            _ = try ClaudeStatusProbe.parse(text: sample)
+            #expect(Bool(false), "Parsing should fail for auth error")
+        } catch ClaudeStatusProbeError.parseFailed(let message) {
+            let lower = message.lowercased()
+            #expect(lower.contains("token"))
+            #expect(lower.contains("login"))
+        } catch {
+            #expect(Bool(false), "Unexpected error: \(error)")
+        }
+    }
 }
