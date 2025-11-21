@@ -66,12 +66,9 @@ struct MenuDescriptor {
 
                 entries.append(.text(UsageFormatter.updatedString(from: snap.updatedAt), .secondary))
 
-                if let email = snap.accountEmail {
-                    let plan = snap.loginMethod
-                    let label = plan.map { "Account: \(email) — \($0)" } ?? "Account: \(email)"
-                    entries.append(.text(label, .secondary))
-                }
                 if let org = snap.accountOrganization, !org.isEmpty { entries.append(.text("Org: \(org)", .secondary)) }
+                if let plan = snap.loginMethod, !plan.isEmpty { entries.append(.text("Plan: \(plan)", .secondary)) }
+                if let email = snap.accountEmail { entries.append(.text("Account: \(email)", .secondary)) }
             } else {
                 entries.append(.text("No usage yet", .secondary))
                 if let err = store.error(for: provider), !err.isEmpty {
