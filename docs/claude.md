@@ -39,6 +39,9 @@ Goal: add optional Claude Code usage alongside Codex, with a Claude-themed menu 
     - `Current week (all models)`
     - `Current week (Opus)` (optional)
   - `X% used` is converted to `% left = 100 - X`; `X% left` is used as-is.
+  - If the CLI surfaces `Failed to load usage data` with a JSON blob (e.g. `authentication_error` + `token_expired`),
+    we surface that message directly ("Claude CLI token expired. Run `claude login`"), rather than the generic
+    "Missing Current session" parse failure.
   - We also extract `Account:` and `Org:` lines when present.
 - Strictness: if Session or Weekly blocks are missing, parsing fails loudly (no silent “100% left” defaults).
 - Resilience: `ClaudeStatusProbe` retries once with a slightly longer timeout (20s + 6s) to ride out slow redraws or ignored Enter presses.
@@ -68,6 +71,9 @@ Goal: add optional Claude Code usage alongside Codex, with a Claude-themed menu 
 - Check the raw text: log the buffer before ANSI stripping if parsing fails—look for stuck autocomplete lists instead of the Usage pane.
 - Things that commonly break:
   - Claude CLI not logged in (`claude login` needed).
+  - CLI auth token expired: the Usage pane shows `Error: Failed to load usage data: {"error_code":"token_expired", …}`;
+    rerun `claude login` to refresh tokens. CodexBar now surfaces this message directly.
   - Enter ignored because the CLI is “Thinking” or busy; rerun with longer timeout or more Enter retries.
   - Running inside tmux/screen: our PTY driver is standalone, so disable tmux for this path.
+  - Settings > General now shows the last Claude fetch error inline under the toggle to make it clear why usage is stale.
 - To rebuild and reload the menubar app after code changes: `./scripts/compile_and_run.sh`. Ensure the packaged app is restarted so the new PTY driver is in use.

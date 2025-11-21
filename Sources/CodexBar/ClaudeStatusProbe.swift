@@ -79,6 +79,10 @@ struct ClaudeStatusProbe {
         let clean = TextParsing.stripANSICodes(text)
         guard !clean.isEmpty else { throw ClaudeStatusProbeError.timedOut }
 
+        if let usageError = self.extractUsageError(text: clean) {
+            throw ClaudeStatusProbeError.parseFailed(usageError)
+        }
+
         let sessionPct = self.extractPercent(labelSubstring: "Current session", text: clean)
         let weeklyPct = self.extractPercent(labelSubstring: "Current week (all models)", text: clean)
         let opusPct = self.extractPercent(labelSubstring: "Current week (Opus)", text: clean)
@@ -130,5 +134,59 @@ struct ClaudeStatusProbe {
               match.numberOfRanges >= 2,
               let r = Range(match.range(at: 1), in: text) else { return nil }
         return String(text[r]).trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private static func extractUsageError(text: String) -> String? {
+        if let jsonHint = self.extractUsageErrorJSON(text: text) { return jsonHint }
+
+        let lower = text.lowercased()
+        if lower.contains("token_expired") || lower.contains("token has expired") {
+            return "Claude CLI token expired. Run `claude login` to refresh."
+        }
+        if lower.contains("authentication_error") {
+            return "Claude CLI authentication error. Run `claude login`."
+        }
+        if lower.contains("failed to load usage data") {
+            return "Claude CLI could not load usage data. Open the CLI and retry `/usage`."
+        }
+        return nil
+    }
+
+    private static func extractUsageErrorJSON(text: String) -> String? {
+        let pattern = #"Failed to load usage data:\s*(\{.*\})"#
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: [.dotMatchesLineSeparators]) else {
+            return nil
+        }
+        let range = NSRange(text.startIndex..<text.endIndex, in: text)
+        guard let match = regex.firstMatch(in: text, options: [], range: range),
+              match.numberOfRanges >= 2,
+              let jsonRange = Range(match.range(at: 1), in: text) else
+        {
+            return nil
+        }
+
+        let jsonString = String(text[jsonRange])
+        guard let data = jsonString.data(using: .utf8),
+              let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let error = payload["error"] as? [String: Any]
+        else {
+            return nil
+        }
+
+        let message = (error["message"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let details = error["details"] as? [String: Any]
+        let code = (details?["error_code"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        var parts: [String] = []
+        if let message, !message.isEmpty { parts.append(message) }
+        if let code, !code.isEmpty { parts.append("(\(code))") }
+
+        guard !parts.isEmpty else { return nil }
+        let hint = parts.joined(separator: " ")
+
+        if let code, code.lowercased().contains("token") {
+            return "\(hint). Run `claude login` to refresh."
+        }
+        return "Claude CLI error: \(hint)"
     }
 }
