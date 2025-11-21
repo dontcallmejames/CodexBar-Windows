@@ -75,8 +75,6 @@ struct MenuDescriptor {
                     if let reset = opus.resetDescription { entries.append(.text("Resets \(reset)", .secondary)) }
                 }
 
-                entries.append(.text(UsageFormatter.updatedString(from: snap.updatedAt), .secondary))
-
                 if let org = snap.accountOrganization, !org.isEmpty { entries.append(.text("Org: \(org)", .secondary)) }
                 if let plan = snap.loginMethod, !plan.isEmpty { entries.append(.text("Plan: \(plan)", .secondary)) }
                 if let email = snap.accountEmail { entries.append(.text("Account: \(email)", .secondary)) }
@@ -98,6 +96,9 @@ struct MenuDescriptor {
                     let hint = store.lastCreditsError ?? meta.creditsHint
                     entries.append(.text(hint, .secondary))
                 }
+            }
+            if let updated = store.snapshot(for: provider)?.updatedAt {
+                entries.append(.text(UsageFormatter.updatedString(from: updated), .secondary))
             }
             return Section(entries: entries)
         }
