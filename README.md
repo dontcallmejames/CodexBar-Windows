@@ -46,7 +46,7 @@ export APP_STORE_CONNECT_KEY_ID="ABC123XYZ"
 export APP_STORE_CONNECT_ISSUER_ID="00000000-0000-0000-0000-000000000000"
 ./Scripts/sign-and-notarize.sh
 ```
-Outputs `CodexBar-0.4.0.zip` ready to ship. Adjust `APP_IDENTITY` in the script if needed.
+Outputs `CodexBar-0.4.2.zip` ready to ship. Adjust `APP_IDENTITY` in the script if needed.
 
 ## How account info is read
 `~/.codex/auth.json` is decoded locally (JWT only) to show your email + plan (Pro/Plus/Business). Nothing is sent anywhere.
