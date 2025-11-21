@@ -238,6 +238,7 @@ enum IconRenderer {
         image.isTemplate = true
         return image
     }
+
     // swiftlint:enable function_body_length
 
     /// Morph helper: unbraids a simplified knot into our bar icon.
