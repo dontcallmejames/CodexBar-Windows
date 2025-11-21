@@ -78,6 +78,16 @@ struct TTYCommandRunner {
             return buffer.contains(marker)
         }
 
+        func containsCodexStatus() -> Bool {
+            let markers = [
+                "Credits:",
+                "5h limit",
+                "5-hour limit",
+                "Weekly limit",
+            ].map { Data($0.utf8) }
+            return markers.contains { buffer.contains($0) }
+        }
+
         if script == "/usage" {
             // Boot loop: wait for TUI to be ready and handle first-run prompts.
             let bootDeadline = Date().addingTimeInterval(4.0)
@@ -177,7 +187,7 @@ struct TTYCommandRunner {
 
             while Date() < deadline {
                 readChunk()
-                if containsSession() { break }
+                if containsSession() || containsWeek() || containsCodexStatus() { break }
                 usleep(120_000)
             }
         }
