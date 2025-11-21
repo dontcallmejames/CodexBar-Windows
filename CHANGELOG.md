@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.4.2 — 2025-11-21
+- Sparkle updates re-enabled in release builds (disabled only for the debug bundle ID).
+
 ## 0.4.1 — 2025-11-21
 - Both Codex and Claude probes now run off the main thread (background PTY), avoiding menu/UI stalls during `/status` or `/usage` fetches.
 - Codex credits stay available even when `/status` times out: cached values are kept and errors are surfaced separately.
