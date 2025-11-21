@@ -398,6 +398,7 @@ private struct DebugPane: View {
                     Button("Replay selected animation") {
                         self.replaySelectedAnimation()
                     }
+                    .keyboardShortcut(.defaultAction)
                 }
 
                 SettingsSection(title: "Actions", caption: "One-off tools to debug UI/usage issues.") {
