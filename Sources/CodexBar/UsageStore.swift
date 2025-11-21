@@ -256,7 +256,9 @@ final class UsageStore: ObservableObject {
     private func refreshCreditsIfNeeded() async {
         guard self.isEnabled(.codex) else { return }
         do {
-            let snap = try await CodexStatusProbe().fetch()
+            let snap = try await Task.detached(priority: .utility) {
+                try await CodexStatusProbe().fetch()
+            }.value
             let credits = CreditsSnapshot(remaining: snap.credits ?? 0, events: [], updatedAt: Date())
             await MainActor.run {
                 self.credits = credits
