@@ -434,6 +434,14 @@ private struct DebugPane: View {
                         .disabled(self.isLoadingLog && self.logText.isEmpty)
                     }
 
+                    Button {
+                        self.settings.rerunProviderDetection()
+                        self.loadLog(self.currentLogProvider)
+                    } label: {
+                        Label("Re-run provider autodetect", systemImage: "dot.radiowaves.left.and.right")
+                    }
+                    .controlSize(.small)
+
                     ZStack(alignment: .topLeading) {
                         ScrollView {
                             Text(self.displayedLog)
