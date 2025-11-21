@@ -37,6 +37,16 @@ struct MenuDescriptor {
     {
         var sections: [Section] = []
 
+        func versionNumber(for provider: UsageProvider) -> String? {
+            guard let raw = store.version(for: provider) else { return nil }
+            let pattern = #"[0-9]+(?:\.[0-9]+)*"#
+            guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
+            let range = NSRange(raw.startIndex..<raw.endIndex, in: raw)
+            guard let match = regex.firstMatch(in: raw, options: [], range: range),
+                  let r = Range(match.range, in: raw) else { return nil }
+            return String(raw[r])
+        }
+
         func usageSection(for provider: UsageProvider, titlePrefix: String) -> Section {
             let meta = store.metadata(for: provider)
             var entries: [Entry] = []
@@ -97,6 +107,7 @@ struct MenuDescriptor {
             var entries: [Entry] = []
             let emailFromClaude = claude?.accountEmail
             let planFromClaude = claude?.loginMethod
+            let providerForMeta: UsageProvider = preferClaude ? .claude : .codex
 
             // Email: Claude wins when requested; otherwise Codex auth.
             let emailText: String = {
@@ -114,6 +125,10 @@ struct MenuDescriptor {
                 }
             } else if let plan = account.plan, !plan.isEmpty {
                 entries.append(.text("Plan: \(plan)", .secondary))
+            }
+
+            if let version = versionNumber(for: providerForMeta) {
+                entries.append(.text(version, .secondary))
             }
             return Section(entries: entries)
         }
