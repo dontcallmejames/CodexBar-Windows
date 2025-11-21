@@ -106,6 +106,12 @@ struct StatusProbeTests {
             let runner = TTYCommandRunner()
             let res = try runner.run(binary: "codex", send: "/status\n", options: .init(rows: 60, cols: 200, timeout: 12))
             print("RAW CODEX PTY OUTPUT BEGIN\n\(res.text)\nRAW CODEX PTY OUTPUT END")
+            let clean = TextParsing.stripANSICodes(res.text)
+            print("CLEAN CODEX OUTPUT BEGIN\n\(clean)\nCLEAN CODEX OUTPUT END")
+            let five = TextParsing.firstInt(pattern: #"5h limit[^\n]*?([0-9]{1,3})%\s+left"#, text: clean) ?? -1
+            let week = TextParsing.firstInt(pattern: #"Weekly limit[^\n]*?([0-9]{1,3})%\s+left"#, text: clean) ?? -1
+            let credits = TextParsing.firstNumber(pattern: #"Credits:\s*([0-9][0-9.,]*)"#, text: clean) ?? -1
+            print("Parsed probes => 5h \(five)% weekly \(week)% credits \(credits)")
             throw error
         }
     }

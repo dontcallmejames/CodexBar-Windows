@@ -217,6 +217,11 @@ struct TTYCommandRunner {
             var skippedCodexUpdate = false
             var sentScript = !delayInitialSend
             var updateSkipAttempts = 0
+            var lastEnter = Date(timeIntervalSince1970: 0)
+            var scriptSentAt: Date? = sentScript ? Date() : nil
+            var resendStatusRetries = 0
+            var enterRetries = 0
+            var sawCodexStatus = false
 
             while Date() < deadline {
                 readChunk()
@@ -235,6 +240,7 @@ struct TTYCommandRunner {
                     if updateSkipAttempts >= 1 {
                         skippedCodexUpdate = true
                         sentScript = false // re-send /status after dismissing
+                        scriptSentAt = nil
                         buffer.removeAll()
                     }
                     usleep(300_000)
@@ -243,11 +249,47 @@ struct TTYCommandRunner {
                     try? send(script)
                     try? send("\r")
                     sentScript = true
+                    scriptSentAt = Date()
+                    lastEnter = Date()
                     usleep(200_000)
                     continue
                 }
-                if containsSession() || containsWeek() || containsCodexStatus() || containsCodexReadyScreen() { break }
+                if sentScript, !containsSession(), !containsWeek(), !containsCodexStatus() {
+                    if Date().timeIntervalSince(lastEnter) >= 1.2, enterRetries < 6 {
+                        try? send("\r")
+                        enterRetries += 1
+                        lastEnter = Date()
+                        usleep(120_000)
+                        continue
+                    }
+                    if let sentAt = scriptSentAt,
+                       Date().timeIntervalSince(sentAt) >= 3.0,
+                       resendStatusRetries < 2
+                    {
+                        try? send("/status")
+                        try? send("\r")
+                        resendStatusRetries += 1
+                        buffer.removeAll()
+                        scriptSentAt = Date()
+                        lastEnter = Date()
+                        usleep(220_000)
+                        continue
+                    }
+                }
+                if containsSession() || containsWeek() || containsCodexStatus() {
+                    if containsCodexStatus() { sawCodexStatus = true }
+                    break
+                }
                 usleep(120_000)
+            }
+
+            if sawCodexStatus {
+                let settleDeadline = Date().addingTimeInterval(2.0)
+                while Date() < settleDeadline {
+                    readChunk()
+                    respondIfCursorQuerySeen()
+                    usleep(100_000)
+                }
             }
         }
 
