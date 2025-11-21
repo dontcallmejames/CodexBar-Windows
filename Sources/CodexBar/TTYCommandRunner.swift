@@ -106,6 +106,12 @@ struct TTYCommandRunner {
             return needles.contains { lower.contains($0.lowercased()) }
         }
 
+        func containsCodexReadyScreen() -> Bool {
+            // The main Codex shell shows these markers once past the update dialog.
+            let lower = String(data: buffer, encoding: .utf8)?.lowercased() ?? ""
+            return lower.contains("openai codex") && lower.contains("model:") && lower.contains("/status")
+        }
+
         if script == "/usage" {
             // Boot loop: wait for TUI to be ready and handle first-run prompts.
             let bootDeadline = Date().addingTimeInterval(4.0)
@@ -216,9 +222,14 @@ struct TTYCommandRunner {
                 readChunk()
                 respondIfCursorQuerySeen()
                 if !skippedCodexUpdate, containsCodexUpdatePrompt() {
-                    try? send("3\r") // choose "Skip until next version"
+                    // Navigate with arrows to option 3 (Skip until next version) in case numeric shortcuts are ignored.
+                    try? send("\u{1b}[B")
+                    usleep(80_000)
+                    try? send("\u{1b}[B")
+                    usleep(80_000)
+                    try? send("\r")
                     usleep(150_000)
-                    try? send("\r") // confirm/continue
+                    try? send("\r") // extra enter to exit dialog if needed
                     updateSkipAttempts += 1
                     if updateSkipAttempts >= 1 {
                         skippedCodexUpdate = true
@@ -234,7 +245,7 @@ struct TTYCommandRunner {
                     usleep(200_000)
                     continue
                 }
-                if containsSession() || containsWeek() || containsCodexStatus() { break }
+                if containsSession() || containsWeek() || containsCodexStatus() || containsCodexReadyScreen() { break }
                 usleep(120_000)
             }
         }
