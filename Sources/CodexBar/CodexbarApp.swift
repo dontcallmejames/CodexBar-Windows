@@ -120,7 +120,7 @@ private func makeUpdaterController() -> UpdaterProviding {
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let updaterController: UpdaterProviding = makeUpdaterController()
-    private var statusController: StatusItemController?
+    private var statusController: StatusItemControlling?
     private var store: UsageStore?
     private var settings: SettingsStore?
     private var account: AccountInfo?
@@ -138,33 +138,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func ensureStatusController() {
-        if self.statusController != nil {
+        if self.statusController != nil { return }
+
+        if let store, let settings, let account, let selection = self.preferencesSelection {
+            self.statusController = StatusItemController.factory(
+                store,
+                settings,
+                account,
+                self.updaterController,
+                selection)
             return
         }
 
-        if let store = self.store,
-           let settings = self.settings,
-           let account = self.account,
-           let selection = self.preferencesSelection
-        {
-            self.statusController = StatusItemController(
-                store: store,
-                settings: settings,
-                account: account,
-                updater: self.updaterController,
-                preferencesSelection: selection)
-        } else {
-            let settings = SettingsStore()
-            let fetcher = UsageFetcher()
-            let account = fetcher.loadAccountInfo()
-            let store = UsageStore(fetcher: fetcher, settings: settings)
-            self.statusController = StatusItemController(
-                store: store,
-                settings: settings,
-                account: account,
-                updater: self.updaterController,
-                preferencesSelection: PreferencesSelection())
-        }
+        // Defensive fallback: this should not be hit in normal app lifecycle.
+        let fallbackSettings = SettingsStore()
+        let fetcher = UsageFetcher()
+        let fallbackAccount = fetcher.loadAccountInfo()
+        let fallbackStore = UsageStore(fetcher: fetcher, settings: fallbackSettings)
+        self.statusController = StatusItemController.factory(
+            fallbackStore,
+            fallbackSettings,
+            fallbackAccount,
+            self.updaterController,
+            PreferencesSelection())
     }
 }
 
@@ -182,8 +178,23 @@ extension CodexBarApp {
 
 // MARK: - Status item controller (AppKit-hosted icons, SwiftUI popovers)
 
+protocol StatusItemControlling: AnyObject {}
+
 @MainActor
-final class StatusItemController: NSObject, NSMenuDelegate {
+final class StatusItemController: NSObject, NSMenuDelegate, StatusItemControlling {
+    typealias Factory = (UsageStore, SettingsStore, AccountInfo, UpdaterProviding, PreferencesSelection)
+        -> StatusItemControlling
+    static let defaultFactory: Factory = { store, settings, account, updater, selection in
+        StatusItemController(
+            store: store,
+            settings: settings,
+            account: account,
+            updater: updater,
+            preferencesSelection: selection)
+    }
+
+    static var factory: Factory = StatusItemController.defaultFactory
+
     private let store: UsageStore
     private let settings: SettingsStore
     private let account: AccountInfo

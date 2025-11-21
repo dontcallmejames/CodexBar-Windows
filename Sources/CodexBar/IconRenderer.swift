@@ -40,7 +40,9 @@ enum IconRenderer {
             trackPath.lineWidth = 1.2
             trackPath.stroke()
 
-            guard let rawRemaining = remaining ?? (addNotches ? 100 : nil) else { return }
+            // When remaining is unknown, do not render a full bar; draw only the track (and decorations) unless a value
+            // exists.
+            guard let rawRemaining = remaining ?? (addNotches ? 0 : nil) else { return }
             // Clamp fill because backend might occasionally send >100 or <0.
             let clamped = max(0, min(rawRemaining / 100, 1))
             let fillRect = CGRect(x: x, y: y, width: width * clamped, height: height)

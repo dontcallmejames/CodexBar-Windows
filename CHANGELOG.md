@@ -2,6 +2,7 @@
 
 ## 0.4.3 — 2025-11-21
 - Fix status item creation timing on macOS 15 by deferring NSStatusItem setup to after launch; adds a regression test for the path.
+- Menu bar icon with unknown usage now draws empty tracks (instead of a full bar when decorations are shown) by treating nil values as 0%.
 
 ## 0.4.2 — 2025-11-21
 - Sparkle updates re-enabled in release builds (disabled only for the debug bundle ID).
