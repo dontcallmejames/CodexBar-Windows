@@ -228,7 +228,26 @@ final class UsageStore: ObservableObject {
         }
 
         do {
-            let snapshot = try await spec.fetch()
+            let snapshot: UsageSnapshot
+            if provider == .codex {
+                let task = Task(priority: .utility) { () -> UsageSnapshot in
+                    try await self.codexFetcher.loadLatestUsage()
+                }
+                snapshot = try await task.value
+            } else {
+                let task = Task(priority: .utility) { () -> UsageSnapshot in
+                    let usage = try await self.claudeFetcher.loadLatestUsage(model: "sonnet")
+                    return UsageSnapshot(
+                        primary: usage.primary,
+                        secondary: usage.secondary,
+                        tertiary: usage.opus,
+                        updatedAt: usage.updatedAt,
+                        accountEmail: usage.accountEmail,
+                        accountOrganization: usage.accountOrganization,
+                        loginMethod: usage.loginMethod)
+                }
+                snapshot = try await task.value
+            }
             await MainActor.run {
                 self.snapshots[provider] = snapshot
                 self.errors[provider] = nil
