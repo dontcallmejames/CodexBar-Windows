@@ -1,0 +1,14 @@
+{
+  "name": "codexbar",
+  "private": true,
+  "scripts": {
+    "start": "./Scripts/compile_and_run.sh",
+    "lint": "swiftlint --strict",
+    "format": "swiftformat Sources Tests",
+    "test": "swift test",
+    "test:tty": "swift test --filter TTYIntegrationTests",
+    "release": "./Scripts/package_app.sh release",
+    "restart": "pnpm start",
+    "stop": "pkill -x CodexBar || pkill -f CodexBar.app || true"
+  }
+}
