@@ -61,6 +61,8 @@ final class UsageStore: ObservableObject {
     @Published var isRefreshing = false
     @Published var debugForceAnimation = false
     @Published private(set) var probeLogs: [UsageProvider: String] = [:]
+    private var lastCreditsSnapshot: CreditsSnapshot?
+    private var creditsFailureStreak: Int = 0
 
     private let codexFetcher: UsageFetcher
     private let claudeFetcher: any ClaudeUsageFetching
@@ -259,6 +261,8 @@ final class UsageStore: ObservableObject {
             await MainActor.run {
                 self.credits = credits
                 self.lastCreditsError = nil
+                self.lastCreditsSnapshot = credits
+                self.creditsFailureStreak = 0
                 self.probeLogs[.codex] = snap.rawText
             }
         } catch {
@@ -269,8 +273,15 @@ final class UsageStore: ObservableObject {
                 await MainActor.run { self.probeLogs[.codex] = raw }
             }
             await MainActor.run {
-                self.lastCreditsError = error.localizedDescription
-                self.credits = nil
+                self.creditsFailureStreak += 1
+                if let cached = self.lastCreditsSnapshot {
+                    self.credits = cached
+                    let stamp = cached.updatedAt.formatted(date: .abbreviated, time: .shortened)
+                    self.lastCreditsError = "Last Codex credits refresh failed: \(error.localizedDescription). Showing cached values from \(stamp)."
+                } else {
+                    self.lastCreditsError = error.localizedDescription
+                    self.credits = nil
+                }
                 // Surface update-required errors in the main codex error slot so the menu shows it.
                 if let codexError = error as? CodexStatusProbeError,
                    case .updateRequired = codexError
