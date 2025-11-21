@@ -5,7 +5,6 @@
 - Claude Code support: dedicated Claude menu/icon plus dual-wired menus when both providers are enabled; shows email/org/plan and Opus usage with clickable errors.
 - Codex credits without web login: we now read `codex /status` in a PTY, auto-skip the update prompt, and parse session/weekly/credits; cached credits stay visible on transient timeouts.
 - Resilience: longer PTY timeouts, cached-credit fallback, one-line menu errors, and clearer parse/update messages.
-- Polish: relabeled refresh text, padded preferences UI, About shows build timestamp, debug builds carry `.debug` bundle ID, and packaging continues to scrub AppleDouble files before signing.
 
 ## 0.3.0 — 2025-11-18
 - Credits support: reads Codex CLI `/status` via PTY (no browser login), shows remaining credits inline, and moves history to a submenu.
