@@ -341,7 +341,7 @@ final class UsageStore: ObservableObject {
 
     private func detectVersions() {
         Task.detached { [claudeFetcher] in
-            let codexVer = Self.readCLI("codex", args: ["--version"])
+            let codexVer = Self.readCLI("codex", args: ["-s", "read-only", "-a", "untrusted", "--version"])
             let claudeVer = claudeFetcher.detectVersion()
             await MainActor.run {
                 self.codexVersion = codexVer
@@ -364,7 +364,15 @@ final class UsageStore: ObservableObject {
                     return snap.rawText
                 } catch {
                     if let raw = try? TTYCommandRunner()
-                        .run(binary: "codex", send: "/status\n", options: .init(rows: 60, cols: 200, timeout: 12)).text
+                        .run(
+                            binary: "codex",
+                            send: "/status\n",
+                            options: .init(
+                                rows: 60,
+                                cols: 200,
+                                timeout: 12,
+                                extraArgs: ["-s", "read-only", "-a", "untrusted"]))
+                        .text
                     {
                         await MainActor.run { self.probeLogs[.codex] = raw }
                         return raw

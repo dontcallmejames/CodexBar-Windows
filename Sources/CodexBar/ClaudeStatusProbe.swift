@@ -49,7 +49,7 @@ struct ClaudeStatusProbe {
                         rows: 50,
                         cols: 160,
                         timeout: self.timeout + TimeInterval(attempt * 6),
-                        extraArgs: ["--dangerously-skip-permissions"]))
+                        extraArgs: ["--allowed-tools", "", "--dangerously-skip-permissions"]))
                 let snap = try Self.parse(text: result.text)
                 if #available(macOS 13.0, *) {
                     os_log(
