@@ -218,10 +218,12 @@ struct TTYCommandRunner {
                 if !skippedCodexUpdate, containsCodexUpdatePrompt() {
                     try? send("3\r") // choose "Skip until next version"
                     updateSkipAttempts += 1
-                    if updateSkipAttempts >= 3 {
+                    if updateSkipAttempts >= 1 {
                         skippedCodexUpdate = true
+                        sentScript = false // re-send /status after dismissing
+                        buffer.removeAll()
                     }
-                    usleep(200_000)
+                    usleep(220_000)
                 }
                 if !sentScript, (!containsCodexUpdatePrompt() || skippedCodexUpdate) {
                     try? send(script)
