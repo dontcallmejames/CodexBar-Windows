@@ -73,3 +73,4 @@ See [CHANGELOG.md](CHANGELOG.md).
 ## Related
 - [Trimmy](https://github.com/steipete/Trimmy): menu-bar clipboard flattener for multi-line shell snippets.
 - Cross-promote: Download CodexBar at [codexbar.app](https://codexbar.app) and Trimmy at [trimmy.app](https://trimmy.app).
+- [MCPorter](https://mcporter.dev): TypeScript runtime, CLI, and code-generation toolkit for the Model Context Protocol.
