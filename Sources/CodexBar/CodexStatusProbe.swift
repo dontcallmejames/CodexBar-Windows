@@ -30,7 +30,7 @@ enum CodexStatusProbeError: LocalizedError {
 /// Runs `codex` inside a PTY, sends `/status`, captures text, and parses credits/limits.
 struct CodexStatusProbe {
     var codexBinary: String = "codex"
-    var timeout: TimeInterval = 12.0
+    var timeout: TimeInterval = 18.0
 
     func fetch() async throws -> CodexStatusSnapshot {
         guard TTYCommandRunner.which(self.codexBinary) != nil else { throw CodexStatusProbeError.codexNotInstalled }
@@ -40,7 +40,7 @@ struct CodexStatusProbe {
             // Codex sometimes returns an incomplete screen on the first try; retry once with a longer window.
             switch error {
             case .parseFailed, .timedOut:
-                return try self.runAndParse(rows: 70, cols: 220, timeout: max(self.timeout, 16.0))
+                return try self.runAndParse(rows: 70, cols: 220, timeout: max(self.timeout, 24.0))
             default:
                 throw error
             }
