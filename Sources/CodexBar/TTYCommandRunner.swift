@@ -88,11 +88,30 @@ struct TTYCommandRunner {
             return markers.contains { buffer.contains($0) }
         }
 
+        func respondIfCursorQuerySeen() {
+            let query = Data([0x1b, 0x5b, 0x36, 0x6e]) // ESC [ 6 n
+            if buffer.contains(query) {
+                // Pretend cursor is at 1;1, which is enough to satisfy Codex CLI's probe.
+                try? send("\u{1b}[1;1R")
+            }
+        }
+
+        func containsCodexUpdatePrompt() -> Bool {
+            let needles = [
+                "Update available!",
+                "Run bun install -g @openai/codex",
+                "0.60.1 ->",
+            ]
+            let lower = String(data: buffer, encoding: .utf8)?.lowercased() ?? ""
+            return needles.contains { lower.contains($0.lowercased()) }
+        }
+
         if script == "/usage" {
             // Boot loop: wait for TUI to be ready and handle first-run prompts.
             let bootDeadline = Date().addingTimeInterval(4.0)
             while Date() < bootDeadline {
                 readChunk()
+                respondIfCursorQuerySeen()
                 guard let text = String(data: buffer, encoding: .utf8) else { break }
                 let lower = text.lowercased()
 
@@ -139,6 +158,7 @@ struct TTYCommandRunner {
             usleep(600_000) // allow usage view to render before detection
             while Date() < deadline {
                 readChunk()
+                respondIfCursorQuerySeen()
                 if containsSession() { gotSession = true }
                 if containsWeek() { gotWeek = true }
                 if gotSession, gotWeek { break }
@@ -179,14 +199,37 @@ struct TTYCommandRunner {
         } else {
             // Generic behavior for other commands.
             usleep(400_000) // small boot grace
-            try send(script)
-            try send("\r")
-            usleep(150_000)
-            try send("\r")
-            try send("\u{1b}")
+            let delayInitialSend = script.trimmingCharacters(in: .whitespacesAndNewlines) == "/status"
+            if !delayInitialSend {
+                try send(script)
+                try send("\r")
+                usleep(150_000)
+                try send("\r")
+                try send("\u{1b}")
+            }
+
+            var skippedCodexUpdate = false
+            var sentScript = !delayInitialSend
+            var updateSkipAttempts = 0
 
             while Date() < deadline {
                 readChunk()
+                respondIfCursorQuerySeen()
+                if !skippedCodexUpdate, containsCodexUpdatePrompt() {
+                    try? send("3\r") // choose "Skip until next version"
+                    updateSkipAttempts += 1
+                    if updateSkipAttempts >= 3 {
+                        skippedCodexUpdate = true
+                    }
+                    usleep(200_000)
+                }
+                if !sentScript, (!containsCodexUpdatePrompt() || skippedCodexUpdate) {
+                    try? send(script)
+                    try? send("\r")
+                    sentScript = true
+                    usleep(200_000)
+                    continue
+                }
                 if containsSession() || containsWeek() || containsCodexStatus() { break }
                 usleep(120_000)
             }
