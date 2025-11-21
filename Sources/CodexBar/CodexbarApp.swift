@@ -145,7 +145,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let store = self.store,
            let settings = self.settings,
            let account = self.account,
-           let selection = self.preferencesSelection {
+           let selection = self.preferencesSelection
+        {
             self.statusController = StatusItemController(
                 store: store,
                 settings: settings,
