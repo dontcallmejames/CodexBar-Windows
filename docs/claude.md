@@ -76,4 +76,5 @@ Goal: add optional Claude Code usage alongside Codex, with a Claude-themed menu 
   - Enter ignored because the CLI is “Thinking” or busy; rerun with longer timeout or more Enter retries.
   - Running inside tmux/screen: our PTY driver is standalone, so disable tmux for this path.
   - Settings > General now shows the last Claude fetch error inline under the toggle to make it clear why usage is stale.
+- Codex parity: when credits are missing because the Codex CLI shows an update prompt, our PTY driver now auto-sends Down+Enter, re-runs `/status`, and retries once with a longer timeout; if it still fails, run `LIVE_CODEX_STATUS=1 swift test --filter liveCodexStatus` to dump the raw screen.
 - To rebuild and reload the menubar app after code changes: `./scripts/compile_and_run.sh`. Ensure the packaged app is restarted so the new PTY driver is in use.

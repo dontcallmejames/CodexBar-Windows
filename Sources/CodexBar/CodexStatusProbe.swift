@@ -30,17 +30,21 @@ enum CodexStatusProbeError: LocalizedError {
 /// Runs `codex` inside a PTY, sends `/status`, captures text, and parses credits/limits.
 struct CodexStatusProbe {
     var codexBinary: String = "codex"
-    var timeout: TimeInterval = 8.0
+    var timeout: TimeInterval = 12.0
 
     func fetch() async throws -> CodexStatusSnapshot {
-        let runner = TTYCommandRunner()
         guard TTYCommandRunner.which(self.codexBinary) != nil else { throw CodexStatusProbeError.codexNotInstalled }
-        let script = "/status\n"
-        let result = try runner.run(
-            binary: self.codexBinary,
-            send: script,
-            options: .init(rows: 50, cols: 160, timeout: self.timeout))
-        return try Self.parse(text: result.text)
+        do {
+            return try self.runAndParse(rows: 60, cols: 200, timeout: self.timeout)
+        } catch let error as CodexStatusProbeError {
+            // Codex sometimes returns an incomplete screen on the first try; retry once with a longer window.
+            switch error {
+            case .parseFailed, .timedOut:
+                return try self.runAndParse(rows: 70, cols: 220, timeout: max(self.timeout, 16.0))
+            default:
+                throw error
+            }
+        }
     }
 
     // MARK: - Parsing
@@ -63,6 +67,16 @@ struct CodexStatusProbe {
             fiveHourPercentLeft: fivePct,
             weeklyPercentLeft: weekPct,
             rawText: clean)
+    }
+
+    private func runAndParse(rows: UInt16, cols: UInt16, timeout: TimeInterval) throws -> CodexStatusSnapshot {
+        let runner = TTYCommandRunner()
+        let script = "/status\n"
+        let result = try runner.run(
+            binary: self.codexBinary,
+            send: script,
+            options: .init(rows: rows, cols: cols, timeout: timeout))
+        return try Self.parse(text: result.text)
     }
 
     private static func containsUpdatePrompt(_ text: String) -> Bool {
