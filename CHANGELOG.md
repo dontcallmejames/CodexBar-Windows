@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.4.3 — 2025-11-21
+- Fix status item creation timing on macOS 15 by deferring NSStatusItem setup to after launch; adds a regression test for the path.
+
 ## 0.4.2 — 2025-11-21
 - Sparkle updates re-enabled in release builds (disabled only for the debug bundle ID).
 
