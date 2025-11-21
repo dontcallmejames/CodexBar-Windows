@@ -83,7 +83,8 @@ struct MenuDescriptor {
             } else {
                 entries.append(.text("No usage yet", .secondary))
                 if let err = store.error(for: provider), !err.isEmpty {
-                    entries.append(.action(err, .copyError(err)))
+                    let title = UsageFormatter.truncatedSingleLine(err, max: 80)
+                    entries.append(.action(title, .copyError(err)))
                 }
             }
 
