@@ -1,15 +1,11 @@
 # Changelog
 
 ## 0.4.0 — Unreleased
-- Claude Code support: dedicated menu bar icon + native AppKit menu (dual icons when Codex is also enabled), showing email/org/plan and Opus usage with clickable errors and a gated plan line until data loads.
-- Codex status probe retries through the CLI update dialog, auto-pressing down+enter, re-sending `/status`, and waiting for full bars/credits so menus stop getting stuck on “credits unavailable.”
-- Credits/usage now read directly from PTY `/status` probes (base-index aware with awk fix), surviving provider toggles, handling empty usage, and keeping loading/status animations smooth at low CPU.
-- Claude: PTY probe now surfaces CLI failures (e.g., token_expired) and Settings shows the last fetch reason inline beneath the Claude toggle.
-- Settings/preferences: wider, better-padded window with per-provider enable toggles, clearer sign-in/logout copy, renamed Start-at-login switch, refreshed refresh label/subtitles, an always-visible Quit button, and a gated/exposed Debug tab with consolidated diagnostics.
-- Debug pane now includes per-provider probe logs with fetch/copy/save, one-line menu errors, and a working “Replay selected animation” control (default action, 4s replay).
-- Codex PTY: longer timeouts plus cached-credit fallback so menu errors don’t blank credits on transient timeouts.
-- Stability: menu architecture keeps SwiftUI settings alive, credits navigation guard avoids crashes, tiny keepalive window constraints fixed, and error/empty states are clearer.
-- Release quality: About panels show build timestamp; debug builds ship with a `.debug` bundle ID and Sparkle disabled; packaging scrubs AppleDouble files before signing to keep notarization happy.
+- First Preferences window: tabbed General/About/Debug panes with provider toggles, refresh cadence, start-at-login, and always-on Quit; Debug adds probe log viewer (fetch/copy/save) and animation replay.
+- Claude Code support: dedicated Claude menu/icon plus dual-wired menus when both providers are enabled; shows email/org/plan and Opus usage with clickable errors.
+- Codex credits without web login: we now read `codex /status` in a PTY, auto-skip the update prompt, and parse session/weekly/credits; cached credits stay visible on transient timeouts.
+- Resilience: longer PTY timeouts, cached-credit fallback, one-line menu errors, and clearer parse/update messages.
+- Polish: relabeled refresh text, padded preferences UI, About shows build timestamp, debug builds carry `.debug` bundle ID, and packaging continues to scrub AppleDouble files before signing.
 
 ## 0.3.0 — 2025-11-18
 - Credits support: reads Codex CLI `/status` via PTY (no browser login), shows remaining credits inline, and moves history to a submenu.
