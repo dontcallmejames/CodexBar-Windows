@@ -94,7 +94,8 @@ struct MenuDescriptor {
                         entries.append(.text("Last spend: \(UsageFormatter.creditEventSummary(latest))", .secondary))
                     }
                 } else {
-                    entries.append(.text(meta.creditsHint, .secondary))
+                    let hint = store.lastCreditsError ?? meta.creditsHint
+                    entries.append(.text(hint, .secondary))
                 }
             }
             return Section(entries: entries)

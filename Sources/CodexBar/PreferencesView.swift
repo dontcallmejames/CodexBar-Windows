@@ -215,12 +215,13 @@ private struct GeneralPane: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             } else {
-                Text("Credits unavailable; keep Codex running to refresh.")
+                let hint = self.store.lastCreditsError ?? "Credits unavailable; keep Codex running to refresh."
+                Text(hint)
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
-            if self.store.credits != nil, let lastError = self.store.lastCreditsError {
-                Text(self.truncated(lastError, prefix: "Sign-in issue: "))
+            if let lastError = self.store.lastCreditsError {
+                Text(self.truncated(lastError, prefix: ""))
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .lineLimit(3)
