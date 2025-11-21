@@ -15,6 +15,7 @@ struct ClaudeUsageSnapshot {
     let accountEmail: String?
     let accountOrganization: String?
     let loginMethod: String?
+    let rawText: String?
 }
 
 enum ClaudeUsageError: LocalizedError {
@@ -98,7 +99,8 @@ struct ClaudeUsageFetcher: ClaudeUsageFetching, Sendable {
             updatedAt: Date(),
             accountEmail: email,
             accountOrganization: org,
-            loginMethod: loginMethod)
+            loginMethod: loginMethod,
+            rawText: output)
     }
 
     private static func parseReset(text: String?) -> Date? {
@@ -180,7 +182,8 @@ struct ClaudeUsageFetcher: ClaudeUsageFetching, Sendable {
             updatedAt: Date(),
             accountEmail: snap.accountEmail,
             accountOrganization: snap.accountOrganization,
-            loginMethod: nil)
+            loginMethod: nil,
+            rawText: snap.rawText)
     }
 
     // MARK: - Process helpers

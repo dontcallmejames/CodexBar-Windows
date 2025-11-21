@@ -80,6 +80,9 @@ struct PreferencesView: View {
 private struct GeneralPane: View {
     @ObservedObject var settings: SettingsStore
     @ObservedObject var store: UsageStore
+    @State private var popoverProvider: UsageProvider?
+    @State private var popoverText: String = ""
+    @State private var isLoadingLog = false
 
     var body: some View {
         ScrollView(.vertical, showsIndicators: true) {
@@ -107,6 +110,7 @@ private struct GeneralPane: View {
                             .lineLimit(3)
                             .fixedSize(horizontal: false, vertical: true)
                     }
+                    self.logButtons()
                 }
 
                 Divider()
@@ -154,6 +158,17 @@ private struct GeneralPane: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
+        }
+        .popover(isPresented: Binding<Bool>(
+            get: { self.popoverProvider != nil },
+            set: { if !$0 { self.popoverProvider = nil } }))
+        {
+            LogPopoverView(
+                provider: self.popoverProvider,
+                text: self.popoverText,
+                isLoading: self.isLoadingLog,
+                onCopy: { self.copyToPasteboard(self.popoverText) })
+            .frame(width: 360, height: 260)
         }
     }
 
@@ -206,6 +221,44 @@ private struct GeneralPane: View {
     }
 
     @ViewBuilder
+    private func logButtons() -> some View {
+        HStack(spacing: 12) {
+            Button {
+                self.loadLog(.codex)
+            } label: {
+                Label("Show Codex log", systemImage: "doc.text.magnifyingglass")
+            }
+            .controlSize(.small)
+
+            Button {
+                self.loadLog(.claude)
+            } label: {
+                Label("Show Claude log", systemImage: "doc.text.magnifyingglass")
+            }
+            .controlSize(.small)
+        }
+        .padding(.top, 4)
+    }
+
+    private func loadLog(_ provider: UsageProvider) {
+        self.popoverProvider = provider
+        self.isLoadingLog = true
+        Task {
+            let text = await self.store.debugLog(for: provider)
+            await MainActor.run {
+                self.popoverText = text.isEmpty ? "No log captured yet." : text
+                self.isLoadingLog = false
+            }
+        }
+    }
+
+    private func copyToPasteboard(_ text: String) {
+        let pb = NSPasteboard.general
+        pb.clearContents()
+        pb.setString(text, forType: .string)
+    }
+
+    @ViewBuilder
     private func codexSigningStatus() -> some View {
         VStack(alignment: .leading, spacing: 4) {
             if let credits = self.store.credits {
@@ -244,6 +297,48 @@ private struct GeneralPane: View {
         let amount = snapshot.remaining.formatted(.number.precision(.fractionLength(0...2)))
         let timestamp = snapshot.updatedAt.formatted(date: .abbreviated, time: .shortened)
         return "Remaining \(amount) credits as of \(timestamp)."
+    }
+}
+
+private struct LogPopoverView: View {
+    let provider: UsageProvider?
+    let text: String
+    let isLoading: Bool
+    let onCopy: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(self.title)
+                    .font(.headline)
+                Spacer()
+                Button("Copy", action: self.onCopy)
+                    .controlSize(.small)
+            }
+            if self.isLoading {
+                ProgressView().progressViewStyle(.circular)
+                    .frame(maxWidth: .infinity, alignment: .center)
+            } else {
+                ScrollView {
+                    Text(self.text)
+                        .font(.system(.footnote, design: .monospaced))
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .background(Color(NSColor.textBackgroundColor))
+                .cornerRadius(6)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+    }
+
+    private var title: String {
+        guard let provider else { return "Log" }
+        switch provider {
+        case .codex: return "Codex probe log"
+        case .claude: return "Claude probe log"
+        }
     }
 }
 
