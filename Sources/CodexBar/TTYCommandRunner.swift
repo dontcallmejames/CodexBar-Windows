@@ -29,7 +29,7 @@ struct TTYCommandRunner {
         }
     }
 
-    // swiftlint:disable cyclomatic_complexity
+    // swiftlint:disable cyclomatic_complexity function_body_length
     func run(binary: String, send script: String, options: Options = Options()) throws -> Result {
         guard let resolved = Self.which(binary) else { throw Error.binaryNotFound(binary) }
 
@@ -89,7 +89,7 @@ struct TTYCommandRunner {
         }
 
         func respondIfCursorQuerySeen() {
-            let query = Data([0x1b, 0x5b, 0x36, 0x6e]) // ESC [ 6 n
+            let query = Data([0x1B, 0x5B, 0x36, 0x6E]) // ESC [ 6 n
             if buffer.contains(query) {
                 // Pretend cursor is at 1;1, which is enough to satisfy Codex CLI's probe.
                 try? send("\u{1b}[1;1R")
@@ -228,7 +228,8 @@ struct TTYCommandRunner {
                 respondIfCursorQuerySeen()
                 if !skippedCodexUpdate, containsCodexUpdatePrompt() {
                     // Prompt shows options: 1) Update now, 2) Skip, 3) Skip until next version.
-                    // Users report one Down + Enter is enough; follow with an extra Enter for safety, then re-run /status.
+                    // Users report one Down + Enter is enough; follow with an extra Enter for safety, then re-run
+                    // /status.
                     try? send("\u{1b}[B") // highlight option 2 (Skip)
                     usleep(120_000)
                     try? send("\r")
@@ -245,7 +246,7 @@ struct TTYCommandRunner {
                     }
                     usleep(300_000)
                 }
-                if !sentScript, (!containsCodexUpdatePrompt() || skippedCodexUpdate) {
+                if !sentScript, !containsCodexUpdatePrompt() || skippedCodexUpdate {
                     try? send(script)
                     try? send("\r")
                     sentScript = true
@@ -313,7 +314,7 @@ struct TTYCommandRunner {
         return Result(text: text)
     }
 
-    // swiftlint:enable cyclomatic_complexity
+    // swiftlint:enable cyclomatic_complexity function_body_length
 
     static func which(_ tool: String) -> String? {
         // First try system PATH

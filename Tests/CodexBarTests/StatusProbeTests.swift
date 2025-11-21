@@ -84,7 +84,7 @@ struct StatusProbeTests {
         do {
             _ = try ClaudeStatusProbe.parse(text: sample)
             #expect(Bool(false), "Parsing should fail for auth error")
-        } catch ClaudeStatusProbeError.parseFailed(let message) {
+        } catch let ClaudeStatusProbeError.parseFailed(message) {
             let lower = message.lowercased()
             #expect(lower.contains("token"))
             #expect(lower.contains("login"))
@@ -100,11 +100,21 @@ struct StatusProbeTests {
         let probe = CodexStatusProbe()
         do {
             let snap = try await probe.fetch()
-            print("Live Codex status:\n\(snap.rawText)\nvalues: 5h \(snap.fiveHourPercentLeft ?? -1)% left, weekly \(snap.weeklyPercentLeft ?? -1)% left, credits \(snap.credits ?? -1)")
+            let summary = """
+            Live Codex status:
+            \(snap.rawText)
+            values: 5h \(snap.fiveHourPercentLeft ?? -1)% left,
+            weekly \(snap.weeklyPercentLeft ?? -1)% left,
+            credits \(snap.credits ?? -1)
+            """
+            print(summary)
         } catch {
             // Dump raw PTY text to help debug.
             let runner = TTYCommandRunner()
-            let res = try runner.run(binary: "codex", send: "/status\n", options: .init(rows: 60, cols: 200, timeout: 12))
+            let res = try runner.run(
+                binary: "codex",
+                send: "/status\n",
+                options: .init(rows: 60, cols: 200, timeout: 12))
             print("RAW CODEX PTY OUTPUT BEGIN\n\(res.text)\nRAW CODEX PTY OUTPUT END")
             let clean = TextParsing.stripANSICodes(res.text)
             print("CLEAN CODEX OUTPUT BEGIN\n\(clean)\nCLEAN CODEX OUTPUT END")

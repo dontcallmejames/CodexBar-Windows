@@ -205,7 +205,6 @@ private struct GeneralPane: View {
         return self.truncated(raw, prefix: prefix)
     }
 
-
     @ViewBuilder
     private func codexSigningStatus() -> some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -403,7 +402,7 @@ private struct DebugPane: View {
 
                 SettingsSection(
                     title: "Probe logs",
-                    caption: "Fetch the latest PTY scrape for Codex or Claude. Copy keeps the full text even when truncated.")
+                    caption: "Fetch the latest PTY scrape for Codex or Claude; Copy keeps the full text.")
                 {
                     Picker("Provider", selection: self.$currentLogProvider) {
                         Text("Codex").tag(UsageProvider.codex)

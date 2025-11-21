@@ -4,6 +4,7 @@ enum IconRenderer {
     private static let creditsCap: Double = 1000
     private static let size = NSSize(width: 20, height: 18)
 
+    // swiftlint:disable function_body_length
     static func makeIcon(
         primaryRemaining: Double?,
         weeklyRemaining: Double?,
@@ -237,6 +238,7 @@ enum IconRenderer {
         image.isTemplate = true
         return image
     }
+    // swiftlint:enable function_body_length
 
     /// Morph helper: unbraids a simplified knot into our bar icon.
     static func makeMorphIcon(progress: Double, style: IconStyle) -> NSImage {

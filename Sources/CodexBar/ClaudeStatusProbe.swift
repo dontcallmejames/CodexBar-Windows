@@ -160,8 +160,8 @@ struct ClaudeStatusProbe {
         let range = NSRange(text.startIndex..<text.endIndex, in: text)
         guard let match = regex.firstMatch(in: text, options: [], range: range),
               match.numberOfRanges >= 2,
-              let jsonRange = Range(match.range(at: 1), in: text) else
-        {
+              let jsonRange = Range(match.range(at: 1), in: text)
+        else {
             return nil
         }
 
