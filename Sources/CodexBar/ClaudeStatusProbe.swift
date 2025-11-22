@@ -202,8 +202,8 @@ struct ClaudeStatusProbe {
             // TTY capture sometimes appends a stray ")" at line ends; trim it to keep snapshots stable.
             let raw = String(text[r]).trimmingCharacters(in: .whitespacesAndNewlines)
             var cleaned = raw.trimmingCharacters(in: CharacterSet(charactersIn: " )"))
-            let openCount = cleaned.filter { $0 == "(" }.count
-            let closeCount = cleaned.filter { $0 == ")" }.count
+            let openCount = cleaned.count(where: { $0 == "(" })
+            let closeCount = cleaned.count(where: { $0 == ")" })
             if openCount > closeCount { cleaned.append(")") }
             results.append(cleaned)
         }

@@ -86,7 +86,16 @@ struct StatusProbeTests {
         Org: ACME
         """
         // Only care about login/identity; include minimal usage lines to satisfy parser.
-        let snap = try ClaudeStatusProbe.parse(text: "Current session\n10% used\nCurrent week (all models)\n20% used\nCurrent week (Opus)\n30% used\n\(sample)")
+        let text = """
+        Current session
+        10% used
+        Current week (all models)
+        20% used
+        Current week (Opus)
+        30% used
+        \(sample)
+        """
+        let snap = try ClaudeStatusProbe.parse(text: text)
         #expect(snap.loginMethod == "Claude Max Account")
         #expect(snap.accountEmail == "user@example.com")
         #expect(snap.accountOrganization == "ACME")
