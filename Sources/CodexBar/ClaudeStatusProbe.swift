@@ -174,11 +174,10 @@ struct ClaudeStatusProbe {
                 guard let match,
                       let r = Range(match.range(at: 1), in: text),
                       let val = Int(text[r]) else { return }
-                let used: Int
-                if pat.contains("left") {
-                    used = max(0, 100 - val)
+                let used: Int = if pat.contains("left") {
+                    max(0, 100 - val)
                 } else {
-                    used = val
+                    val
                 }
                 results.append(used)
             }
@@ -249,7 +248,15 @@ struct ClaudeStatusProbe {
         try await Task.detached(priority: .utility) { [claudeBinary = self.claudeBinary, timeout = self.timeout] in
             let process = Process()
             process.launchPath = "/usr/bin/script"
-            process.arguments = ["-q", "/dev/null", claudeBinary, subcommand, "--allowed-tools", "", "--dangerously-skip-permissions"]
+            process.arguments = [
+                "-q",
+                "/dev/null",
+                claudeBinary,
+                subcommand,
+                "--allowed-tools",
+                "",
+                "--dangerously-skip-permissions",
+            ]
             let pipe = Pipe()
             process.standardOutput = pipe
             process.standardError = Pipe()
