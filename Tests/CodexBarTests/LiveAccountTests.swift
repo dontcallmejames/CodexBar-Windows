@@ -5,7 +5,7 @@ import XCTest
 
 @Suite("Live RPC account checks", .serialized)
 struct LiveAccountTests {
-    @Test
+    @Test(.disabled("Set LIVE_TEST=1 to run live Codex account checks."))
     func codexAccountEmailIsPresent() async throws {
         guard ProcessInfo.processInfo.environment["LIVE_TEST"] == "1" else { return }
 
