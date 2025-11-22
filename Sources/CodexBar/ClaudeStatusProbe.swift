@@ -214,7 +214,7 @@ struct ClaudeStatusProbe {
     private static func extractLoginMethod(text: String) -> String? {
         guard !text.isEmpty else { return nil }
         if let explicit = self.extractFirst(pattern: #"(?i)login\s+method:\s*(.+)"#, text: text) {
-            return explicit.trimmingCharacters(in: .whitespacesAndNewlines)
+            return self.cleanPlan(explicit)
         }
         // Capture any "Claude <...>" phrase (e.g., Max/Pro/Ultra/Team) to avoid future plan-name churn.
         // Strip any leading ANSI that may have survived (rare) before matching.
@@ -227,7 +227,7 @@ struct ClaudeStatusProbe {
                       match.numberOfRanges >= 2,
                       let r = Range(match.range(at: 1), in: text) else { return }
                 let raw = String(text[r])
-                let val = TextParsing.stripANSICodes(raw).trimmingCharacters(in: .whitespacesAndNewlines)
+                let val = Self.cleanPlan(raw)
                 candidates.append(val)
             }
         }
@@ -238,6 +238,16 @@ struct ClaudeStatusProbe {
             return plan
         }
         return nil
+    }
+
+    /// Strips ANSI and stray bracketed codes like "[22m" that can survive CLI output.
+    private static func cleanPlan(_ text: String) -> String {
+        let stripped = TextParsing.stripANSICodes(text)
+        let cleaned = stripped.replacingOccurrences(
+            of: #"^\s*(?:\[\d{1,3}m\s*)+"#,
+            with: "",
+            options: [.regularExpression])
+        return cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private static func extractUsageErrorJSON(text: String) -> String? {

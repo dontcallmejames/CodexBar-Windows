@@ -102,6 +102,25 @@ struct StatusProbeTests {
     }
 
     @Test
+    func parseClaudeStatusWithBracketPlanNoiseNoEsc() throws {
+        let sample = """
+        Login method: [22m Claude Max Account
+        Account: user@example.com
+        """
+        let text = """
+        Current session
+        10% used
+        Current week (all models)
+        20% used
+        Current week (Opus)
+        30% used
+        \(sample)
+        """
+        let snap = try ClaudeStatusProbe.parse(text: text)
+        #expect(snap.loginMethod == "Claude Max Account")
+    }
+
+    @Test
     func surfacesClaudeTokenExpired() {
         let sample = """
         Settings:  Status   Config   Usage
