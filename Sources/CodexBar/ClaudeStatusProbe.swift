@@ -7,6 +7,7 @@ struct ClaudeStatusSnapshot {
     let opusPercentLeft: Int?
     let accountEmail: String?
     let accountOrganization: String?
+    let loginMethod: String?
     let primaryResetDescription: String?
     let secondaryResetDescription: String?
     let opusResetDescription: String?
