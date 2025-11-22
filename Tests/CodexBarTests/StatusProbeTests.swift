@@ -77,6 +77,22 @@ struct StatusProbeTests {
     }
 
     @Test
+    func parseClaudeStatusWithPlanAndAnsiNoise() throws {
+        let sample = """
+        Settings: Status   Config   Usage
+
+        Login method: \u{001B}[22mClaude Max Account\u{001B}[0m
+        Account: user@example.com
+        Org: ACME
+        """
+        // Only care about login/identity; include minimal usage lines to satisfy parser.
+        let snap = try ClaudeStatusProbe.parse(text: "Current session\n10% used\nCurrent week (all models)\n20% used\nCurrent week (Opus)\n30% used\n\(sample)")
+        #expect(snap.loginMethod == "Claude Max Account")
+        #expect(snap.accountEmail == "user@example.com")
+        #expect(snap.accountOrganization == "ACME")
+    }
+
+    @Test
     func surfacesClaudeTokenExpired() {
         let sample = """
         Settings:  Status   Config   Usage

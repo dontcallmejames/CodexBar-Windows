@@ -118,10 +118,10 @@ struct MenuDescriptor {
 
             // Email: Claude wins when requested; otherwise Codex snapshot then auth.json fallback.
             let emailText: String = {
-                if preferClaude, let e = emailFromClaude, !e.isEmpty { return Self.capFirst(e) }
-                if let e = emailFromCodex, !e.isEmpty { return Self.capFirst(e) }
-                if let codexEmail = account.email, !codexEmail.isEmpty { return Self.capFirst(codexEmail) }
-                if let e = emailFromClaude, !e.isEmpty { return Self.capFirst(e) }
+                if preferClaude, let e = emailFromClaude, !e.isEmpty { return e }
+                if let e = emailFromCodex, !e.isEmpty { return e }
+                if let codexEmail = account.email, !codexEmail.isEmpty { return codexEmail }
+                if let e = emailFromClaude, !e.isEmpty { return e }
                 return "Unknown"
             }()
             entries.append(.text("Account: \(emailText)", .secondary))
@@ -129,12 +129,12 @@ struct MenuDescriptor {
             // Plan: show only Claude plan when in Claude mode; otherwise Codex plan.
             if preferClaude {
                 if let plan = planFromClaude, !plan.isEmpty {
-                    entries.append(.text("Plan: \(plan)", .secondary))
+                    entries.append(.text("Plan: \(Self.capFirst(plan))", .secondary))
                 }
             } else if let plan = planFromCodex, !plan.isEmpty {
-                entries.append(.text("Plan: \(plan)", .secondary))
+                entries.append(.text("Plan: \(Self.capFirst(plan))", .secondary))
             } else if let plan = account.plan, !plan.isEmpty {
-                entries.append(.text("Plan: \(plan)", .secondary))
+                entries.append(.text("Plan: \(Self.capFirst(plan))", .secondary))
             }
 
             return Section(entries: entries)
