@@ -118,10 +118,10 @@ struct MenuDescriptor {
 
             // Email: Claude wins when requested; otherwise Codex snapshot then auth.json fallback.
             let emailText: String = {
-                if preferClaude, let e = emailFromClaude, !e.isEmpty { return e }
-                if let e = emailFromCodex, !e.isEmpty { return e }
-                if let codexEmail = account.email, !codexEmail.isEmpty { return codexEmail }
-                if let e = emailFromClaude, !e.isEmpty { return e }
+                if preferClaude, let e = emailFromClaude, !e.isEmpty { return Self.capFirst(e) }
+                if let e = emailFromCodex, !e.isEmpty { return Self.capFirst(e) }
+                if let codexEmail = account.email, !codexEmail.isEmpty { return Self.capFirst(codexEmail) }
+                if let e = emailFromClaude, !e.isEmpty { return Self.capFirst(e) }
                 return "Unknown"
             }()
             entries.append(.text("Account: \(emailText)", .secondary))
@@ -212,5 +212,12 @@ struct MenuDescriptor {
         sections.append(metaSection())
 
         return MenuDescriptor(sections: sections)
+    }
+
+    private static func capFirst(_ text: String) -> String {
+        guard let first = text.unicodeScalars.first else { return text }
+        let cappedFirst = String(first).capitalized
+        let remainder = String(text.unicodeScalars.dropFirst())
+        return cappedFirst + remainder
     }
 }
