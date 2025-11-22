@@ -335,7 +335,7 @@ struct UsageFetcher: Sendable {
             resetDescription: nil)
         let secondary = RateWindow(
             usedPercent: max(0, 100 - Double(weekLeft)),
-            windowMinutes: 10_080,
+            windowMinutes: 10080,
             resetsAt: nil,
             resetDescription: nil)
 
@@ -423,11 +423,24 @@ struct UsageFetcher: Sendable {
     private static func makeWindow(from rpc: RPCRateLimitWindow?) -> RateWindow? {
         guard let rpc else { return nil }
         let resetsAtDate = rpc.resetsAt.map { Date(timeIntervalSince1970: TimeInterval($0)) }
+        let resetDescription = resetsAtDate.map { date -> String in
+            let now = Date()
+            let calendar = Calendar.current
+            if calendar.isDate(date, inSameDayAs: now) {
+                return "today at \(date.formatted(date: .omitted, time: .shortened))"
+            }
+            if let tomorrow = calendar.date(byAdding: .day, value: 1, to: now),
+               calendar.isDate(date, inSameDayAs: tomorrow)
+            {
+                return "tomorrow at \(date.formatted(date: .omitted, time: .shortened))"
+            }
+            return date.formatted(date: .abbreviated, time: .shortened)
+        }
         return RateWindow(
             usedPercent: rpc.usedPercent,
             windowMinutes: rpc.windowDurationMins,
             resetsAt: resetsAtDate,
-            resetDescription: nil)
+            resetDescription: resetDescription)
     }
 
     private static func parseCredits(_ balance: String?) -> Double {
