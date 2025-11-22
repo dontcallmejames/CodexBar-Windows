@@ -37,48 +37,34 @@ struct MenuDescriptor {
     {
         var sections: [Section] = []
 
-        func versionNumber(for provider: UsageProvider) -> String? {
-            guard let raw = store.version(for: provider) else { return nil }
-            let pattern = #"[0-9]+(?:\.[0-9]+)*"#
-            guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
-            let range = NSRange(raw.startIndex..<raw.endIndex, in: raw)
-            guard let match = regex.firstMatch(in: raw, options: [], range: range),
-                  let r = Range(match.range, in: raw) else { return nil }
-            return String(raw[r])
-        }
-
         func usageSection(for provider: UsageProvider, titlePrefix: String) -> Section {
             let meta = store.metadata(for: provider)
             var entries: [Entry] = []
             let headlineText: String = {
-                if let ver = versionNumber(for: provider) { return "\(meta.displayName) \(ver)" }
+                if let ver = Self.versionNumber(for: provider, store: store) { return "\(meta.displayName) \(ver)" }
                 return meta.displayName
             }()
             let headline = Entry.text(headlineText, .headline)
-
-            func resetLine(_ reset: String) -> String {
-                let trimmed = reset.trimmingCharacters(in: .whitespacesAndNewlines)
-                if trimmed.lowercased().hasPrefix("resets") { return trimmed }
-                return "Resets \(trimmed)"
-            }
 
             entries.append(headline)
             if let snap = store.snapshot(for: provider) {
                 let sessionLine = UsageFormatter
                     .usageLine(remaining: snap.primary.remainingPercent, used: snap.primary.usedPercent)
                 entries.append(.text("\(meta.sessionLabel): \(sessionLine)", .primary))
-                if let reset = snap.primary.resetDescription { entries.append(.text(resetLine(reset), .secondary)) }
+                if let reset = snap.primary
+                    .resetDescription { entries.append(.text(Self.resetLine(reset), .secondary)) }
 
                 let weeklyLine = UsageFormatter
                     .usageLine(remaining: snap.secondary.remainingPercent, used: snap.secondary.usedPercent)
                 entries.append(.text("\(meta.weeklyLabel): \(weeklyLine)", .primary))
-                if let reset = snap.secondary.resetDescription { entries.append(.text(resetLine(reset), .secondary)) }
+                if let reset = snap.secondary
+                    .resetDescription { entries.append(.text(Self.resetLine(reset), .secondary)) }
 
                 if meta.supportsOpus, let opus = snap.tertiary {
                     let opusTitle = meta.opusLabel ?? "Opus"
                     let opusLine = UsageFormatter.usageLine(remaining: opus.remainingPercent, used: opus.usedPercent)
                     entries.append(.text("\(opusTitle): \(opusLine)", .primary))
-                    if let reset = opus.resetDescription { entries.append(.text(resetLine(reset), .secondary)) }
+                    if let reset = opus.resetDescription { entries.append(.text(Self.resetLine(reset), .secondary)) }
                 }
             } else {
                 entries.append(.text("No usage yet", .secondary))
@@ -219,5 +205,21 @@ struct MenuDescriptor {
         let cappedFirst = String(first).capitalized
         let remainder = String(text.unicodeScalars.dropFirst())
         return cappedFirst + remainder
+    }
+
+    private static func resetLine(_ reset: String) -> String {
+        let trimmed = reset.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.lowercased().hasPrefix("resets") { return trimmed }
+        return "Resets \(trimmed)"
+    }
+
+    private static func versionNumber(for provider: UsageProvider, store: UsageStore) -> String? {
+        guard let raw = store.version(for: provider) else { return nil }
+        let pattern = #"[0-9]+(?:\.[0-9]+)*"#
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
+        let range = NSRange(raw.startIndex..<raw.endIndex, in: raw)
+        guard let match = regex.firstMatch(in: raw, options: [], range: range),
+              let r = Range(match.range, in: raw) else { return nil }
+        return String(raw[r])
     }
 }
