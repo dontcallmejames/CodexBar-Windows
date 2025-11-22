@@ -103,11 +103,16 @@ private func makeUpdaterController() -> UpdaterProviding {
     let isBundledApp = bundleURL.pathExtension == "app"
     guard isBundledApp, isDeveloperIDSigned(bundleURL: bundleURL) else { return DisabledUpdaterController() }
 
+    let defaults = UserDefaults.standard
+    let autoUpdateKey = "autoUpdateEnabled"
+    // Default to true for first launch; fall back to saved preference thereafter.
+    let savedAutoUpdate = (defaults.object(forKey: autoUpdateKey) as? Bool) ?? true
+
     let controller = SPUStandardUpdaterController(
         startingUpdater: false,
         updaterDelegate: nil,
         userDriverDelegate: nil)
-    controller.updater.automaticallyChecksForUpdates = false
+    controller.updater.automaticallyChecksForUpdates = savedAutoUpdate
     controller.startUpdater()
     return controller
 }

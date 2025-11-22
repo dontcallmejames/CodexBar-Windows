@@ -5,7 +5,7 @@ import SwiftUI
 struct AboutPane: View {
     let updater: UpdaterProviding
     @State private var iconHover = false
-    @State private var autoUpdateEnabled = false
+    @AppStorage("autoUpdateEnabled") private var autoUpdateEnabled: Bool = true
     @State private var didLoadUpdaterState = false
 
     private var versionString: String {
@@ -99,7 +99,8 @@ struct AboutPane: View {
         .padding(.bottom, 24)
         .onAppear {
             guard !self.didLoadUpdaterState else { return }
-            self.autoUpdateEnabled = self.updater.automaticallyChecksForUpdates
+            // Align Sparkle's flag with the persisted preference on first load.
+            self.updater.automaticallyChecksForUpdates = self.autoUpdateEnabled
             self.didLoadUpdaterState = true
         }
         .onChange(of: self.autoUpdateEnabled) { _, newValue in
