@@ -62,12 +62,12 @@ struct CodexStatusProbe {
                 "Run `bun install -g @openai/codex` to continue (update prompt blocking /status).")
         }
         let credits = TextParsing.firstNumber(pattern: #"Credits:\s*([0-9][0-9.,]*)"#, text: clean)
-        let fiveLine = self.firstLine(matching: #"5h limit[^\n]*"#, text: clean)
-        let weekLine = self.firstLine(matching: #"Weekly limit[^\n]*"#, text: clean)
-        let fivePct = fiveLine.flatMap { TextParsing.firstInt(pattern: #"([0-9]{1,3})%\s+left"#, text: $0) }
-        let weekPct = weekLine.flatMap { TextParsing.firstInt(pattern: #"([0-9]{1,3})%\s+left"#, text: $0) }
-        let fiveReset = fiveLine.flatMap { Self.extractReset(from: $0) }
-        let weekReset = weekLine.flatMap { Self.extractReset(from: $0) }
+        let fiveLine = TextParsing.firstLine(matching: #"5h limit[^\n]*"#, text: clean)
+        let weekLine = TextParsing.firstLine(matching: #"Weekly limit[^\n]*"#, text: clean)
+        let fivePct = fiveLine.flatMap(TextParsing.percentLeft(fromLine:))
+        let weekPct = weekLine.flatMap(TextParsing.percentLeft(fromLine:))
+        let fiveReset = fiveLine.flatMap(TextParsing.resetString(fromLine:))
+        let weekReset = weekLine.flatMap(TextParsing.resetString(fromLine:))
         if credits == nil, fivePct == nil, weekPct == nil {
             throw CodexStatusProbeError.parseFailed(clean.prefix(400).description)
         }
@@ -99,23 +99,4 @@ struct CodexStatusProbe {
         return lower.contains("update available") && lower.contains("codex")
     }
 
-    private static func extractReset(from line: String) -> String? {
-        guard let range = line.range(of: #"resets?\s+(.+)"#, options: [.regularExpression, .caseInsensitive]) else {
-            return nil
-        }
-        let tail = line[range]
-        // Drop the leading "resets" label.
-        return tail
-            .replacingOccurrences(of: "resets", with: "", options: .caseInsensitive)
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    private static func firstLine(matching pattern: String, text: String) -> String? {
-        guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else { return nil }
-        let nsrange = NSRange(text.startIndex..<text.endIndex, in: text)
-        guard let match = regex.firstMatch(in: text, options: [], range: nsrange),
-              let r = Range(match.range(at: 0), in: text)
-        else { return nil }
-        return String(text[r])
-    }
 }

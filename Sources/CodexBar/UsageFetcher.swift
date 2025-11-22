@@ -279,16 +279,7 @@ struct UsageFetcher: Sendable {
     }
 
     func loadLatestUsage() async throws -> UsageSnapshot {
-        do {
-            return try await self.loadRPCUsage()
-        } catch let rpcError {
-            // App-server can be down or mid-upgrade; fall back to TTY scrape so the UI still shows data.
-            do {
-                return try await self.loadTTYUsage()
-            } catch {
-                throw rpcError
-            }
-        }
+        try await self.withFallback(primary: self.loadRPCUsage, secondary: self.loadTTYUsage)
     }
 
     private func loadRPCUsage() async throws -> UsageSnapshot {
@@ -350,16 +341,7 @@ struct UsageFetcher: Sendable {
     }
 
     func loadLatestCredits() async throws -> CreditsSnapshot {
-        do {
-            return try await self.loadRPCCredits()
-        } catch let rpcError {
-            // Credits sometimes arrive later on RPC; try the TTY status view before surfacing failure.
-            do {
-                return try await self.loadTTYCredits()
-            } catch {
-                throw rpcError
-            }
-        }
+        try await self.withFallback(primary: self.loadRPCCredits, secondary: self.loadTTYCredits)
     }
 
     private func loadRPCCredits() async throws -> CreditsSnapshot {
@@ -376,6 +358,21 @@ struct UsageFetcher: Sendable {
         let status = try await CodexStatusProbe().fetch()
         guard let credits = status.credits else { throw UsageError.noRateLimitsFound }
         return CreditsSnapshot(remaining: credits, events: [], updatedAt: Date())
+    }
+
+    private func withFallback<T>(
+        primary: @escaping () async throws -> T,
+        secondary: @escaping () async throws -> T) async throws -> T
+    {
+        do {
+            return try await primary()
+        } catch let primaryError {
+            do {
+                return try await secondary()
+            } catch {
+                throw primaryError
+            }
+        }
     }
 
     func debugRawRateLimits() async -> String {
@@ -423,19 +420,7 @@ struct UsageFetcher: Sendable {
     private static func makeWindow(from rpc: RPCRateLimitWindow?) -> RateWindow? {
         guard let rpc else { return nil }
         let resetsAtDate = rpc.resetsAt.map { Date(timeIntervalSince1970: TimeInterval($0)) }
-        let resetDescription = resetsAtDate.map { date -> String in
-            let now = Date()
-            let calendar = Calendar.current
-            if calendar.isDate(date, inSameDayAs: now) {
-                return "today at \(date.formatted(date: .omitted, time: .shortened))"
-            }
-            if let tomorrow = calendar.date(byAdding: .day, value: 1, to: now),
-               calendar.isDate(date, inSameDayAs: tomorrow)
-            {
-                return "tomorrow at \(date.formatted(date: .omitted, time: .shortened))"
-            }
-            return date.formatted(date: .abbreviated, time: .shortened)
-        }
+        let resetDescription = resetsAtDate.map { UsageFormatter.resetDescription(from: $0) }
         return RateWindow(
             usedPercent: rpc.usedPercent,
             windowMinutes: rpc.windowDurationMins,
