@@ -99,5 +99,4 @@ struct CodexStatusProbe {
         let lower = text.lowercased()
         return lower.contains("update available") && lower.contains("codex")
     }
-
 }
