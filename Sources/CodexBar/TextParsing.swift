@@ -24,4 +24,31 @@ enum TextParsing {
         guard let v = firstNumber(pattern: pattern, text: text) else { return nil }
         return Int(v)
     }
+
+    static func firstLine(matching pattern: String, text: String) -> String? {
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else { return nil }
+        let range = NSRange(text.startIndex..<text.endIndex, in: text)
+        guard let match = regex.firstMatch(in: text, options: [], range: range),
+              let r = Range(match.range(at: 0), in: text) else { return nil }
+        return String(text[r])
+    }
+
+    static func percentLeft(fromLine line: String) -> Int? {
+        guard let pct = firstInt(pattern: #"([0-9]{1,3})%\s+left"#, text: line) else { return nil }
+        return pct
+    }
+
+    static func resetString(fromLine line: String) -> String? {
+        guard let regex = try? NSRegularExpression(pattern: #"resets?\s+(.+)"#, options: [.caseInsensitive]) else {
+            return nil
+        }
+        let range = NSRange(line.startIndex..<line.endIndex, in: line)
+        guard let match = regex.firstMatch(in: line, options: [], range: range),
+              match.numberOfRanges >= 2,
+              let r = Range(match.range(at: 1), in: line)
+        else {
+            return nil
+        }
+        return String(line[r]).trimmingCharacters(in: .whitespacesAndNewlines)
+    }
 }

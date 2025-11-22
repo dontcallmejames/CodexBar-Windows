@@ -5,6 +5,19 @@ enum UsageFormatter {
         String(format: "%.0f%% left", remaining)
     }
 
+    static func resetDescription(from date: Date, now: Date = .init()) -> String {
+        let calendar = Calendar.current
+        if calendar.isDate(date, inSameDayAs: now) {
+            return "today at \(date.formatted(date: .omitted, time: .shortened))"
+        }
+        if let tomorrow = calendar.date(byAdding: .day, value: 1, to: now),
+           calendar.isDate(date, inSameDayAs: tomorrow)
+        {
+            return "tomorrow at \(date.formatted(date: .omitted, time: .shortened))"
+        }
+        return date.formatted(date: .abbreviated, time: .shortened)
+    }
+
     static func updatedString(from date: Date, now: Date = .init()) -> String {
         let delta = now.timeIntervalSince(date)
         if abs(delta) < 60 {

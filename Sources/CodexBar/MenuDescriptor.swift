@@ -48,23 +48,10 @@ struct MenuDescriptor {
 
             entries.append(headline)
             if let snap = store.snapshot(for: provider) {
-                let sessionLine = UsageFormatter
-                    .usageLine(remaining: snap.primary.remainingPercent, used: snap.primary.usedPercent)
-                entries.append(.text("\(meta.sessionLabel): \(sessionLine)", .primary))
-                if let reset = snap.primary
-                    .resetDescription { entries.append(.text(Self.resetLine(reset), .secondary)) }
-
-                let weeklyLine = UsageFormatter
-                    .usageLine(remaining: snap.secondary.remainingPercent, used: snap.secondary.usedPercent)
-                entries.append(.text("\(meta.weeklyLabel): \(weeklyLine)", .primary))
-                if let reset = snap.secondary
-                    .resetDescription { entries.append(.text(Self.resetLine(reset), .secondary)) }
-
+                Self.appendRateWindow(entries: &entries, title: meta.sessionLabel, window: snap.primary)
+                Self.appendRateWindow(entries: &entries, title: meta.weeklyLabel, window: snap.secondary)
                 if meta.supportsOpus, let opus = snap.tertiary {
-                    let opusTitle = meta.opusLabel ?? "Opus"
-                    let opusLine = UsageFormatter.usageLine(remaining: opus.remainingPercent, used: opus.usedPercent)
-                    entries.append(.text("\(opusTitle): \(opusLine)", .primary))
-                    if let reset = opus.resetDescription { entries.append(.text(Self.resetLine(reset), .secondary)) }
+                    Self.appendRateWindow(entries: &entries, title: meta.opusLabel ?? "Opus", window: opus)
                 }
             } else {
                 entries.append(.text("No usage yet", .secondary))
@@ -115,12 +102,12 @@ struct MenuDescriptor {
             // Plan: show only Claude plan when in Claude mode; otherwise Codex plan.
             if preferClaude {
                 if let plan = planFromClaude, !plan.isEmpty {
-                    entries.append(.text("Plan: \(Self.capFirst(plan))", .secondary))
+                    entries.append(.text("Plan: \(AccountFormatter.plan(plan))", .secondary))
                 }
             } else if let plan = planFromCodex, !plan.isEmpty {
-                entries.append(.text("Plan: \(Self.capFirst(plan))", .secondary))
+                entries.append(.text("Plan: \(AccountFormatter.plan(plan))", .secondary))
             } else if let plan = account.plan, !plan.isEmpty {
-                entries.append(.text("Plan: \(Self.capFirst(plan))", .secondary))
+                entries.append(.text("Plan: \(AccountFormatter.plan(plan))", .secondary))
             }
 
             return Section(entries: entries)
@@ -200,11 +187,11 @@ struct MenuDescriptor {
         return MenuDescriptor(sections: sections)
     }
 
-    private static func capFirst(_ text: String) -> String {
-        guard let first = text.unicodeScalars.first else { return text }
-        let cappedFirst = String(first).capitalized
-        let remainder = String(text.unicodeScalars.dropFirst())
-        return cappedFirst + remainder
+    private static func appendRateWindow(entries: inout [Entry], title: String, window: RateWindow) {
+        let line = UsageFormatter
+            .usageLine(remaining: window.remainingPercent, used: window.usedPercent)
+        entries.append(.text("\(title): \(line)", .primary))
+        if let reset = window.resetDescription { entries.append(.text(Self.resetLine(reset), .secondary)) }
     }
 
     private static func resetLine(_ reset: String) -> String {
@@ -222,4 +209,15 @@ struct MenuDescriptor {
               let r = Range(match.range, in: raw) else { return nil }
         return String(raw[r])
     }
+}
+
+private enum AccountFormatter {
+    static func plan(_ text: String) -> String {
+        guard let first = text.unicodeScalars.first else { return text }
+        let cappedFirst = String(first).capitalized
+        let remainder = String(text.unicodeScalars.dropFirst())
+        return cappedFirst + remainder
+    }
+
+    static func email(_ text: String) -> String { text }
 }
