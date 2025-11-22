@@ -53,7 +53,9 @@ struct TTYCommandRunner {
         proc.standardOutput = secondaryHandle
         proc.standardError = secondaryHandle
 
+        var didLaunch = false
         try proc.run()
+        didLaunch = true
 
         // Isolate the child into its own process group so descendant helpers can be
         // terminated together. If this fails (e.g. process already exec'ed), we
@@ -63,6 +65,45 @@ struct TTYCommandRunner {
         if setpgid(pid, pid) == 0 {
             processGroup = pid
         }
+
+        var cleanedUp = false
+        func cleanup() {
+            guard !cleanedUp else { return }
+            cleanedUp = true
+
+            if didLaunch, proc.isRunning {
+                let exitData = Data("/exit\n".utf8)
+                try? primaryHandle.write(contentsOf: exitData)
+            }
+
+            try? primaryHandle.close()
+            try? secondaryHandle.close()
+
+            guard didLaunch else { return }
+
+            if proc.isRunning {
+                proc.terminate()
+            }
+            if let pgid = processGroup {
+                kill(-pgid, SIGTERM)
+            }
+            let waitDeadline = Date().addingTimeInterval(2.0)
+            while proc.isRunning, Date() < waitDeadline {
+                usleep(100_000)
+            }
+            if proc.isRunning {
+                if let pgid = processGroup {
+                    kill(-pgid, SIGKILL)
+                }
+                kill(proc.processIdentifier, SIGKILL)
+            }
+            if didLaunch {
+                proc.waitUntilExit()
+            }
+        }
+
+        // Ensure the PTY process is always torn down, even when we throw early (e.g. login prompt).
+        defer { cleanup() }
 
         func send(_ text: String) throws {
             guard let data = text.data(using: .utf8) else { return }
@@ -302,31 +343,6 @@ struct TTYCommandRunner {
                 }
             }
         }
-
-        // try to exit gracefully
-        let exitData = Data("/exit\n".utf8)
-        try? primaryHandle.write(contentsOf: exitData)
-
-        // Closing the PTY ends any blocked reads and nudges the child toward exit.
-        try? primaryHandle.close()
-        try? secondaryHandle.close()
-
-        proc.terminate()
-        if let pgid = processGroup {
-            // Deliver SIGTERM to the entire process group in case the CLI spawned helpers.
-            kill(-pgid, SIGTERM)
-        }
-        let waitDeadline = Date().addingTimeInterval(2.0)
-        while proc.isRunning, Date() < waitDeadline {
-            usleep(100_000)
-        }
-        if proc.isRunning {
-            if let pgid = processGroup {
-                kill(-pgid, SIGKILL)
-            }
-            kill(proc.processIdentifier, SIGKILL)
-        }
-        proc.waitUntilExit()
 
         guard let text = String(data: buffer, encoding: .utf8), !text.isEmpty else {
             throw Error.timedOut
