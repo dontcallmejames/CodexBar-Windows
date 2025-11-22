@@ -6,6 +6,10 @@ enum UsageFormatter {
     }
 
     static func updatedString(from date: Date, now: Date = .init()) -> String {
+        let delta = now.timeIntervalSince(date)
+        if abs(delta) < 60 {
+            return "Updated just now"
+        }
         if let hours = Calendar.current.dateComponents([.hour], from: date, to: now).hour, hours < 24 {
             let rel = RelativeDateTimeFormatter()
             rel.unitsStyle = .abbreviated

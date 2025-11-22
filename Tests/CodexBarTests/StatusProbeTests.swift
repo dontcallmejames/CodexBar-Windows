@@ -49,6 +49,9 @@ struct StatusProbeTests {
         #expect(snap.opusPercentLeft == 95)
         #expect(snap.accountEmail == "user@example.com")
         #expect(snap.accountOrganization == "Example Org")
+        #expect(snap.primaryResetDescription == "Resets 11am")
+        #expect(snap.secondaryResetDescription == "Resets Nov 21")
+        #expect(snap.opusResetDescription == "Resets Nov 21")
     }
 
     @Test
@@ -68,6 +71,9 @@ struct StatusProbeTests {
         #expect(snap.sessionPercentLeft == 60)
         #expect(snap.weeklyPercentLeft == 90)
         #expect(snap.opusPercentLeft == 100)
+        #expect(snap.primaryResetDescription == "Resets 11am")
+        #expect(snap.secondaryResetDescription == "Resets Nov 27")
+        #expect(snap.opusResetDescription == "Resets Nov 27")
     }
 
     @Test
