@@ -119,8 +119,6 @@ struct MenuDescriptor {
             // Email: Claude wins when requested; otherwise Codex snapshot then auth.json fallback.
             let emailText: String = {
                 if preferClaude, let e = emailFromClaude, !e.isEmpty { return e }
-                if preferClaude, (emailFromClaude == nil || emailFromClaude?.isEmpty == true),
-                   let plan = planFromClaude, !plan.isEmpty { return plan }
                 if let e = emailFromCodex, !e.isEmpty { return e }
                 if let codexEmail = account.email, !codexEmail.isEmpty { return codexEmail }
                 if let e = emailFromClaude, !e.isEmpty { return e }
@@ -130,7 +128,7 @@ struct MenuDescriptor {
 
             // Plan: show only Claude plan when in Claude mode; otherwise Codex plan.
             if preferClaude {
-                if let plan = planFromClaude, !plan.isEmpty, plan != emailText {
+                if let plan = planFromClaude, !plan.isEmpty {
                     entries.append(.text("Plan: \(plan)", .secondary))
                 }
             } else if let plan = planFromCodex, !plan.isEmpty {

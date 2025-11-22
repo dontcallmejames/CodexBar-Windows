@@ -200,7 +200,10 @@ struct ClaudeStatusProbe {
                   let r = Range(match.range(at: 0), in: text) else { return }
             // TTY capture sometimes appends a stray ")" at line ends; trim it to keep snapshots stable.
             let raw = String(text[r]).trimmingCharacters(in: .whitespacesAndNewlines)
-            let cleaned = raw.trimmingCharacters(in: CharacterSet(charactersIn: " )"))
+            var cleaned = raw.trimmingCharacters(in: CharacterSet(charactersIn: " )"))
+            let openCount = cleaned.filter { $0 == "(" }.count
+            let closeCount = cleaned.filter { $0 == ")" }.count
+            if openCount > closeCount { cleaned.append(")") }
             results.append(cleaned)
         }
         return results
@@ -212,7 +215,8 @@ struct ClaudeStatusProbe {
         if let explicit = self.extractFirst(pattern: #"(?i)login\s+method:\s*(.+)"#, text: text) {
             return explicit.trimmingCharacters(in: .whitespacesAndNewlines)
         }
-        let planPattern = #"(?i)claude\s+(max|pro|team|business|enterprise|pro team)"#
+        // Capture full phrase like "Claude Max"/"Claude Pro".
+        let planPattern = #"(?i)(claude\s+(max|pro|team|business|enterprise|pro team))"#
         if let plan = self.extractFirst(pattern: planPattern, text: text) {
             return plan.trimmingCharacters(in: .whitespacesAndNewlines)
         }
