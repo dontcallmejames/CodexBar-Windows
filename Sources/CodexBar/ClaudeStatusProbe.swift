@@ -94,7 +94,8 @@ struct ClaudeStatusProbe {
             if let email, orgText.lowercased().hasPrefix(email.lowercased()) { return nil }
             return orgText
         }()
-        let login = self.extractLoginMethod(text: clean) ?? self.extractLoginMethod(text: statusText ?? "")
+        // Prefer explicit login method from /status, then fall back to /usage header heuristics.
+        let login = self.extractLoginMethod(text: statusText ?? "") ?? self.extractLoginMethod(text: clean)
 
         guard let sessionPct, let weeklyPct else {
             throw ClaudeStatusProbeError.parseFailed("Missing Current session or Current week (all models)")
@@ -209,16 +210,30 @@ struct ClaudeStatusProbe {
         return results
     }
 
-    // Extract "Claude Max/Pro/Team..." or explicit "Login method:" line.
+    // Extract login/plan string from CLI output.
     private static func extractLoginMethod(text: String) -> String? {
         guard !text.isEmpty else { return nil }
         if let explicit = self.extractFirst(pattern: #"(?i)login\s+method:\s*(.+)"#, text: text) {
             return explicit.trimmingCharacters(in: .whitespacesAndNewlines)
         }
-        // Capture any "Claude <word...>" phrase (e.g., Max/Pro/Ultra/Team) to avoid future plan-name churn.
-        let planPattern = #"(?i)(claude\s+[a-z0-9][a-z0-9\s_-]{0,24})"#
-        if let plan = self.extractFirst(pattern: planPattern, text: text) {
-            return plan.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Capture any "Claude <...>" phrase (e.g., Max/Pro/Ultra/Team) to avoid future plan-name churn.
+        let planPattern = #"(?i)(claude\s+[a-z0-9][a-z0-9\s._-]{0,24})"#
+        var candidates: [String] = []
+        if let regex = try? NSRegularExpression(pattern: planPattern, options: []) {
+            let nsrange = NSRange(text.startIndex..<text.endIndex, in: text)
+            regex.enumerateMatches(in: text, options: [], range: nsrange) { match, _, _ in
+                guard let match,
+                      match.numberOfRanges >= 2,
+                      let r = Range(match.range(at: 1), in: text) else { return }
+                let val = String(text[r]).trimmingCharacters(in: .whitespacesAndNewlines)
+                candidates.append(val)
+            }
+        }
+        if let plan = candidates.first(where: { cand in
+            let lower = cand.lowercased()
+            return !lower.contains("code v") && !lower.contains("code version") && !lower.contains("code")
+        }) {
+            return plan
         }
         return nil
     }
