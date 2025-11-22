@@ -62,6 +62,7 @@ struct CodexStatusProbe {
                 "Run `bun install -g @openai/codex` to continue (update prompt blocking /status).")
         }
         let credits = TextParsing.firstNumber(pattern: #"Credits:\s*([0-9][0-9.,]*)"#, text: clean)
+        // Pull reset info from the same lines that contain the percentages.
         let fiveLine = TextParsing.firstLine(matching: #"5h limit[^\n]*"#, text: clean)
         let weekLine = TextParsing.firstLine(matching: #"Weekly limit[^\n]*"#, text: clean)
         let fivePct = fiveLine.flatMap(TextParsing.percentLeft(fromLine:))

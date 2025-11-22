@@ -49,6 +49,7 @@ enum TextParsing {
         else {
             return nil
         }
+        // Return the tail text only (drop the "resets" prefix).
         return String(line[r]).trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }

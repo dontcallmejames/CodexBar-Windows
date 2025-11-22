@@ -6,6 +6,7 @@ enum UsageFormatter {
     }
 
     static func resetDescription(from date: Date, now: Date = .init()) -> String {
+        // Human-friendly phrasing: today / tomorrow / date+time.
         let calendar = Calendar.current
         if calendar.isDate(date, inSameDayAs: now) {
             return "today at \(date.formatted(date: .omitted, time: .shortened))"
