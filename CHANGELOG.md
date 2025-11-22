@@ -1,6 +1,7 @@
 # Changelog
 
 ## 0.5.0 — Unreleased
+- Claude CLI probe now runs `/usage` and `/status` in parallel (no simulated typing), captures reset strings, and uses a resilient parser (label-first with ordered fallback) while keeping org/email separate by provider.
 - TTY runner now always tears down the spawned process group (even on early Claude login prompts) to avoid leaking CLI processes.
 - Default refresh cadence is now 5 minutes, and a 15-minute option was added to the settings picker.
 - Claude probes/version detection now start with `--allowed-tools ""` (tool access disabled) while keeping interactive PTY mode working.
