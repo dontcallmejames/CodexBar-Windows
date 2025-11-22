@@ -8,6 +8,7 @@ enum RefreshFrequency: String, CaseIterable, Identifiable {
     case oneMinute
     case twoMinutes
     case fiveMinutes
+    case fifteenMinutes
 
     var id: String { self.rawValue }
 
@@ -17,6 +18,7 @@ enum RefreshFrequency: String, CaseIterable, Identifiable {
         case .oneMinute: 60
         case .twoMinutes: 120
         case .fiveMinutes: 300
+        case .fifteenMinutes: 900
         }
     }
 
@@ -26,6 +28,7 @@ enum RefreshFrequency: String, CaseIterable, Identifiable {
         case .oneMinute: "1 min"
         case .twoMinutes: "2 min"
         case .fiveMinutes: "5 min"
+        case .fifteenMinutes: "15 min"
         }
     }
 }
@@ -62,8 +65,8 @@ final class SettingsStore: ObservableObject {
 
     init(userDefaults: UserDefaults = .standard) {
         self.userDefaults = userDefaults
-        let raw = userDefaults.string(forKey: "refreshFrequency") ?? RefreshFrequency.twoMinutes.rawValue
-        self.refreshFrequency = RefreshFrequency(rawValue: raw) ?? .twoMinutes
+        let raw = userDefaults.string(forKey: "refreshFrequency") ?? RefreshFrequency.fiveMinutes.rawValue
+        self.refreshFrequency = RefreshFrequency(rawValue: raw) ?? .fiveMinutes
         self.toggleStore = ProviderToggleStore(userDefaults: userDefaults)
         self.toggleStore.purgeLegacyKeys()
         LaunchAtLoginManager.setEnabled(self.launchAtLogin)
