@@ -370,6 +370,7 @@ struct UsageFetcher: Sendable {
             do {
                 return try await secondary()
             } catch {
+                // Preserve the original failure so callers see the primary path error.
                 throw primaryError
             }
         }
