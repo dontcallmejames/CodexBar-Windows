@@ -2,7 +2,7 @@ import Foundation
 
 enum UsageFormatter {
     static func usageLine(remaining: Double, used: Double) -> String {
-        String(format: "%.0f%%", remaining)
+        String(format: "%.0f%% left", remaining)
     }
 
     static func updatedString(from date: Date, now: Date = .init()) -> String {
