@@ -149,8 +149,15 @@ private final class CodexRPCClient: @unchecked Sendable {
         executable: String = "codex",
         arguments: [String] = ["-s", "read-only", "-a", "untrusted", "app-server"]) throws
     {
+        let resolvedExec = TTYCommandRunner.which(executable) ?? executable
+        var env = ProcessInfo.processInfo.environment
+        // Hardened runtime trims PATH; seed a sane default that includes Homebrew and bun.
+        let defaultPath = "/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:/usr/local/bin:\(NSHomeDirectory())/.bun/bin"
+        env["PATH"] = (env["PATH"].map { "\($0):\(defaultPath)" }) ?? defaultPath
+
+        self.process.environment = env
         self.process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-        self.process.arguments = [executable] + arguments
+        self.process.arguments = [resolvedExec] + arguments
         self.process.standardInput = self.stdinPipe
         self.process.standardOutput = self.stdoutPipe
         self.process.standardError = self.stderrPipe
