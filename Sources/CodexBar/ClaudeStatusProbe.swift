@@ -94,6 +94,7 @@ struct ClaudeStatusProbe {
             if let email, orgText.lowercased().hasPrefix(email.lowercased()) { return nil }
             return orgText
         }()
+        let login = self.extractLoginMethod(text: clean) ?? self.extractLoginMethod(text: statusText ?? "")
 
         guard let sessionPct, let weeklyPct else {
             throw ClaudeStatusProbeError.parseFailed("Missing Current session or Current week (all models)")
@@ -108,6 +109,7 @@ struct ClaudeStatusProbe {
             opusPercentLeft: opusPct,
             accountEmail: email,
             accountOrganization: org,
+            loginMethod: login,
             primaryResetDescription: resets.first,
             secondaryResetDescription: resets.count > 1 ? resets[1] : nil,
             opusResetDescription: resets.count > 2 ? resets[2] : nil,
@@ -202,6 +204,19 @@ struct ClaudeStatusProbe {
             results.append(cleaned)
         }
         return results
+    }
+
+    // Extract "Claude Max/Pro/Team..." or explicit "Login method:" line.
+    private static func extractLoginMethod(text: String) -> String? {
+        guard !text.isEmpty else { return nil }
+        if let explicit = self.extractFirst(pattern: #"(?i)login\s+method:\s*(.+)"#, text: text) {
+            return explicit.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        let planPattern = #"(?i)claude\s+(max|pro|team|business|enterprise|pro team)"#
+        if let plan = self.extractFirst(pattern: planPattern, text: text) {
+            return plan.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        return nil
     }
 
     private static func extractUsageErrorJSON(text: String) -> String? {

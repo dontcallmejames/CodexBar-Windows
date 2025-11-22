@@ -186,7 +186,7 @@ struct ClaudeUsageFetcher: ClaudeUsageFetching, Sendable {
             updatedAt: Date(),
             accountEmail: snap.accountEmail,
             accountOrganization: snap.accountOrganization,
-            loginMethod: nil,
+            loginMethod: snap.loginMethod,
             rawText: snap.rawText)
     }
 
