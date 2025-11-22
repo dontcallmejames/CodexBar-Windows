@@ -7,6 +7,9 @@ struct ClaudeStatusSnapshot {
     let opusPercentLeft: Int?
     let accountEmail: String?
     let accountOrganization: String?
+    let primaryResetDescription: String?
+    let secondaryResetDescription: String?
+    let opusResetDescription: String?
     let rawText: String
 }
 
@@ -34,48 +37,30 @@ struct ClaudeStatusProbe {
 
     func fetch() async throws -> ClaudeStatusSnapshot {
         guard TTYCommandRunner.which(self.claudeBinary) != nil else { throw ClaudeStatusProbeError.claudeNotInstalled }
-        let runner = TTYCommandRunner()
-        var lastError: Error?
 
-        // Two attempts: the second one uses a slightly longer timeout to ride out slow CLI redraws
-        // or moments where the CLI simply drops the first Enter.
-        for attempt in 0..<2 {
-            do {
-                // Send command without trailing newline; TTY runner will submit with CRs.
-                let result = try runner.run(
-                    binary: self.claudeBinary,
-                    send: "/usage",
-                    options: .init(
-                        rows: 50,
-                        cols: 160,
-                        timeout: self.timeout + TimeInterval(attempt * 6),
-                        extraArgs: ["--allowed-tools", "", "--dangerously-skip-permissions"]))
-                let snap = try Self.parse(text: result.text)
-                if #available(macOS 13.0, *) {
-                    os_log(
-                        "[ClaudeStatusProbe] PTY scrape ok — session %d%% left, week %d%% left, opus %d%% left",
-                        log: .default,
-                        type: .info,
-                        snap.sessionPercentLeft ?? -1,
-                        snap.weeklyPercentLeft ?? -1,
-                        snap.opusPercentLeft ?? -1)
-                }
-                return snap
-            } catch {
-                lastError = error
-                // Give the CLI a brief breather before retrying.
-                usleep(250_000)
-                continue
-            }
+        // Run both commands in parallel; /usage provides quotas, /status may provide org/account metadata.
+        async let usageText = self.capture(subcommand: "/usage")
+        async let statusText = self.capture(subcommand: "/status")
+
+        let usage = try await usageText
+        let status = try? await statusText
+        let snap = try Self.parse(text: usage, statusText: status)
+
+        if #available(macOS 13.0, *) {
+            os_log(
+                "[ClaudeStatusProbe] CLI scrape ok — session %d%% left, week %d%% left, opus %d%% left",
+                log: .default,
+                type: .info,
+                snap.sessionPercentLeft ?? -1,
+                snap.weeklyPercentLeft ?? -1,
+                snap.opusPercentLeft ?? -1)
         }
-
-        if let lastError { throw lastError }
-        throw ClaudeStatusProbeError.timedOut
+        return snap
     }
 
     // MARK: - Parsing helpers
 
-    static func parse(text: String) throws -> ClaudeStatusSnapshot {
+    static func parse(text: String, statusText: String? = nil) throws -> ClaudeStatusSnapshot {
         let clean = TextParsing.stripANSICodes(text)
         guard !clean.isEmpty else { throw ClaudeStatusProbeError.timedOut }
 
@@ -83,15 +68,35 @@ struct ClaudeStatusProbe {
             throw ClaudeStatusProbeError.parseFailed(usageError)
         }
 
-        let sessionPct = self.extractPercent(labelSubstring: "Current session", text: clean)
-        let weeklyPct = self.extractPercent(labelSubstring: "Current week (all models)", text: clean)
-        let opusPct = self.extractPercent(labelSubstring: "Current week (Opus)", text: clean)
+        var sessionPct = self.extractPercent(labelSubstring: "Current session", text: clean)
+        var weeklyPct = self.extractPercent(labelSubstring: "Current week (all models)", text: clean)
+        var opusPct = self.extractPercent(labelSubstring: "Current week (Opus)", text: clean)
+
+        // Fallback: order-based percent scraping if labels change.
+        if sessionPct == nil || weeklyPct == nil || opusPct == nil {
+            let ordered = self.allPercents(clean)
+            if sessionPct == nil, ordered.indices.contains(0) { sessionPct = ordered[0] }
+            if weeklyPct == nil, ordered.indices.contains(1) { weeklyPct = ordered[1] }
+            if opusPct == nil, ordered.indices.contains(2) { opusPct = ordered[2] }
+        }
+
         let email = self.extractFirst(pattern: #"(?i)Account:\s+([^\s@]+@[^\s@]+)"#, text: clean)
-        let org = self.extractFirst(pattern: #"(?i)Org:\s*(.+)"#, text: clean)
+            ?? self.extractFirst(pattern: #"(?i)Account:\s+([^\s@]+@[^\s@]+)"#, text: statusText ?? "")
+        let orgRaw = self.extractFirst(pattern: #"(?i)Org:\s*(.+)"#, text: clean)
+            ?? self.extractFirst(pattern: #"(?i)Org:\s*(.+)"#, text: statusText ?? "")
+        let org: String? = {
+            guard let orgText = orgRaw?.trimmingCharacters(in: .whitespacesAndNewlines), !orgText.isEmpty else {
+                return nil
+            }
+            if let email, orgText.lowercased().hasPrefix(email.lowercased()) { return nil }
+            return orgText
+        }()
 
         guard let sessionPct, let weeklyPct else {
             throw ClaudeStatusProbeError.parseFailed("Missing Current session or Current week (all models)")
         }
+
+        let resets = self.allResets(clean)
 
         return ClaudeStatusSnapshot(
             sessionPercentLeft: sessionPct,
@@ -99,7 +104,10 @@ struct ClaudeStatusProbe {
             opusPercentLeft: opusPct,
             accountEmail: email,
             accountOrganization: org,
-            rawText: text)
+            primaryResetDescription: resets.first,
+            secondaryResetDescription: resets.count > 1 ? resets[1] : nil,
+            opusResetDescription: resets.count > 2 ? resets[2] : nil,
+            rawText: text + (statusText ?? ""))
     }
 
     private static func extractPercent(labelSubstring: String, text: String) -> Int? {
@@ -152,6 +160,44 @@ struct ClaudeStatusProbe {
         return nil
     }
 
+    private static func allPercents(_ text: String) -> [Int] {
+        let patterns = ["([0-9]{1,3})%\\s*left", "([0-9]{1,3})%\\s*used", "([0-9]{1,3})%"]
+        var results: [Int] = []
+        for pat in patterns {
+            guard let regex = try? NSRegularExpression(pattern: pat, options: [.caseInsensitive]) else { continue }
+            let nsrange = NSRange(text.startIndex..<text.endIndex, in: text)
+            regex.enumerateMatches(in: text, options: [], range: nsrange) { match, _, _ in
+                guard let match,
+                      let r = Range(match.range(at: 1), in: text),
+                      let val = Int(text[r]) else { return }
+                let used: Int
+                if pat.contains("left") {
+                    used = max(0, 100 - val)
+                } else {
+                    used = val
+                }
+                results.append(used)
+            }
+            if results.count >= 3 { break }
+        }
+        return results
+    }
+
+    private static func allResets(_ text: String) -> [String] {
+        let pat = #"Resets[^\n]*"#
+        guard let regex = try? NSRegularExpression(pattern: pat, options: [.caseInsensitive]) else { return [] }
+        let nsrange = NSRange(text.startIndex..<text.endIndex, in: text)
+        var results: [String] = []
+        regex.enumerateMatches(in: text, options: [], range: nsrange) { match, _, _ in
+            guard let match,
+                  let r = Range(match.range(at: 0), in: text) else { return }
+            let raw = String(text[r]).trimmingCharacters(in: .whitespacesAndNewlines)
+            let cleaned = raw.trimmingCharacters(in: CharacterSet(charactersIn: " )"))
+            results.append(cleaned)
+        }
+        return results
+    }
+
     private static func extractUsageErrorJSON(text: String) -> String? {
         let pattern = #"Failed to load usage data:\s*(\{.*\})"#
         guard let regex = try? NSRegularExpression(pattern: pattern, options: [.dotMatchesLineSeparators]) else {
@@ -188,5 +234,35 @@ struct ClaudeStatusProbe {
             return "\(hint). Run `claude login` to refresh."
         }
         return "Claude CLI error: \(hint)"
+    }
+
+    // MARK: - Process helpers
+
+    private func capture(subcommand: String) async throws -> String {
+        try await Task.detached(priority: .utility) { [claudeBinary = self.claudeBinary, timeout = self.timeout] in
+            let process = Process()
+            process.launchPath = "/usr/bin/script"
+            process.arguments = ["-q", "/dev/null", claudeBinary, subcommand, "--allowed-tools", "", "--dangerously-skip-permissions"]
+            let pipe = Pipe()
+            process.standardOutput = pipe
+            process.standardError = Pipe()
+            process.standardInput = nil
+
+            do {
+                try process.run()
+            } catch {
+                throw ClaudeStatusProbeError.claudeNotInstalled
+            }
+
+            DispatchQueue.global().asyncAfter(deadline: .now() + timeout) {
+                if process.isRunning { process.terminate() }
+            }
+
+            process.waitUntilExit()
+
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            guard !data.isEmpty else { throw ClaudeStatusProbeError.timedOut }
+            return String(data: data, encoding: .utf8) ?? ""
+        }.value
     }
 }
