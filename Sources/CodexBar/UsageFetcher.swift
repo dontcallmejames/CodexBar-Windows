@@ -279,14 +279,28 @@ struct UsageFetcher: Sendable {
     }
 
     func loadLatestUsage() async throws -> UsageSnapshot {
+        do {
+            return try await self.loadRPCUsage()
+        } catch let rpcError {
+            // App-server can be down or mid-upgrade; fall back to TTY scrape so the UI still shows data.
+            do {
+                return try await self.loadTTYUsage()
+            } catch {
+                throw rpcError
+            }
+        }
+    }
+
+    private func loadRPCUsage() async throws -> UsageSnapshot {
         let rpc = try CodexRPCClient()
         defer { rpc.shutdown() }
 
         try await rpc.initialize(clientName: "codexbar", clientVersion: "0.5.0")
-        async let limitsResp = rpc.fetchRateLimits()
-        async let accountResp = rpc.fetchAccount()
-        let limits = try await limitsResp.rateLimits
-        let account = try? await accountResp
+        // The app-server answers on a single stdout stream, so keep requests
+        // serialized to avoid starving one reader when multiple awaiters race
+        // for the same pipe.
+        let limits = try await rpc.fetchRateLimits().rateLimits
+        let account = try? await rpc.fetchAccount()
 
         guard let primary = Self.makeWindow(from: limits.primary),
               let secondary = Self.makeWindow(from: limits.secondary)
@@ -308,7 +322,47 @@ struct UsageFetcher: Sendable {
             })
     }
 
+    private func loadTTYUsage() async throws -> UsageSnapshot {
+        let status = try await CodexStatusProbe().fetch()
+        guard let fiveLeft = status.fiveHourPercentLeft, let weekLeft = status.weeklyPercentLeft else {
+            throw UsageError.noRateLimitsFound
+        }
+
+        let primary = RateWindow(
+            usedPercent: max(0, 100 - Double(fiveLeft)),
+            windowMinutes: 300,
+            resetsAt: nil,
+            resetDescription: nil)
+        let secondary = RateWindow(
+            usedPercent: max(0, 100 - Double(weekLeft)),
+            windowMinutes: 10_080,
+            resetsAt: nil,
+            resetDescription: nil)
+
+        return UsageSnapshot(
+            primary: primary,
+            secondary: secondary,
+            tertiary: nil,
+            updatedAt: Date(),
+            accountEmail: nil,
+            accountOrganization: nil,
+            loginMethod: nil)
+    }
+
     func loadLatestCredits() async throws -> CreditsSnapshot {
+        do {
+            return try await self.loadRPCCredits()
+        } catch let rpcError {
+            // Credits sometimes arrive later on RPC; try the TTY status view before surfacing failure.
+            do {
+                return try await self.loadTTYCredits()
+            } catch {
+                throw rpcError
+            }
+        }
+    }
+
+    private func loadRPCCredits() async throws -> CreditsSnapshot {
         let rpc = try CodexRPCClient()
         defer { rpc.shutdown() }
         try await rpc.initialize(clientName: "codexbar", clientVersion: "0.5.0")
@@ -316,6 +370,12 @@ struct UsageFetcher: Sendable {
         guard let credits = limits.credits else { throw UsageError.noRateLimitsFound }
         let remaining = Self.parseCredits(credits.balance)
         return CreditsSnapshot(remaining: remaining, events: [], updatedAt: Date())
+    }
+
+    private func loadTTYCredits() async throws -> CreditsSnapshot {
+        let status = try await CodexStatusProbe().fetch()
+        guard let credits = status.credits else { throw UsageError.noRateLimitsFound }
+        return CreditsSnapshot(remaining: credits, events: [], updatedAt: Date())
     }
 
     func debugRawRateLimits() async -> String {
