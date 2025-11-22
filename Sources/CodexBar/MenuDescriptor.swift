@@ -74,10 +74,6 @@ struct MenuDescriptor {
                     entries.append(.text("\(opusTitle): \(opusLine)", .primary))
                     if let reset = opus.resetDescription { entries.append(.text("Resets \(reset)", .secondary)) }
                 }
-
-                if let org = snap.accountOrganization, !org.isEmpty { entries.append(.text("Org: \(org)", .secondary)) }
-                if let plan = snap.loginMethod, !plan.isEmpty { entries.append(.text("Plan: \(plan)", .secondary)) }
-                if let email = snap.accountEmail { entries.append(.text("Account: \(email)", .secondary)) }
             } else {
                 entries.append(.text("No usage yet", .secondary))
                 if let err = store.error(for: provider), !err.isEmpty {
@@ -97,24 +93,27 @@ struct MenuDescriptor {
                     entries.append(.text(hint, .secondary))
                 }
             }
-            if let updated = store.snapshot(for: provider)?.updatedAt {
-                entries.append(.text(UsageFormatter.updatedString(from: updated), .secondary))
-            }
             return Section(entries: entries)
         }
 
         /// Builds the account section.
-        /// - If a Claude snapshot is provided, we only trust its account fields (email/loginMethod).
-        ///   This prevents leaking Codex plan/email when the user is looking at Claude.
-        /// - If no Claude snapshot is available, fall back to Codex auth info.
-        func accountSection(preferred claude: UsageSnapshot?, preferClaude: Bool) -> Section {
+        /// - Claude snapshot is preferred when `preferClaude` is true.
+        /// - Otherwise Codex snapshot wins; falls back to stored auth info.
+        func accountSection(
+            preferred claude: UsageSnapshot?,
+            codex: UsageSnapshot?,
+            preferClaude: Bool) -> Section
+        {
             var entries: [Entry] = []
             let emailFromClaude = claude?.accountEmail
+            let emailFromCodex = codex?.accountEmail
             let planFromClaude = claude?.loginMethod
+            let planFromCodex = codex?.loginMethod
 
-            // Email: Claude wins when requested; otherwise Codex auth.
+            // Email: Claude wins when requested; otherwise Codex snapshot then auth.json fallback.
             let emailText: String = {
                 if preferClaude, let e = emailFromClaude, !e.isEmpty { return e }
+                if let e = emailFromCodex, !e.isEmpty { return e }
                 if let codexEmail = account.email, !codexEmail.isEmpty { return codexEmail }
                 if let e = emailFromClaude, !e.isEmpty { return e }
                 return "Unknown"
@@ -126,6 +125,8 @@ struct MenuDescriptor {
                 if let plan = planFromClaude, !plan.isEmpty {
                     entries.append(.text("Plan: \(plan)", .secondary))
                 }
+            } else if let plan = planFromCodex, !plan.isEmpty {
+                entries.append(.text("Plan: \(plan)", .secondary))
             } else if let plan = account.plan, !plan.isEmpty {
                 entries.append(.text("Plan: \(plan)", .secondary))
             }
@@ -133,9 +134,28 @@ struct MenuDescriptor {
             return Section(entries: entries)
         }
 
-        func actionsSection() -> Section {
+        func refreshStatusText(for provider: UsageProvider?) -> String {
+            // Single place that decides what to show under the refresh button.
+            if store.isRefreshing { return "Refreshing..." }
+            let target = provider ?? store.enabledProviders().first
+            if let target,
+               let err = store.error(for: target),
+               !err.isEmpty
+            {
+                return UsageFormatter.truncatedSingleLine(err, max: 80)
+            }
+            if let target,
+               let updated = store.snapshot(for: target)?.updatedAt
+            {
+                return UsageFormatter.updatedString(from: updated)
+            }
+            return "Not fetched yet"
+        }
+
+        func actionsSection(for provider: UsageProvider?) -> Section {
             Section(entries: [
                 .action("Refresh now", .refresh),
+                .text(refreshStatusText(for: provider), .secondary),
                 .action("Usage Dashboard", .dashboard),
             ])
         }
@@ -151,11 +171,17 @@ struct MenuDescriptor {
         switch provider {
         case .codex?:
             sections.append(usageSection(for: .codex, titlePrefix: "Codex"))
-            sections.append(accountSection(preferred: nil, preferClaude: false))
+            sections.append(accountSection(
+                preferred: nil,
+                codex: store.snapshot(for: .codex),
+                preferClaude: false))
         case .claude?:
             let snap = store.snapshot(for: .claude)
             sections.append(usageSection(for: .claude, titlePrefix: "Claude"))
-            sections.append(accountSection(preferred: snap, preferClaude: true))
+            sections.append(accountSection(
+                preferred: snap,
+                codex: store.snapshot(for: .codex),
+                preferClaude: true))
         case nil:
             var addedUsage = false
             if store.isEnabled(.codex) {
@@ -169,13 +195,14 @@ struct MenuDescriptor {
             if addedUsage {
                 sections.append(accountSection(
                     preferred: store.snapshot(for: .claude),
+                    codex: store.snapshot(for: .codex),
                     preferClaude: store.isEnabled(.claude)))
             } else {
                 sections.append(Section(entries: [.text("No usage configured.", .secondary)]))
             }
         }
 
-        sections.append(actionsSection())
+        sections.append(actionsSection(for: provider))
         sections.append(metaSection())
 
         return MenuDescriptor(sections: sections)

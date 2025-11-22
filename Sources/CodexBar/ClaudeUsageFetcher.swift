@@ -165,15 +165,19 @@ struct ClaudeUsageFetcher: ClaudeUsageFetching, Sendable {
             throw ClaudeUsageError.parseFailed("missing session data")
         }
 
-        func makeWindow(pctLeft: Int?) -> RateWindow? {
+        func makeWindow(pctLeft: Int?, reset: String?) -> RateWindow? {
             guard let left = pctLeft else { return nil }
             let used = max(0, min(100, 100 - Double(left)))
-            return RateWindow(usedPercent: used, windowMinutes: nil, resetsAt: nil, resetDescription: nil)
+            return RateWindow(
+                usedPercent: used,
+                windowMinutes: nil,
+                resetsAt: nil,
+                resetDescription: reset)
         }
 
-        let primary = makeWindow(pctLeft: sessionPctLeft)!
-        let weekly = makeWindow(pctLeft: snap.weeklyPercentLeft)!
-        let opus = makeWindow(pctLeft: snap.opusPercentLeft)
+        let primary = makeWindow(pctLeft: sessionPctLeft, reset: snap.primaryResetDescription)!
+        let weekly = makeWindow(pctLeft: snap.weeklyPercentLeft, reset: snap.secondaryResetDescription)!
+        let opus = makeWindow(pctLeft: snap.opusPercentLeft, reset: snap.opusResetDescription)
 
         return ClaudeUsageSnapshot(
             primary: primary,
