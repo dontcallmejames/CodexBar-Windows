@@ -72,7 +72,7 @@ struct ClaudeStatusProbe {
         var weeklyPct = self.extractPercent(labelSubstring: "Current week (all models)", text: clean)
         var opusPct = self.extractPercent(labelSubstring: "Current week (Opus)", text: clean)
 
-        // Fallback: order-based percent scraping if labels change.
+        // Fallback: order-based percent scraping if labels change or get localized.
         if sessionPct == nil || weeklyPct == nil || opusPct == nil {
             let ordered = self.allPercents(clean)
             if sessionPct == nil, ordered.indices.contains(0) { sessionPct = ordered[0] }
@@ -80,6 +80,7 @@ struct ClaudeStatusProbe {
             if opusPct == nil, ordered.indices.contains(2) { opusPct = ordered[2] }
         }
 
+        // Prefer usage text for identity; fall back to /status if present.
         let email = self.extractFirst(pattern: #"(?i)Account:\s+([^\s@]+@[^\s@]+)"#, text: clean)
             ?? self.extractFirst(pattern: #"(?i)Account:\s+([^\s@]+@[^\s@]+)"#, text: statusText ?? "")
         let orgRaw = self.extractFirst(pattern: #"(?i)Org:\s*(.+)"#, text: clean)
@@ -88,6 +89,7 @@ struct ClaudeStatusProbe {
             guard let orgText = orgRaw?.trimmingCharacters(in: .whitespacesAndNewlines), !orgText.isEmpty else {
                 return nil
             }
+            // Suppress org if it’s just the email prefix (common in CLI panels).
             if let email, orgText.lowercased().hasPrefix(email.lowercased()) { return nil }
             return orgText
         }()
@@ -96,6 +98,7 @@ struct ClaudeStatusProbe {
             throw ClaudeStatusProbeError.parseFailed("Missing Current session or Current week (all models)")
         }
 
+        // Capture reset strings for UI display.
         let resets = self.allResets(clean)
 
         return ClaudeStatusSnapshot(
@@ -160,6 +163,7 @@ struct ClaudeStatusProbe {
         return nil
     }
 
+    // Collect percentages in the order they appear; used as a backup when labels move/rename.
     private static func allPercents(_ text: String) -> [Int] {
         let patterns = ["([0-9]{1,3})%\\s*left", "([0-9]{1,3})%\\s*used", "([0-9]{1,3})%"]
         var results: [Int] = []
@@ -183,6 +187,7 @@ struct ClaudeStatusProbe {
         return results
     }
 
+    // Capture all "Resets ..." strings to surface in the menu.
     private static func allResets(_ text: String) -> [String] {
         let pat = #"Resets[^\n]*"#
         guard let regex = try? NSRegularExpression(pattern: pat, options: [.caseInsensitive]) else { return [] }
@@ -191,6 +196,7 @@ struct ClaudeStatusProbe {
         regex.enumerateMatches(in: text, options: [], range: nsrange) { match, _, _ in
             guard let match,
                   let r = Range(match.range(at: 0), in: text) else { return }
+            // TTY capture sometimes appends a stray ")" at line ends; trim it to keep snapshots stable.
             let raw = String(text[r]).trimmingCharacters(in: .whitespacesAndNewlines)
             let cleaned = raw.trimmingCharacters(in: CharacterSet(charactersIn: " )"))
             results.append(cleaned)
@@ -238,6 +244,7 @@ struct ClaudeStatusProbe {
 
     // MARK: - Process helpers
 
+    // Run `script -q /dev/null claude <subcommand>` with a hard timeout; avoids fragile PTY keystrokes.
     private func capture(subcommand: String) async throws -> String {
         try await Task.detached(priority: .utility) { [claudeBinary = self.claudeBinary, timeout = self.timeout] in
             let process = Process()
