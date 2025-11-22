@@ -215,8 +215,8 @@ struct ClaudeStatusProbe {
         if let explicit = self.extractFirst(pattern: #"(?i)login\s+method:\s*(.+)"#, text: text) {
             return explicit.trimmingCharacters(in: .whitespacesAndNewlines)
         }
-        // Capture full phrase like "Claude Max"/"Claude Pro".
-        let planPattern = #"(?i)(claude\s+(max|pro|team|business|enterprise|pro team))"#
+        // Capture any "Claude <word...>" phrase (e.g., Max/Pro/Ultra/Team) to avoid future plan-name churn.
+        let planPattern = #"(?i)(claude\s+[a-z0-9][a-z0-9\s_-]{0,24})"#
         if let plan = self.extractFirst(pattern: planPattern, text: text) {
             return plan.trimmingCharacters(in: .whitespacesAndNewlines)
         }
