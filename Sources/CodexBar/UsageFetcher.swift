@@ -137,7 +137,8 @@ private enum RPCWireError: Error, CustomStringConvertible {
     }
 }
 
-private final class CodexRPCClient {
+// RPC helper used on background tasks; safe because we confine it to the owning task.
+private final class CodexRPCClient: @unchecked Sendable {
     private let process = Process()
     private let stdinPipe = Pipe()
     private let stdoutPipe = Pipe()
@@ -282,7 +283,10 @@ struct UsageFetcher: Sendable {
         defer { rpc.shutdown() }
 
         try await rpc.initialize(clientName: "codexbar", clientVersion: "0.5.0")
-        let limits = try await rpc.fetchRateLimits().rateLimits
+        async let limitsResp = rpc.fetchRateLimits()
+        async let accountResp = rpc.fetchAccount()
+        let limits = try await limitsResp.rateLimits
+        let account = try? await accountResp
 
         guard let primary = Self.makeWindow(from: limits.primary),
               let secondary = Self.makeWindow(from: limits.secondary)
@@ -295,9 +299,13 @@ struct UsageFetcher: Sendable {
             secondary: secondary,
             tertiary: nil,
             updatedAt: Date(),
-            accountEmail: nil,
+            accountEmail: account?.account.flatMap { details in
+                if case let .chatgpt(email, _) = details { email } else { nil }
+            },
             accountOrganization: nil,
-            loginMethod: nil)
+            loginMethod: account?.account.flatMap { details in
+                if case let .chatgpt(_, plan) = details { plan } else { nil }
+            })
     }
 
     func loadLatestCredits() async throws -> CreditsSnapshot {
