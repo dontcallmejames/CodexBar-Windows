@@ -21,7 +21,7 @@ struct DebugPane: View {
 
                 SettingsSection(
                     title: "Loading animations",
-                    caption: "Pick a pattern and replay to preview it in the menu bar. \"Random\" keeps the existing behavior.")
+                    caption: "Pick a pattern and replay it in the menu bar. \"Random\" keeps the existing behavior.")
                 {
                     Picker("Animation pattern", selection: self.animationPatternBinding) {
                         Text("Random (default)").tag(nil as LoadingPattern?)
@@ -39,8 +39,7 @@ struct DebugPane: View {
 
                 SettingsSection(
                     title: "Probe logs",
-                    caption: "Fetch the latest PTY scrape for Codex or Claude; Copy keeps the full text.")
-                {
+                    caption: "Fetch the latest PTY scrape for Codex or Claude; Copy keeps the full text.") {
                     Picker("Provider", selection: self.$currentLogProvider) {
                         Text("Codex").tag(UsageProvider.codex)
                         Text("Claude").tag(UsageProvider.claude)
