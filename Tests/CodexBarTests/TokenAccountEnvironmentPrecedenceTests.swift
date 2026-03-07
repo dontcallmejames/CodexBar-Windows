@@ -149,6 +149,28 @@ struct TokenAccountEnvironmentPrecedenceTests {
     }
 
     @Test
+    func claudeOAuthTokenSelectionPromotesAutoSourceModeInCLI() throws {
+        let account = ProviderTokenAccount(
+            id: UUID(),
+            label: "Primary",
+            token: "Bearer sk-ant-oat-account-token",
+            addedAt: 0,
+            lastUsed: nil)
+        let config = CodexBarConfig(providers: [ProviderConfig(id: .claude)])
+        let tokenContext = try TokenAccountCLIContext(
+            selection: TokenAccountCLISelection(label: nil, index: nil, allAccounts: false),
+            config: config,
+            verbose: false)
+
+        let effectiveSourceMode = tokenContext.effectiveSourceMode(
+            base: .auto,
+            provider: .claude,
+            account: account)
+
+        #expect(effectiveSourceMode == .oauth)
+    }
+
+    @Test
     func claudeSessionKeySelectionStaysInManualCookieModeInCLISettingsSnapshot() throws {
         let accounts = ProviderTokenAccountData(
             version: 1,
@@ -177,6 +199,45 @@ struct TokenAccountEnvironmentPrecedenceTests {
         #expect(claudeSettings.usageDataSource == .auto)
         #expect(claudeSettings.cookieSource == .manual)
         #expect(claudeSettings.manualCookieHeader == "sessionKey=sk-ant-session-token")
+    }
+
+    @Test
+    func claudeConfigManualCookieUsesSharedRouteInCLISettingsSnapshot() throws {
+        let config = CodexBarConfig(
+            providers: [
+                ProviderConfig(
+                    id: .claude,
+                    cookieHeader: "Cookie: sessionKey=sk-ant-session-token; foo=bar"),
+            ])
+        let selection = TokenAccountCLISelection(label: nil, index: nil, allAccounts: false)
+        let tokenContext = try TokenAccountCLIContext(selection: selection, config: config, verbose: false)
+        let snapshot = try #require(tokenContext.settingsSnapshot(for: .claude, account: nil))
+        let claudeSettings = try #require(snapshot.claude)
+
+        #expect(claudeSettings.usageDataSource == .auto)
+        #expect(claudeSettings.cookieSource == .manual)
+        #expect(claudeSettings.manualCookieHeader == "sessionKey=sk-ant-session-token; foo=bar")
+    }
+
+    @Test
+    func claudeConfigManualCookieDoesNotPromoteAutoSourceModeInCLI() throws {
+        let config = CodexBarConfig(
+            providers: [
+                ProviderConfig(
+                    id: .claude,
+                    cookieHeader: "Cookie: sessionKey=sk-ant-session-token"),
+            ])
+        let tokenContext = try TokenAccountCLIContext(
+            selection: TokenAccountCLISelection(label: nil, index: nil, allAccounts: false),
+            config: config,
+            verbose: false)
+
+        let effectiveSourceMode = tokenContext.effectiveSourceMode(
+            base: .auto,
+            provider: .claude,
+            account: nil)
+
+        #expect(effectiveSourceMode == .auto)
     }
 
     @Test

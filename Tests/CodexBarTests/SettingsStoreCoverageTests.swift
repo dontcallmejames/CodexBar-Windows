@@ -104,6 +104,32 @@ struct SettingsStoreCoverageTests {
     }
 
     @Test
+    func claudeSnapshotNormalizesConfigManualCookieInputThroughSharedRoute() {
+        let settings = Self.makeSettingsStore()
+        settings.claudeCookieSource = .manual
+        settings.claudeCookieHeader = "Cookie: sessionKey=sk-ant-session-token; foo=bar"
+
+        let snapshot = settings.claudeSettingsSnapshot(tokenOverride: nil)
+
+        #expect(snapshot.usageDataSource == .auto)
+        #expect(snapshot.cookieSource == .manual)
+        #expect(snapshot.manualCookieHeader == "sessionKey=sk-ant-session-token; foo=bar")
+    }
+
+    @Test
+    func claudeSnapshotDoesNotFallBackToConfigCookieForMalformedSelectedTokenAccount() {
+        let settings = Self.makeSettingsStore()
+        settings.claudeCookieSource = .manual
+        settings.claudeCookieHeader = "Cookie: sessionKey=sk-ant-config-cookie"
+        settings.addTokenAccount(provider: .claude, label: "Malformed", token: "Cookie:")
+
+        let snapshot = settings.claudeSettingsSnapshot(tokenOverride: nil)
+
+        #expect(snapshot.cookieSource == .manual)
+        #expect(snapshot.manualCookieHeader?.isEmpty == true)
+    }
+
+    @Test
     func tokenCostUsageSourceDetection() throws {
         let fileManager = FileManager.default
         let root = fileManager.temporaryDirectory.appendingPathComponent(
