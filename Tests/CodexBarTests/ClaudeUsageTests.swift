@@ -60,7 +60,8 @@ struct ClaudeUsageTests {
         let fetchOverride: (@Sendable (String) async throws -> OAuthUsageResponse)? = { _ in usageResponse }
         let delegatedOverride: (@Sendable (
             Date,
-            TimeInterval) async -> ClaudeOAuthDelegatedRefreshCoordinator.Outcome)? = { _, _ in
+            TimeInterval,
+            [String: String]) async -> ClaudeOAuthDelegatedRefreshCoordinator.Outcome)? = { _, _, _ in
             _ = await delegatedCounter.increment()
             return .attemptedSucceeded
         }
@@ -114,7 +115,8 @@ struct ClaudeUsageTests {
         do {
             let delegatedOverride: (@Sendable (
                 Date,
-                TimeInterval) async -> ClaudeOAuthDelegatedRefreshCoordinator.Outcome)? = { _, _ in
+                TimeInterval,
+                [String: String]) async -> ClaudeOAuthDelegatedRefreshCoordinator.Outcome)? = { _, _, _ in
                 _ = await delegatedCounter.increment()
                 return .attemptedSucceeded
             }
@@ -165,8 +167,8 @@ struct ClaudeUsageTests {
             dataSource: .oauth,
             oauthKeychainPromptCooldownEnabled: true)
 
-        let delegatedOverride: (@Sendable (Date, TimeInterval) async -> ClaudeOAuthDelegatedRefreshCoordinator
-            .Outcome)? = { _, _ in
+        let delegatedOverride: (@Sendable (Date, TimeInterval, [String: String]) async
+            -> ClaudeOAuthDelegatedRefreshCoordinator.Outcome)? = { _, _, _ in
             _ = await delegatedCounter.increment()
             return .cliUnavailable
         }
@@ -226,8 +228,8 @@ struct ClaudeUsageTests {
             oauthKeychainPromptCooldownEnabled: true)
 
         let fetchOverride: (@Sendable (String) async throws -> OAuthUsageResponse)? = { _ in usageResponse }
-        let delegatedOverride: (@Sendable (Date, TimeInterval) async -> ClaudeOAuthDelegatedRefreshCoordinator
-            .Outcome)? = { _, _ in
+        let delegatedOverride: (@Sendable (Date, TimeInterval, [String: String]) async
+            -> ClaudeOAuthDelegatedRefreshCoordinator.Outcome)? = { _, _, _ in
             _ = await delegatedCounter.increment()
             return .attemptedFailed("no-change")
         }
@@ -286,7 +288,8 @@ struct ClaudeUsageTests {
 
         let delegatedOverride: (@Sendable (
             Date,
-            TimeInterval) async -> ClaudeOAuthDelegatedRefreshCoordinator.Outcome)? = { _, _ in
+            TimeInterval,
+            [String: String]) async -> ClaudeOAuthDelegatedRefreshCoordinator.Outcome)? = { _, _, _ in
             _ = await delegatedCounter.increment()
             return .attemptedSucceeded
         }
@@ -337,7 +340,8 @@ struct ClaudeUsageTests {
 
         let delegatedOverride: (@Sendable (
             Date,
-            TimeInterval) async -> ClaudeOAuthDelegatedRefreshCoordinator.Outcome)? = { _, _ in
+            TimeInterval,
+            [String: String]) async -> ClaudeOAuthDelegatedRefreshCoordinator.Outcome)? = { _, _, _ in
             _ = await delegatedCounter.increment()
             return .attemptedSucceeded
         }
@@ -442,7 +446,8 @@ struct ClaudeUsageTests {
         let fetchOverride: (@Sendable (String) async throws -> OAuthUsageResponse)? = { _ in usageResponse }
         let delegatedOverride: (@Sendable (
             Date,
-            TimeInterval) async -> ClaudeOAuthDelegatedRefreshCoordinator.Outcome)? = { _, _ in
+            TimeInterval,
+            [String: String]) async -> ClaudeOAuthDelegatedRefreshCoordinator.Outcome)? = { _, _, _ in
             _ = await delegatedCounter.increment()
             return .attemptedSucceeded
         }
@@ -913,7 +918,6 @@ struct ClaudeAutoFetcherCharacterizationTests {
         Current session
         93% left
         Dec 23 at 4:00PM
-
         Current week (all models)
         79% left
         Dec 29 at 11:00PM
@@ -1019,6 +1023,7 @@ struct ClaudeAutoFetcherCharacterizationTests {
                 ClaudeOAuthCredentialsStore.environmentTokenKey: "oauth-token",
                 ClaudeOAuthCredentialsStore.environmentScopesKey: "user:profile",
             ],
+            runtime: .app,
             dataSource: .auto,
             manualCookieHeader: "sessionKey=sk-ant-session-token")
 
@@ -1045,14 +1050,15 @@ struct ClaudeAutoFetcherCharacterizationTests {
     }
 
     @Test
-    func autoPrefersWebBeforeCLIWhenOAuthUnavailable() async throws {
+    func appRuntimeAutoPrefersCLIBeforeWebWhenOAuthUnavailable() async throws {
         let cliLogURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("claude-auto-web-log-\(UUID().uuidString).txt")
         let log = InvocationLog(url: cliLogURL)
         let fakeCLI = try Self.makeFakeClaudeCLI(logURL: cliLogURL)
         let fetcher = ClaudeUsageFetcher(
             browserDetection: BrowserDetection(cacheTTL: 0),
-            environment: [:],
+            environment: ["CLAUDE_CLI_PATH": fakeCLI.path],
+            runtime: .app,
             dataSource: .auto,
             manualCookieHeader: "sessionKey=sk-ant-session-token")
 
@@ -1108,6 +1114,72 @@ struct ClaudeAutoFetcherCharacterizationTests {
                 }, operation: {
                     let snapshot = try await fetcher.loadLatestUsage(model: "sonnet")
 
+                    #expect(snapshot.rawText != nil)
+                    #expect(log.contents().contains("usage"))
+                })
+            }
+        }
+    }
+
+    @Test
+    func cliRuntimeAutoPrefersWebBeforeCLIWhenOAuthUnavailable() async throws {
+        let cliLogURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("claude-auto-cli-runtime-web-log-\(UUID().uuidString).txt")
+        let log = InvocationLog(url: cliLogURL)
+        let fakeCLI = try Self.makeFakeClaudeCLI(logURL: cliLogURL)
+        let fetcher = ClaudeUsageFetcher(
+            browserDetection: BrowserDetection(cacheTTL: 0),
+            environment: ["CLAUDE_CLI_PATH": fakeCLI.path],
+            runtime: .cli,
+            dataSource: .auto,
+            manualCookieHeader: "sessionKey=sk-ant-session-token")
+
+        try await self.withClaudeCLIPath(fakeCLI.path) {
+            try await self.withNoOAuthCredentials {
+                try await self.withClaudeWebStub(handler: { request in
+                    let url = try #require(request.url)
+                    switch url.path {
+                    case "/api/organizations":
+                        return Self.makeJSONResponse(
+                            url: url,
+                            body: #"[{"uuid":"org-123","name":"Test Org","capabilities":["chat"]}]"#)
+                    case "/api/organizations/org-123/usage":
+                        let body = """
+                        {
+                          "five_hour": { "utilization": 11, "resets_at": "2025-12-23T16:00:00.000Z" },
+                          "seven_day": { "utilization": 22, "resets_at": "2025-12-29T23:00:00.000Z" },
+                          "seven_day_opus": { "utilization": 33 }
+                        }
+                        """
+                        return Self.makeJSONResponse(url: url, body: body)
+                    case "/api/account":
+                        let body = """
+                        {
+                          "email_address": "web@example.com",
+                          "memberships": [
+                            {
+                              "organization": {
+                                "uuid": "org-123",
+                                "name": "Test Org",
+                                "rate_limit_tier": "claude_max",
+                                "billing_type": "stripe"
+                              }
+                            }
+                          ]
+                        }
+                        """
+                        return Self.makeJSONResponse(url: url, body: body)
+                    case "/api/organizations/org-123/overage_spend_limit":
+                        let body = """
+                        {"monthly_credit_limit":5000,"currency":"USD","used_credits":1200,"is_enabled":true}
+                        """
+                        return Self.makeJSONResponse(url: url, body: body)
+                    default:
+                        return Self.makeJSONResponse(url: url, body: "{}", statusCode: 404)
+                    }
+                }, operation: {
+                    let snapshot = try await fetcher.loadLatestUsage(model: "sonnet")
+
                     #expect(snapshot.primary.usedPercent == 11)
                     #expect(snapshot.secondary?.usedPercent == 22)
                     #expect(snapshot.opus?.usedPercent == 33)
@@ -1115,6 +1187,48 @@ struct ClaudeAutoFetcherCharacterizationTests {
                     #expect(snapshot.loginMethod == "Claude Max")
                     #expect(log.contents().isEmpty)
                 })
+            }
+        }
+    }
+
+    @Test
+    func appRuntimeAutoFailsDeterministicallyWhenPlannerHasNoExecutableSteps() async {
+        let fetcher = ClaudeUsageFetcher(
+            browserDetection: BrowserDetection(cacheTTL: 0),
+            environment: ["CLAUDE_CLI_PATH": "/definitely/missing/claude"],
+            runtime: .app,
+            dataSource: .auto,
+            manualCookieHeader: "foo=bar")
+
+        await self.withNoOAuthCredentials {
+            do {
+                _ = try await fetcher.loadLatestUsage(model: "sonnet")
+                Issue.record("Expected app auto no-source fetch to fail.")
+            } catch let error as ClaudeUsageError {
+                #expect(error.localizedDescription.contains("Claude planner produced no executable steps."))
+            } catch {
+                Issue.record("Unexpected error: \(error)")
+            }
+        }
+    }
+
+    @Test
+    func cliRuntimeAutoFailsDeterministicallyWhenPlannerHasNoExecutableSteps() async {
+        let fetcher = ClaudeUsageFetcher(
+            browserDetection: BrowserDetection(cacheTTL: 0),
+            environment: ["CLAUDE_CLI_PATH": "/definitely/missing/claude"],
+            runtime: .cli,
+            dataSource: .auto,
+            manualCookieHeader: "foo=bar")
+
+        await self.withNoOAuthCredentials {
+            do {
+                _ = try await fetcher.loadLatestUsage(model: "sonnet")
+                Issue.record("Expected CLI auto no-source fetch to fail.")
+            } catch let error as ClaudeUsageError {
+                #expect(error.localizedDescription.contains("Claude planner produced no executable steps."))
+            } catch {
+                Issue.record("Unexpected error: \(error)")
             }
         }
     }
@@ -1166,7 +1280,8 @@ extension ClaudeUsageTests {
         let fetchOverride: (@Sendable (String) async throws -> OAuthUsageResponse)? = { _ in usageResponse }
         let delegatedOverride: (@Sendable (
             Date,
-            TimeInterval) async -> ClaudeOAuthDelegatedRefreshCoordinator.Outcome)? = { _, _ in
+            TimeInterval,
+            [String: String]) async -> ClaudeOAuthDelegatedRefreshCoordinator.Outcome)? = { _, _, _ in
             _ = await delegatedCounter.increment()
             return .attemptedSucceeded
         }
