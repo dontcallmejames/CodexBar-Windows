@@ -80,6 +80,30 @@ struct SettingsStoreCoverageTests {
     }
 
     @Test
+    func claudeSnapshotUsesOAuthRoutingForOAuthTokenAccounts() {
+        let settings = Self.makeSettingsStore()
+        settings.addTokenAccount(provider: .claude, label: "OAuth", token: "Bearer sk-ant-oat-account-token")
+
+        let snapshot = settings.claudeSettingsSnapshot(tokenOverride: nil)
+
+        #expect(snapshot.usageDataSource == .auto)
+        #expect(snapshot.cookieSource == .off)
+        #expect(snapshot.manualCookieHeader?.isEmpty == true)
+    }
+
+    @Test
+    func claudeSnapshotUsesManualCookieRoutingForSessionKeyAccounts() {
+        let settings = Self.makeSettingsStore()
+        settings.addTokenAccount(provider: .claude, label: "Cookie", token: "sk-ant-session-token")
+
+        let snapshot = settings.claudeSettingsSnapshot(tokenOverride: nil)
+
+        #expect(snapshot.usageDataSource == .auto)
+        #expect(snapshot.cookieSource == .manual)
+        #expect(snapshot.manualCookieHeader == "sessionKey=sk-ant-session-token")
+    }
+
+    @Test
     func tokenCostUsageSourceDetection() throws {
         let fileManager = FileManager.default
         let root = fileManager.temporaryDirectory.appendingPathComponent(
