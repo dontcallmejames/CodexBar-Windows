@@ -1191,9 +1191,11 @@ extension UsageStore {
                     guard let claudeDebugConfiguration else {
                         return "Claude debug log configuration unavailable"
                     }
-                    return await Self.debugClaudeLog(
-                        browserDetection: browserDetection,
-                        configuration: claudeDebugConfiguration)
+                    return await claudeDebugExecutionContext.apply {
+                        await Self.debugClaudeLog(
+                            browserDetection: browserDetection,
+                            configuration: claudeDebugConfiguration)
+                    }
                 case .zai:
                     let resolution = ProviderTokenResolver.zaiResolution()
                     let hasAny = resolution != nil
