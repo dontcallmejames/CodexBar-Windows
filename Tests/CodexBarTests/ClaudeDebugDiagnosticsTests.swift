@@ -12,17 +12,19 @@ struct ClaudeDebugDiagnosticsTests {
     {
         let refreshTokenLine = if let refreshToken {
             """
-              "refreshToken": "\(refreshToken)",
+                "refreshToken": "\(refreshToken)",
             """
         } else {
             ""
         }
         let json = """
         {
-          "accessToken": "\(accessToken)",
+          "claudeAiOauth": {
+            "accessToken": "\(accessToken)",
         \(refreshTokenLine)
-          "expiresAt": \(Int(expiresAt.timeIntervalSince1970 * 1000)),
-          "scopes": ["user:profile"]
+            "expiresAt": \(Int(expiresAt.timeIntervalSince1970 * 1000)),
+            "scopes": ["user:profile"]
+          }
         }
         """
         return Data(json.utf8)

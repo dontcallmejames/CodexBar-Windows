@@ -1301,6 +1301,8 @@ extension UsageStore {
         let credentialsURLOverride: URL?
         let testingOverrides: ClaudeOAuthCredentialsStore.TestingOverridesSnapshot
         let keychainDeniedUntilStoreOverride: ClaudeOAuthKeychainAccessGate.DeniedUntilStore?
+        let keychainPromptModeOverride: ClaudeOAuthKeychainPromptMode?
+        let keychainReadStrategyOverride: ClaudeOAuthKeychainReadStrategy?
         let cliPathOverride: String?
         let statusFetchOverride: ClaudeStatusProbe.FetchOverride?
         #endif
@@ -1318,13 +1320,23 @@ extension UsageStore {
                                             .withDeniedUntilStoreOverrideForTesting(self
                                                 .keychainDeniedUntilStoreOverride)
                                             {
-                                                await ClaudeCLIResolver
-                                                    .withResolvedBinaryPathOverrideForTesting(self
-                                                        .cliPathOverride)
-                                                    {
-                                                        await ClaudeStatusProbe
-                                                            .withFetchOverrideForTesting(self.statusFetchOverride) {
-                                                                await operation()
+                                                await ClaudeOAuthKeychainPromptPreference
+                                                    .withTaskOverrideForTesting(self.keychainPromptModeOverride) {
+                                                        await ClaudeOAuthKeychainReadStrategyPreference
+                                                            .withTaskOverrideForTesting(self
+                                                                .keychainReadStrategyOverride)
+                                                            {
+                                                                await ClaudeCLIResolver
+                                                                    .withResolvedBinaryPathOverrideForTesting(self
+                                                                        .cliPathOverride)
+                                                                    {
+                                                                        await ClaudeStatusProbe
+                                                                            .withFetchOverrideForTesting(self
+                                                                                .statusFetchOverride)
+                                                                            {
+                                                                                await operation()
+                                                                            }
+                                                                    }
                                                             }
                                                     }
                                             }
@@ -1348,6 +1360,8 @@ extension UsageStore {
             credentialsURLOverride: ClaudeOAuthCredentialsStore.currentCredentialsURLOverrideForTesting,
             testingOverrides: ClaudeOAuthCredentialsStore.currentTestingOverridesSnapshotForTask,
             keychainDeniedUntilStoreOverride: ClaudeOAuthKeychainAccessGate.currentDeniedUntilStoreOverrideForTesting,
+            keychainPromptModeOverride: ClaudeOAuthKeychainPromptPreference.currentTaskOverrideForTesting,
+            keychainReadStrategyOverride: ClaudeOAuthKeychainReadStrategyPreference.currentTaskOverrideForTesting,
             cliPathOverride: ClaudeCLIResolver.currentResolvedBinaryPathOverrideForTesting,
             statusFetchOverride: ClaudeStatusProbe.currentFetchOverrideForTesting)
         #else
