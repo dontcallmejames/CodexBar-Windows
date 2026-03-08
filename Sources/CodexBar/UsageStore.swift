@@ -57,7 +57,6 @@ extension UsageStore {
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 self.observeSettingsChanges()
-                guard self.startupBehavior.automaticallyStartsBackgroundWork else { return }
                 self.probeLogs = [:]
                 guard self.startupBehavior.automaticallyStartsBackgroundWork else { return }
                 self.startTimer()
