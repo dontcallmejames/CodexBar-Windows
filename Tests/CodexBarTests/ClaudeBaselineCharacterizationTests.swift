@@ -126,6 +126,24 @@ struct ClaudeBaselineCharacterizationTests {
     }
 
     @Test
+    func explicitCLIPipelineAttemptsStrategyEvenWhenPlannerMarksCLIUnavailable() async {
+        let settings = ProviderSettingsSnapshot.make(claude: .init(
+            usageDataSource: .cli,
+            webExtrasEnabled: false,
+            cookieSource: .off,
+            manualCookieHeader: nil))
+        let env = [
+            "CLAUDE_CLI_PATH": "/definitely/missing/claude",
+        ]
+        let descriptor = ProviderDescriptorRegistry.descriptor(for: .claude)
+        let context = self.makeContext(runtime: .app, sourceMode: .cli, env: env, settings: settings)
+        let strategies = await descriptor.fetchPlan.pipeline.resolveStrategies(context)
+
+        #expect(strategies.map(\.id) == ["claude.cli"])
+        #expect(await strategies[0].isAvailable(context))
+    }
+
+    @Test
     func autoPipelineRecordsUnavailablePlannedStepsWhenPlannerHasNoExecutableSource() async {
         let settings = ProviderSettingsSnapshot.make(claude: .init(
             usageDataSource: .auto,

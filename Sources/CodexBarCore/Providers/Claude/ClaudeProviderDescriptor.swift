@@ -155,8 +155,10 @@ private struct ClaudePlannedFetchStrategy: ProviderFetchStrategy {
     }
 
     func isAvailable(_ context: ProviderFetchContext) async -> Bool {
-        _ = context
-        return self.plannedStep.isPlausiblyAvailable
+        if context.sourceMode == .auto {
+            return self.plannedStep.isPlausiblyAvailable
+        }
+        return await self.base.isAvailable(context)
     }
 
     func fetch(_ context: ProviderFetchContext) async throws -> ProviderFetchResult {
