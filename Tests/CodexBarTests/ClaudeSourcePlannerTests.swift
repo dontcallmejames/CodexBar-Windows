@@ -97,4 +97,23 @@ struct ClaudeSourcePlannerTests {
             "planner_step.web=unavailable reason=app-auto-fallback-web",
         ])
     }
+
+    @Test
+    func cliResolverFallsBackToPATHWhenClaudeCLIPathOverrideIsInvalid() throws {
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        let binaryURL = tempDir.appendingPathComponent("claude")
+        try Data("#!/bin/sh\nexit 0\n".utf8).write(to: binaryURL)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: binaryURL.path)
+
+        let resolved = ClaudeCLIResolver.resolvedBinaryPath(
+            environment: [
+                "CLAUDE_CLI_PATH": "/definitely/missing/claude",
+                "PATH": tempDir.path,
+            ],
+            loginPATH: nil)
+
+        #expect(resolved == binaryURL.path)
+    }
 }

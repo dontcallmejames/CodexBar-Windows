@@ -150,28 +150,28 @@ struct ClaudeBaselineCharacterizationTests {
             webExtrasEnabled: true,
             cookieSource: .off,
             manualCookieHeader: nil))
-        let env = [
-            "CLAUDE_CLI_PATH": "/definitely/missing/claude",
-        ]
+        let env = ["CLAUDE_CLI_PATH": "/definitely/missing/claude"]
 
         await self.withNoOAuthCredentials {
-            let strategyIDs = await self.strategyIDs(runtime: .app, sourceMode: .auto, env: env, settings: settings)
-            #expect(strategyIDs == ["claude.oauth", "claude.cli", "claude.web"])
+            await ClaudeCLIResolver.withResolvedBinaryPathOverrideForTesting("/definitely/missing/claude") {
+                let strategyIDs = await self.strategyIDs(runtime: .app, sourceMode: .auto, env: env, settings: settings)
+                #expect(strategyIDs == ["claude.oauth", "claude.cli", "claude.web"])
 
-            let outcome = await self.fetchOutcome(runtime: .app, sourceMode: .auto, env: env, settings: settings)
-            #expect(outcome.attempts.map(\.strategyID) == ["claude.oauth", "claude.cli", "claude.web"])
-            #expect(outcome.attempts.map(\.wasAvailable) == [false, false, false])
+                let outcome = await self.fetchOutcome(runtime: .app, sourceMode: .auto, env: env, settings: settings)
+                #expect(outcome.attempts.map(\.strategyID) == ["claude.oauth", "claude.cli", "claude.web"])
+                #expect(outcome.attempts.map(\.wasAvailable) == [false, false, false])
 
-            switch outcome.result {
-            case let .failure(error as ProviderFetchError):
-                switch error {
-                case let .noAvailableStrategy(provider):
-                    #expect(provider == .claude)
+                switch outcome.result {
+                case let .failure(error as ProviderFetchError):
+                    switch error {
+                    case let .noAvailableStrategy(provider):
+                        #expect(provider == .claude)
+                    }
+                case let .failure(error):
+                    Issue.record("Unexpected failure: \(error)")
+                case let .success(result):
+                    Issue.record("Unexpected success: \(result.sourceLabel)")
                 }
-            case let .failure(error):
-                Issue.record("Unexpected failure: \(error)")
-            case let .success(result):
-                Issue.record("Unexpected success: \(result.sourceLabel)")
             }
         }
     }

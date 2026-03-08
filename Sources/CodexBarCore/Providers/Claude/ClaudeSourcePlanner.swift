@@ -131,7 +131,8 @@ public enum ClaudeCLIResolver {
     #endif
 
     public static func resolvedBinaryPath(
-        environment: [String: String] = ProcessInfo.processInfo.environment)
+        environment: [String: String] = ProcessInfo.processInfo.environment,
+        loginPATH: [String]? = LoginShellPathCache.shared.current)
         -> String?
     {
         #if DEBUG
@@ -139,15 +140,22 @@ public enum ClaudeCLIResolver {
             return FileManager.default.isExecutableFile(atPath: override) ? override : nil
         }
         #endif
-        if let override = environment["CLAUDE_CLI_PATH"]?.trimmingCharacters(in: .whitespacesAndNewlines),
-           !override.isEmpty
-        {
-            return FileManager.default.isExecutableFile(atPath: override) ? override : nil
+
+        var normalizedEnvironment = environment
+        if let override = environment["CLAUDE_CLI_PATH"]?.trimmingCharacters(in: .whitespacesAndNewlines) {
+            if override.isEmpty {
+                normalizedEnvironment.removeValue(forKey: "CLAUDE_CLI_PATH")
+            } else {
+                normalizedEnvironment["CLAUDE_CLI_PATH"] = override
+                if FileManager.default.isExecutableFile(atPath: override) {
+                    return override
+                }
+            }
         }
 
         return BinaryLocator.resolveClaudeBinary(
-            env: environment,
-            loginPATH: LoginShellPathCache.shared.current)
+            env: normalizedEnvironment,
+            loginPATH: loginPATH)
     }
 
     public static func isAvailable(environment: [String: String] = ProcessInfo.processInfo.environment) -> Bool {
