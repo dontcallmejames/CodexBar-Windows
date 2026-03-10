@@ -137,14 +137,10 @@ public struct ClaudeStatusProbe: Sendable {
             self.normalizedData = Data(normalized.utf8)
         }
 
-        func contains(_ needle: Data) -> Bool {
-            self.normalizedData.range(of: needle) != nil
+        func contains(_ needle: String) -> Bool {
+            self.normalizedData.range(of: Data(needle.utf8)) != nil
         }
     }
-
-    private static let weeklyLabelNeedle = Data("current week".utf8)
-    private static let opusLabelNeedle = Data("opus".utf8)
-    private static let sonnetLabelNeedle = Data("sonnet".utf8)
 
     public static func parse(text: String, statusText: String? = nil) throws -> ClaudeStatusSnapshot {
         let clean = TextParsing.stripANSICodes(text)
@@ -184,9 +180,9 @@ public struct ClaudeStatusProbe: Sendable {
         // may omit the weekly panel entirely, and we should treat that as "unavailable" rather than guessing.
         let compactContext = usagePanelText.lowercased().filter { !$0.isWhitespace }
         let hasWeeklyLabel =
-            labelContext.contains(Self.weeklyLabelNeedle)
+            labelContext.contains("currentweek")
             || compactContext.contains("currentweek")
-        let hasOpusLabel = labelContext.contains(Self.opusLabelNeedle) || labelContext.contains(Self.sonnetLabelNeedle)
+        let hasOpusLabel = labelContext.contains("opus") || labelContext.contains("sonnet")
 
         if sessionPct == nil || (hasWeeklyLabel && weeklyPct == nil) || (hasOpusLabel && opusPct == nil) {
             let ordered = self.allPercents(usagePanelText)
@@ -500,7 +496,7 @@ public struct ClaudeStatusProbe: Sendable {
             for candidate in window {
                 let trimmed = candidate.trimmingCharacters(in: .whitespacesAndNewlines)
                 let normalized = self.normalizedForLabelSearch(trimmed)
-                if normalized.hasPrefix("current "), !normalized.contains(label) { break }
+                if normalized.hasPrefix("current"), !normalized.contains(label) { break }
                 if let reset = self.resetFromLine(candidate) { return reset }
             }
         }
@@ -521,9 +517,7 @@ public struct ClaudeStatusProbe: Sendable {
     }
 
     private static func normalizedForLabelSearch(_ text: String) -> String {
-        text.lowercased()
-            .split(whereSeparator: { $0.isWhitespace })
-            .joined(separator: " ")
+        String(text.lowercased().unicodeScalars.filter(CharacterSet.alphanumerics.contains))
     }
 
     /// Capture all "Resets ..." strings to surface in the menu.
@@ -620,6 +614,9 @@ public struct ClaudeStatusProbe: Sendable {
         guard var raw = text?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else { return nil }
         raw = raw.replacingOccurrences(of: #"(?i)^resets?:?\s*"#, with: "", options: .regularExpression)
         raw = raw.replacingOccurrences(of: " at ", with: " ", options: .caseInsensitive)
+        raw = raw.replacingOccurrences(of: #"(?i)\b([A-Za-z]{3})(\d)"#, with: "$1 $2", options: .regularExpression)
+        raw = raw.replacingOccurrences(of: #",(\d)"#, with: ", $1", options: .regularExpression)
+        raw = raw.replacingOccurrences(of: #"(?i)(\d)at(?=\d)"#, with: "$1 ", options: .regularExpression)
         raw = raw.replacingOccurrences(
             of: #"(?<=\d)\.(\d{2})\b"#,
             with: ":$1",

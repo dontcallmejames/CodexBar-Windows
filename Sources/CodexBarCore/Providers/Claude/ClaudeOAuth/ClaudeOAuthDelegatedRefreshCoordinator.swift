@@ -59,7 +59,6 @@ public enum ClaudeOAuthDelegatedRefreshCoordinator {
         let environment: [String: String]
         let readStrategy: ClaudeOAuthKeychainReadStrategy
         let keychainAccessDisabled: Bool
-        let securityCLIReadOverride: (@Sendable () -> Data?)?
         #if DEBUG
         let cliAvailableOverride: Bool?
         let touchAuthPathOverride: (@Sendable (TimeInterval, [String: String]) async throws -> Void)?
@@ -88,23 +87,32 @@ public enum ClaudeOAuthDelegatedRefreshCoordinator {
             environment: environment,
             readStrategy: ClaudeOAuthKeychainReadStrategyPreference.current(),
             keychainAccessDisabled: KeychainAccessGate.isDisabled,
-            securityCLIReadOverride: self.securityCLIReadOverrideSnapshot(),
             cliAvailableOverride: self.cliAvailableOverrideForTesting,
             touchAuthPathOverride: self.touchAuthPathOverrideForTesting,
             keychainFingerprintOverride: self.keychainFingerprintOverrideForTesting)
+        let securityCLIReadOverride = ClaudeOAuthCredentialsStore.currentSecurityCLIReadOverrideForTesting()
         #else
         let configuration = AttemptConfiguration(
             environment: environment,
             readStrategy: ClaudeOAuthKeychainReadStrategyPreference.current(),
-            keychainAccessDisabled: KeychainAccessGate.isDisabled,
-            securityCLIReadOverride: self.securityCLIReadOverrideSnapshot())
+            keychainAccessDisabled: KeychainAccessGate.isDisabled)
         #endif
         let task = Task.detached(priority: .utility) {
+            #if DEBUG
+            return await ClaudeOAuthCredentialsStore.withSecurityCLIReadOverrideForTesting(securityCLIReadOverride) {
+                await self.performAttempt(
+                    now: now,
+                    timeout: timeout,
+                    configuration: configuration,
+                    state: state)
+            }
+            #else
             await self.performAttempt(
                 now: now,
                 timeout: timeout,
                 configuration: configuration,
                 state: state)
+            #endif
         }
         state.inFlightAttemptID = attemptID
         state.inFlightTask = task
@@ -132,7 +140,6 @@ public enum ClaudeOAuthDelegatedRefreshCoordinator {
         let baseline = self.currentKeychainChangeObservationBaseline(
             readStrategy: configuration.readStrategy,
             keychainAccessDisabled: configuration.keychainAccessDisabled,
-            securityCLIReadOverride: configuration.securityCLIReadOverride,
             configuration: configuration)
         var touchError: Error?
 
@@ -237,14 +244,13 @@ public enum ClaudeOAuthDelegatedRefreshCoordinator {
     private static func currentKeychainChangeObservationBaseline(
         readStrategy: ClaudeOAuthKeychainReadStrategy,
         keychainAccessDisabled: Bool,
-        securityCLIReadOverride: (@Sendable () -> Data?)?,
         configuration: AttemptConfiguration?) -> KeychainChangeObservationBaseline
     {
         if readStrategy == .securityCLIExperimental {
             return .securityCLI(data: self.currentClaudeKeychainDataViaSecurityCLIForObservation(
                 readStrategy: readStrategy,
                 keychainAccessDisabled: keychainAccessDisabled,
-                securityCLIReadOverride: securityCLIReadOverride))
+                interaction: .background))
         }
         return .securityFramework(fingerprint: self.currentClaudeKeychainFingerprint(configuration: configuration))
     }
@@ -283,7 +289,7 @@ public enum ClaudeOAuthDelegatedRefreshCoordinator {
                 guard let current = self.currentClaudeKeychainDataViaSecurityCLIForObservation(
                     readStrategy: readStrategy,
                     keychainAccessDisabled: keychainAccessDisabled,
-                    securityCLIReadOverride: configuration?.securityCLIReadOverride)
+                    interaction: .background)
                 else { return false }
                 return current != dataBefore
             }
@@ -349,36 +355,12 @@ public enum ClaudeOAuthDelegatedRefreshCoordinator {
     private static func currentClaudeKeychainDataViaSecurityCLIForObservation(
         readStrategy: ClaudeOAuthKeychainReadStrategy,
         keychainAccessDisabled: Bool,
-        securityCLIReadOverride: (@Sendable () -> Data?)?) -> Data?
+        interaction: ProviderInteraction) -> Data?
     {
         guard !keychainAccessDisabled else { return nil }
-        if let securityCLIReadOverride {
-            return securityCLIReadOverride()
-        }
         return ClaudeOAuthCredentialsStore.loadFromClaudeKeychainViaSecurityCLIIfEnabled(
-            interaction: .background,
+            interaction: interaction,
             readStrategy: readStrategy)
-    }
-
-    private static func securityCLIReadOverrideSnapshot() -> (@Sendable () -> Data?)? {
-        #if DEBUG
-        guard let override = ClaudeOAuthCredentialsStore.taskSecurityCLIReadOverride
-            ?? ClaudeOAuthCredentialsStore.securityCLIReadOverride
-        else {
-            return nil
-        }
-
-        switch override {
-        case let .data(data):
-            return { data }
-        case .timedOut, .nonZeroExit:
-            return { nil }
-        case let .dynamic(read):
-            return { read(ClaudeOAuthCredentialsStore.SecurityCLIReadRequest(account: nil)) }
-        }
-        #else
-        return nil
-        #endif
     }
 
     private static func clearInFlightTaskIfStillCurrent(id: UInt64, state: AttemptStateStorage) {
