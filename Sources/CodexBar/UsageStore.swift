@@ -71,7 +71,7 @@ extension UsageStore {
 @MainActor
 @Observable
 final class UsageStore {
-    enum StartupBehavior: Sendable {
+    enum StartupBehavior {
         case automatic
         case full
         case testing
@@ -281,6 +281,11 @@ final class UsageStore {
         // Use cached enablement to avoid repeated UserDefaults lookups in animation ticks.
         let enabled = self.settings.enabledProvidersOrdered(metadataByProvider: self.providerMetadata)
         return enabled.filter { self.isProviderAvailable($0) }
+    }
+
+    /// Enabled providers without availability filtering. Used for display (switcher, merge-icons).
+    func enabledProvidersForDisplay() -> [UsageProvider] {
+        self.settings.enabledProvidersOrdered(metadataByProvider: self.providerMetadata)
     }
 
     var statusChecksEnabled: Bool {
