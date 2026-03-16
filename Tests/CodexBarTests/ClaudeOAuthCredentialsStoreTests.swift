@@ -852,4 +852,29 @@ struct ClaudeOAuthCredentialsStoreTests {
             }
         }
     }
+
+    @Test
+    func `testing override snapshot forwards mutable Claude keychain override store across detached task`() async {
+        let fingerprint = ClaudeOAuthCredentialsStore.ClaudeKeychainFingerprint(
+            modifiedAt: 11,
+            createdAt: 7,
+            persistentRefHash: "snapshot-store")
+        let store = ClaudeOAuthCredentialsStore.ClaudeKeychainOverrideStore(
+            data: nil,
+            fingerprint: fingerprint)
+
+        let forwarded = await ClaudeOAuthCredentialsStore.withMutableClaudeKeychainOverrideStoreForTesting(store) {
+            let snapshot = ClaudeOAuthCredentialsStore.currentTestingOverridesSnapshotForTask
+
+            return await Task.detached {
+                ClaudeOAuthKeychainPromptPreference.withTaskOverrideForTesting(.always) {
+                    ClaudeOAuthCredentialsStore.withTestingOverridesSnapshotForTask(snapshot) {
+                        ClaudeOAuthCredentialsStore.currentClaudeKeychainFingerprintWithoutPromptForAuthGate()
+                    }
+                }
+            }.value
+        }
+
+        #expect(forwarded == fingerprint)
+    }
 }

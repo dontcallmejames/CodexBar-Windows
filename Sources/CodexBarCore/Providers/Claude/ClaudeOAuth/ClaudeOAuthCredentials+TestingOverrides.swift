@@ -116,6 +116,7 @@ extension ClaudeOAuthCredentialsStore {
     nonisolated(unsafe) static var securityCLIReadOverride: SecurityCLIReadOverride?
 
     public struct TestingOverridesSnapshot: Sendable {
+        let keychainOverrideStore: ClaudeKeychainOverrideStore?
         let keychainData: Data?
         let keychainFingerprint: ClaudeKeychainFingerprint?
         let memoryCacheStore: MemoryCacheStore?
@@ -126,6 +127,7 @@ extension ClaudeOAuthCredentialsStore {
         let securityCLIReadAccountOverride: String?
 
         init(
+            keychainOverrideStore: ClaudeKeychainOverrideStore?,
             keychainData: Data?,
             keychainFingerprint: ClaudeKeychainFingerprint?,
             memoryCacheStore: MemoryCacheStore?,
@@ -135,6 +137,7 @@ extension ClaudeOAuthCredentialsStore {
             securityCLIReadOverride: SecurityCLIReadOverride?,
             securityCLIReadAccountOverride: String?)
         {
+            self.keychainOverrideStore = keychainOverrideStore
             self.keychainData = keychainData
             self.keychainFingerprint = keychainFingerprint
             self.memoryCacheStore = memoryCacheStore
@@ -248,8 +251,17 @@ extension ClaudeOAuthCredentialsStore {
             operation: operation)
     }
 
+    public static func withCurrentTestingOverridesForTask<T>(
+        operation: () throws -> T) rethrows -> T
+    {
+        try self.withTestingOverridesSnapshotForTask(
+            self.currentTestingOverridesSnapshotForTask,
+            operation: operation)
+    }
+
     public static var currentTestingOverridesSnapshotForTask: TestingOverridesSnapshot {
         TestingOverridesSnapshot(
+            keychainOverrideStore: self.taskClaudeKeychainOverrideStore,
             keychainData: self.taskClaudeKeychainDataOverride,
             keychainFingerprint: self.taskClaudeKeychainFingerprintOverride,
             memoryCacheStore: self.taskMemoryCacheStoreOverride,
@@ -264,21 +276,55 @@ extension ClaudeOAuthCredentialsStore {
         _ snapshot: TestingOverridesSnapshot,
         operation: () async throws -> T) async rethrows -> T
     {
-        try await self.$taskClaudeKeychainDataOverride.withValue(snapshot.keychainData) {
-            try await self.$taskClaudeKeychainFingerprintOverride.withValue(snapshot.keychainFingerprint) {
-                try await self.$taskMemoryCacheStoreOverride.withValue(snapshot.memoryCacheStore) {
-                    try await self.$taskClaudeKeychainFingerprintStoreOverride.withValue(snapshot.fingerprintStore) {
-                        try await self.$taskKeychainAccessOverride.withValue(snapshot.keychainAccessOverride) {
-                            try await self.$taskCredentialsFileFingerprintStoreOverride.withValue(
-                                snapshot.credentialsFileFingerprintStore)
-                            {
-                                try await self.$taskSecurityCLIReadOverride.withValue(
-                                    snapshot.securityCLIReadOverride)
-                                {
-                                    try await self.$taskSecurityCLIReadAccountOverride.withValue(
-                                        snapshot.securityCLIReadAccountOverride)
+        try await self.$taskClaudeKeychainOverrideStore.withValue(snapshot.keychainOverrideStore) {
+            try await self.$taskClaudeKeychainDataOverride.withValue(snapshot.keychainData) {
+                try await self.$taskClaudeKeychainFingerprintOverride.withValue(snapshot.keychainFingerprint) {
+                    try await self.$taskMemoryCacheStoreOverride.withValue(snapshot.memoryCacheStore) {
+                        try await self.$taskClaudeKeychainFingerprintStoreOverride
+                            .withValue(snapshot.fingerprintStore) {
+                                try await self.$taskKeychainAccessOverride.withValue(snapshot.keychainAccessOverride) {
+                                    try await self.$taskCredentialsFileFingerprintStoreOverride.withValue(
+                                        snapshot.credentialsFileFingerprintStore)
                                     {
-                                        try await operation()
+                                        try await self.$taskSecurityCLIReadOverride.withValue(
+                                            snapshot.securityCLIReadOverride)
+                                        {
+                                            try await self.$taskSecurityCLIReadAccountOverride.withValue(
+                                                snapshot.securityCLIReadAccountOverride)
+                                            {
+                                                try await operation()
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                    }
+                }
+            }
+        }
+    }
+
+    public static func withTestingOverridesSnapshotForTask<T>(
+        _ snapshot: TestingOverridesSnapshot,
+        operation: () throws -> T) rethrows -> T
+    {
+        try self.$taskClaudeKeychainOverrideStore.withValue(snapshot.keychainOverrideStore) {
+            try self.$taskClaudeKeychainDataOverride.withValue(snapshot.keychainData) {
+                try self.$taskClaudeKeychainFingerprintOverride.withValue(snapshot.keychainFingerprint) {
+                    try self.$taskMemoryCacheStoreOverride.withValue(snapshot.memoryCacheStore) {
+                        try self.$taskClaudeKeychainFingerprintStoreOverride.withValue(snapshot.fingerprintStore) {
+                            try self.$taskKeychainAccessOverride.withValue(snapshot.keychainAccessOverride) {
+                                try self.$taskCredentialsFileFingerprintStoreOverride.withValue(
+                                    snapshot.credentialsFileFingerprintStore)
+                                {
+                                    try self.$taskSecurityCLIReadOverride.withValue(
+                                        snapshot.securityCLIReadOverride)
+                                    {
+                                        try self.$taskSecurityCLIReadAccountOverride.withValue(
+                                            snapshot.securityCLIReadAccountOverride)
+                                        {
+                                            try operation()
+                                        }
                                     }
                                 }
                             }

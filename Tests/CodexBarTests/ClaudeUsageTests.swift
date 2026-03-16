@@ -1200,13 +1200,15 @@ struct ClaudeAutoFetcherCharacterizationTests {
             manualCookieHeader: "foo=bar")
 
         await self.withNoOAuthCredentials {
-            do {
-                _ = try await fetcher.loadLatestUsage(model: "sonnet")
-                Issue.record("Expected app auto no-source fetch to fail.")
-            } catch let error as ClaudeUsageError {
-                #expect(error.localizedDescription.contains("Claude planner produced no executable steps."))
-            } catch {
-                Issue.record("Unexpected error: \(error)")
+            await ClaudeCLIResolver.withResolvedBinaryPathOverrideForTesting("/definitely/missing/claude") {
+                do {
+                    _ = try await fetcher.loadLatestUsage(model: "sonnet")
+                    Issue.record("Expected app auto no-source fetch to fail.")
+                } catch let error as ClaudeUsageError {
+                    #expect(error.localizedDescription.contains("Claude planner produced no executable steps."))
+                } catch {
+                    Issue.record("Unexpected error: \(error)")
+                }
             }
         }
     }
@@ -1221,13 +1223,15 @@ struct ClaudeAutoFetcherCharacterizationTests {
             manualCookieHeader: "foo=bar")
 
         await self.withNoOAuthCredentials {
-            do {
-                _ = try await fetcher.loadLatestUsage(model: "sonnet")
-                Issue.record("Expected CLI auto no-source fetch to fail.")
-            } catch let error as ClaudeUsageError {
-                #expect(error.localizedDescription.contains("Claude planner produced no executable steps."))
-            } catch {
-                Issue.record("Unexpected error: \(error)")
+            await ClaudeCLIResolver.withResolvedBinaryPathOverrideForTesting("/definitely/missing/claude") {
+                do {
+                    _ = try await fetcher.loadLatestUsage(model: "sonnet")
+                    Issue.record("Expected CLI auto no-source fetch to fail.")
+                } catch let error as ClaudeUsageError {
+                    #expect(error.localizedDescription.contains("Claude planner produced no executable steps."))
+                } catch {
+                    Issue.record("Unexpected error: \(error)")
+                }
             }
         }
     }
