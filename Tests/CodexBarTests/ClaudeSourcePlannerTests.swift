@@ -2,10 +2,9 @@ import Foundation
 import Testing
 @testable import CodexBarCore
 
-@Suite
 struct ClaudeSourcePlannerTests {
     @Test
-    func appAutoPlanPreservesOrderedStepsAndReasons() {
+    func `app auto plan preserves ordered steps and reasons`() {
         let plan = ClaudeSourcePlanner.resolve(input: ClaudeSourcePlanningInput(
             runtime: .app,
             selectedDataSource: .auto,
@@ -25,7 +24,7 @@ struct ClaudeSourcePlannerTests {
     }
 
     @Test
-    func cliAutoPlanPreservesOrderedStepsAndReasons() {
+    func `CLI auto plan preserves ordered steps and reasons`() {
         let plan = ClaudeSourcePlanner.resolve(input: ClaudeSourcePlanningInput(
             runtime: .cli,
             selectedDataSource: .auto,
@@ -43,7 +42,7 @@ struct ClaudeSourcePlannerTests {
     }
 
     @Test
-    func explicitModePlanIsSingleStep() {
+    func `explicit mode plan is single step`() {
         let plan = ClaudeSourcePlanner.resolve(input: ClaudeSourcePlanningInput(
             runtime: .app,
             selectedDataSource: .cli,
@@ -59,7 +58,7 @@ struct ClaudeSourcePlannerTests {
     }
 
     @Test
-    func appAutoCLIFallbackReportsWebExtrasLikeRuntime() {
+    func `app auto CLI fallback reports web extras like runtime`() {
         let plan = ClaudeSourcePlanner.resolve(input: ClaudeSourcePlanningInput(
             runtime: .app,
             selectedDataSource: .auto,
@@ -73,7 +72,7 @@ struct ClaudeSourcePlannerTests {
     }
 
     @Test
-    func noSourcePlannerOutputIsDeterministic() {
+    func `no source planner output is deterministic`() {
         let input = ClaudeSourcePlanningInput(
             runtime: .app,
             selectedDataSource: .auto,
@@ -99,7 +98,7 @@ struct ClaudeSourcePlannerTests {
     }
 
     @Test
-    func cliResolverFallsBackToPATHWhenClaudeCLIPathOverrideIsInvalid() throws {
+    func `CLI resolver falls back to PATH when Claude CLI path override is invalid`() throws {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)

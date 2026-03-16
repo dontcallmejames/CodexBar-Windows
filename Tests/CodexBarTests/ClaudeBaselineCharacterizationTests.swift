@@ -96,7 +96,7 @@ struct ClaudeBaselineCharacterizationTests {
     }
 
     @Test
-    func appAutoPipelineOrder_isOAuthThenCLIThenWeb() async {
+    func `app auto pipeline order is OAuth then CLI then web`() async {
         let settings = ProviderSettingsSnapshot.make(claude: .init(
             usageDataSource: .auto,
             webExtrasEnabled: true,
@@ -112,7 +112,7 @@ struct ClaudeBaselineCharacterizationTests {
     }
 
     @Test
-    func cliAutoPipelineOrder_isWebThenCLI() async {
+    func `CLI auto pipeline order is web then CLI`() async {
         let settings = ProviderSettingsSnapshot.make(claude: .init(
             usageDataSource: .auto,
             webExtrasEnabled: false,
@@ -126,7 +126,7 @@ struct ClaudeBaselineCharacterizationTests {
     }
 
     @Test
-    func explicitCLIPipelineAttemptsStrategyEvenWhenPlannerMarksCLIUnavailable() async {
+    func `explicit CLI pipeline attempts strategy even when planner marks CLI unavailable`() async {
         let settings = ProviderSettingsSnapshot.make(claude: .init(
             usageDataSource: .cli,
             webExtrasEnabled: false,
@@ -144,7 +144,7 @@ struct ClaudeBaselineCharacterizationTests {
     }
 
     @Test
-    func autoPipelineRecordsUnavailablePlannedStepsWhenPlannerHasNoExecutableSource() async {
+    func `auto pipeline records unavailable planned steps when planner has no executable source`() async {
         let settings = ProviderSettingsSnapshot.make(claude: .init(
             usageDataSource: .auto,
             webExtrasEnabled: true,
@@ -177,7 +177,7 @@ struct ClaudeBaselineCharacterizationTests {
     }
 
     @Test
-    func appAutoPipelineRetainsOAuthBootstrapStrategyAtStartup() async {
+    func `app auto pipeline retains OAuth bootstrap strategy at startup`() async {
         let settings = ProviderSettingsSnapshot.make(claude: .init(
             usageDataSource: .auto,
             webExtrasEnabled: false,
@@ -211,7 +211,7 @@ struct ClaudeBaselineCharacterizationTests {
     }
 
     @Test
-    func autoPipelineCLIUsesPlannedEnvironmentForExecution() async throws {
+    func `auto pipeline CLI uses planned environment for execution`() async throws {
         let settings = ProviderSettingsSnapshot.make(claude: .init(
             usageDataSource: .auto,
             webExtrasEnabled: false,
@@ -262,7 +262,10 @@ struct ClaudeBaselineCharacterizationTests {
         (ProviderSourceMode.cli, "claude.cli"),
         (ProviderSourceMode.web, "claude.web"),
     ])
-    func explicitModesResolveSingleClaudeStrategy(sourceMode: ProviderSourceMode, expectedStrategyID: String) async {
+    func `explicit modes resolve single Claude strategy`(
+        sourceMode: ProviderSourceMode,
+        expectedStrategyID: String) async
+    {
         let strategyIDs = await self.strategyIDs(runtime: .app, sourceMode: sourceMode)
         #expect(strategyIDs == [expectedStrategyID])
     }
@@ -272,19 +275,22 @@ struct ClaudeBaselineCharacterizationTests {
         (ProviderSourceMode.cli, "claude.cli"),
         (ProviderSourceMode.web, "claude.web"),
     ])
-    func cliExplicitModesResolveSingleClaudeStrategy(sourceMode: ProviderSourceMode, expectedStrategyID: String) async {
+    func `CLI explicit modes resolve single Claude strategy`(
+        sourceMode: ProviderSourceMode,
+        expectedStrategyID: String) async
+    {
         let strategyIDs = await self.strategyIDs(runtime: .cli, sourceMode: sourceMode)
         #expect(strategyIDs == [expectedStrategyID])
     }
 
     @Test
-    func claudeOAuthTokenHeuristics_acceptRawAndBearerInputs() {
+    func `Claude OAuth token heuristics accept raw and bearer inputs`() {
         #expect(TokenAccountSupportCatalog.isClaudeOAuthToken("sk-ant-oat-test-token"))
         #expect(TokenAccountSupportCatalog.isClaudeOAuthToken("Bearer sk-ant-oat-test-token"))
     }
 
     @Test
-    func claudeOAuthTokenHeuristics_rejectCookieShapedInputs() {
+    func `Claude OAuth token heuristics reject cookie shaped inputs`() {
         #expect(!TokenAccountSupportCatalog.isClaudeOAuthToken("sessionKey=sk-ant-session"))
         #expect(!TokenAccountSupportCatalog.isClaudeOAuthToken("Cookie: sessionKey=sk-ant-session; foo=bar"))
     }

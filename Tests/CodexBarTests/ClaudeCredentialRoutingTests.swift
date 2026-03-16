@@ -1,10 +1,9 @@
 import CodexBarCore
 import Testing
 
-@Suite
 struct ClaudeCredentialRoutingTests {
     @Test
-    func resolvesRawOAuthToken() {
+    func `resolves raw OAuth token`() {
         let routing = ClaudeCredentialRouting.resolve(
             tokenAccountToken: "sk-ant-oat-test-token",
             manualCookieHeader: nil)
@@ -13,7 +12,7 @@ struct ClaudeCredentialRoutingTests {
     }
 
     @Test
-    func resolvesBearerOAuthToken() {
+    func `resolves bearer OAuth token`() {
         let routing = ClaudeCredentialRouting.resolve(
             tokenAccountToken: "Bearer sk-ant-oat-test-token",
             manualCookieHeader: nil)
@@ -22,7 +21,7 @@ struct ClaudeCredentialRoutingTests {
     }
 
     @Test
-    func resolvesSessionTokenToCookieHeader() {
+    func `resolves session token to cookie header`() {
         let routing = ClaudeCredentialRouting.resolve(
             tokenAccountToken: "sk-ant-session-token",
             manualCookieHeader: nil)
@@ -31,7 +30,7 @@ struct ClaudeCredentialRoutingTests {
     }
 
     @Test
-    func resolvesConfigCookieHeaderThroughSharedNormalizer() {
+    func `resolves config cookie header through shared normalizer`() {
         let routing = ClaudeCredentialRouting.resolve(
             tokenAccountToken: nil,
             manualCookieHeader: "Cookie: sessionKey=sk-ant-session-token; foo=bar")
@@ -40,7 +39,7 @@ struct ClaudeCredentialRoutingTests {
     }
 
     @Test
-    func tokenAccountInputWinsOverConfigCookieFallback() {
+    func `token account input wins over config cookie fallback`() {
         let routing = ClaudeCredentialRouting.resolve(
             tokenAccountToken: "Bearer sk-ant-oat-test-token",
             manualCookieHeader: "Cookie: sessionKey=sk-ant-session-token")
@@ -49,7 +48,7 @@ struct ClaudeCredentialRoutingTests {
     }
 
     @Test
-    func emptyInputsResolveToNone() {
+    func `empty inputs resolve to none`() {
         let routing = ClaudeCredentialRouting.resolve(
             tokenAccountToken: "   ",
             manualCookieHeader: "\n")

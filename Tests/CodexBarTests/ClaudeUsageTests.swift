@@ -1009,7 +1009,7 @@ struct ClaudeAutoFetcherCharacterizationTests {
     }
 
     @Test
-    func autoPrefersOAuthEvenWhenWebAndCLIAppearAvailable() async throws {
+    func `auto prefers OAuth even when web and CLI appear available`() async throws {
         let usageResponse = try Self.makeOAuthUsageResponse()
         let cliLogURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("claude-auto-cli-log-\(UUID().uuidString).txt")
@@ -1049,7 +1049,7 @@ struct ClaudeAutoFetcherCharacterizationTests {
     }
 
     @Test
-    func appRuntimeAutoPrefersCLIBeforeWebWhenOAuthUnavailable() async throws {
+    func `app runtime auto prefers CLI before web when OAuth unavailable`() async throws {
         let cliLogURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("claude-auto-web-log-\(UUID().uuidString).txt")
         let log = InvocationLog(url: cliLogURL)
@@ -1121,7 +1121,7 @@ struct ClaudeAutoFetcherCharacterizationTests {
     }
 
     @Test
-    func cliRuntimeAutoPrefersWebBeforeCLIWhenOAuthUnavailable() async throws {
+    func `CLI runtime auto prefers web before CLI when OAuth unavailable`() async throws {
         let cliLogURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("claude-auto-cli-runtime-web-log-\(UUID().uuidString).txt")
         let log = InvocationLog(url: cliLogURL)
@@ -1191,7 +1191,7 @@ struct ClaudeAutoFetcherCharacterizationTests {
     }
 
     @Test
-    func appRuntimeAutoFailsDeterministicallyWhenPlannerHasNoExecutableSteps() async {
+    func `app runtime auto fails deterministically when planner has no executable steps`() async {
         let fetcher = ClaudeUsageFetcher(
             browserDetection: BrowserDetection(cacheTTL: 0),
             environment: ["CLAUDE_CLI_PATH": "/definitely/missing/claude"],
@@ -1212,7 +1212,7 @@ struct ClaudeAutoFetcherCharacterizationTests {
     }
 
     @Test
-    func cliRuntimeAutoFailsDeterministicallyWhenPlannerHasNoExecutableSteps() async {
+    func `CLI runtime auto fails deterministically when planner has no executable steps`() async {
         let fetcher = ClaudeUsageFetcher(
             browserDetection: BrowserDetection(cacheTTL: 0),
             environment: ["CLAUDE_CLI_PATH": "/definitely/missing/claude"],
