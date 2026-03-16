@@ -154,7 +154,7 @@ struct ClaudeOAuthDelegatedRefreshCoordinatorTests {
     }
 
     @Test
-    func `failed auth touch reports attempted failed`() async {
+    func `failed auth touch reports attempted failed`() async throws {
         ClaudeOAuthDelegatedRefreshCoordinator.resetForTesting()
         defer { ClaudeOAuthDelegatedRefreshCoordinator.resetForTesting() }
 
