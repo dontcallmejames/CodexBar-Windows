@@ -2,10 +2,9 @@ import Foundation
 import Testing
 @testable import CodexBarCore
 
-@Suite
 struct ClaudePlanResolverTests {
     @Test
-    func oauthRateLimitTierMapsToBrandedPlan() {
+    func `oauth rate limit tier maps to branded plan`() {
         #expect(ClaudePlan.oauthLoginMethod(rateLimitTier: "default_claude_max_20x") == "Claude Max")
         #expect(ClaudePlan.oauthLoginMethod(rateLimitTier: "claude_pro") == "Claude Pro")
         #expect(ClaudePlan.oauthLoginMethod(rateLimitTier: "claude_team") == "Claude Team")
@@ -13,7 +12,7 @@ struct ClaudePlanResolverTests {
     }
 
     @Test
-    func webFallbackPreservesStripeClaudeCompatibility() {
+    func `web fallback preserves stripe Claude compatibility`() {
         #expect(
             ClaudePlan.webLoginMethod(
                 rateLimitTier: "default_claude",
@@ -22,7 +21,7 @@ struct ClaudePlanResolverTests {
     }
 
     @Test
-    func compatibilityParserUnderstandsCurrentLabels() {
+    func `compatibility parser understands current labels`() {
         #expect(ClaudePlan.fromCompatibilityLoginMethod("Claude Max") == .max)
         #expect(ClaudePlan.fromCompatibilityLoginMethod("Max") == .max)
         #expect(ClaudePlan.fromCompatibilityLoginMethod("Claude Pro") == .pro)
@@ -32,7 +31,7 @@ struct ClaudePlanResolverTests {
     }
 
     @Test
-    func cliProjectionKeepsCompactCompatibilityAndUnknownFallback() {
+    func `CLI projection keeps compact compatibility and unknown fallback`() {
         #expect(ClaudePlan.cliCompatibilityLoginMethod("Claude Max Account") == "Max")
         #expect(ClaudePlan.cliCompatibilityLoginMethod("Team") == "Team")
         #expect(ClaudePlan.cliCompatibilityLoginMethod("Claude Enterprise Account") == "Enterprise")
@@ -43,7 +42,7 @@ struct ClaudePlanResolverTests {
     }
 
     @Test
-    func subscriptionCompatibilityPreservesUltraAndExcludesEnterprise() {
+    func `subscription compatibility preserves ultra and excludes enterprise`() {
         #expect(ClaudePlan.isSubscriptionLoginMethod("Claude Max"))
         #expect(ClaudePlan.isSubscriptionLoginMethod("Pro"))
         #expect(ClaudePlan.isSubscriptionLoginMethod("Ultra"))

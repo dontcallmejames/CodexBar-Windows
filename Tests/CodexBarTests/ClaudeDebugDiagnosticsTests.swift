@@ -31,7 +31,7 @@ struct ClaudeDebugDiagnosticsTests {
     }
 
     @Test
-    func debugLogUsesPlannerDerivedOrderAndReasons() async throws {
+    func `debug log uses planner derived order and reasons`() async throws {
         let suite = "ClaudeDebugDiagnosticsTests-\(UUID().uuidString)"
         let service = "com.steipete.codexbar.cache.tests.\(UUID().uuidString)"
         let tempDir = FileManager.default.temporaryDirectory
@@ -91,7 +91,7 @@ struct ClaudeDebugDiagnosticsTests {
     }
 
     @Test
-    func debugLogReportsNoPlannerSelectedSourceWhenAutoHasNoAvailableSources() async throws {
+    func `debug log reports no planner selected source when auto has no available sources`() async throws {
         let suite = "ClaudeDebugDiagnosticsTests-\(UUID().uuidString)"
         let service = "com.steipete.codexbar.cache.tests.\(UUID().uuidString)"
         let tempDir = FileManager.default.temporaryDirectory
@@ -146,7 +146,7 @@ struct ClaudeDebugDiagnosticsTests {
     }
 
     @Test
-    func debugClaudeDumpReturnsRecordedParseDumps() async {
+    func `debug Claude dump returns recorded parse dumps`() async {
         await ClaudeStatusProbe._replaceDumpsForTesting([
             "dump one",
             "dump two",
@@ -170,7 +170,7 @@ struct ClaudeDebugDiagnosticsTests {
     }
 
     @Test
-    func debugLogUsesRuntimeOAuthAvailabilityForTokenAccountRouting() async throws {
+    func `debug log uses runtime OAuth availability for token account routing`() async throws {
         let suite = "ClaudeDebugDiagnosticsTests-\(UUID().uuidString)"
         let service = "com.steipete.codexbar.cache.tests.\(UUID().uuidString)"
         let tempDir = FileManager.default.temporaryDirectory
@@ -229,7 +229,7 @@ struct ClaudeDebugDiagnosticsTests {
     }
 
     @Test
-    func debugLogPreservesCLIProbeOverridesAcrossDetachedWork() async throws {
+    func `debug log preserves CLI probe overrides across detached work`() async throws {
         let suite = "ClaudeDebugDiagnosticsTests-\(UUID().uuidString)"
         let service = "com.steipete.codexbar.cache.tests.\(UUID().uuidString)"
         let tempDir = FileManager.default.temporaryDirectory
@@ -298,7 +298,7 @@ struct ClaudeDebugDiagnosticsTests {
     }
 
     @Test
-    func debugLogUsesUserInitiatedInteractionForOAuthPromptGate() async throws {
+    func `debug log uses user initiated interaction for OAuth prompt gate`() async throws {
         let suite = "ClaudeDebugDiagnosticsTests-\(UUID().uuidString)"
         let service = "com.steipete.codexbar.cache.tests.\(UUID().uuidString)"
         let tempDir = FileManager.default.temporaryDirectory
@@ -363,7 +363,7 @@ struct ClaudeDebugDiagnosticsTests {
     }
 
     @Test
-    func debugLogInvalidatesCachedPlannerOutputWhenClaudeSettingsChange() async throws {
+    func `debug log invalidates cached planner output when Claude settings change`() async throws {
         let suite = "ClaudeDebugDiagnosticsTests-\(UUID().uuidString)"
         let service = "com.steipete.codexbar.cache.tests.\(UUID().uuidString)"
         let tempDir = FileManager.default.temporaryDirectory
