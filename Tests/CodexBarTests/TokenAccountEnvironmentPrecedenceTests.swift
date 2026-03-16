@@ -5,10 +5,9 @@ import Testing
 @testable import CodexBarCLI
 
 @MainActor
-@Suite
 struct TokenAccountEnvironmentPrecedenceTests {
     @Test
-    func tokenAccountEnvironmentOverridesConfigAPIKey_inAppEnvironmentBuilder() {
+    func `token account environment overrides config API key in app environment builder`() {
         let settings = Self.makeSettingsStore(suite: "TokenAccountEnvironmentPrecedenceTests-app")
         settings.zaiAPIToken = "config-token"
         settings.addTokenAccount(provider: .zai, label: "Account 1", token: "account-token")
@@ -25,7 +24,7 @@ struct TokenAccountEnvironmentPrecedenceTests {
     }
 
     @Test
-    func tokenAccountEnvironmentOverridesConfigAPIKey_inCLIEnvironmentBuilder() throws {
+    func `token account environment overrides config API key in CLI environment builder`() throws {
         let config = CodexBarConfig(
             providers: [
                 ProviderConfig(id: .zai, apiKey: "config-token"),
@@ -46,7 +45,7 @@ struct TokenAccountEnvironmentPrecedenceTests {
     }
 
     @Test
-    func ollamaTokenAccountSelectionForcesManualCookieSourceInCLISettingsSnapshot() throws {
+    func `ollama token account selection forces manual cookie source in CLI settings snapshot`() throws {
         let accounts = ProviderTokenAccountData(
             version: 1,
             accounts: [
@@ -76,7 +75,7 @@ struct TokenAccountEnvironmentPrecedenceTests {
     }
 
     @Test
-    func claudeOAuthTokenAccountOverridesEnvironmentInAppEnvironmentBuilder() {
+    func `claude OAuth token account overrides environment in app environment builder`() {
         let settings = Self.makeSettingsStore(suite: "TokenAccountEnvironmentPrecedenceTests-claude-app")
         settings.addTokenAccount(provider: .claude, label: "OAuth", token: "Bearer sk-ant-oat-account-token")
 
@@ -91,7 +90,7 @@ struct TokenAccountEnvironmentPrecedenceTests {
     }
 
     @Test
-    func claudeOAuthTokenSelectionForcesOAuthInCLISettingsSnapshot() throws {
+    func `claude OAuth token selection forces OAuth in CLI settings snapshot`() throws {
         let accounts = ProviderTokenAccountData(
             version: 1,
             accounts: [
@@ -122,7 +121,7 @@ struct TokenAccountEnvironmentPrecedenceTests {
     }
 
     @Test
-    func claudeOAuthTokenSelectionInjectsEnvironmentOverrideInCLI() throws {
+    func `claude OAuth token selection injects environment override in CLI`() throws {
         let accounts = ProviderTokenAccountData(
             version: 1,
             accounts: [
@@ -149,7 +148,7 @@ struct TokenAccountEnvironmentPrecedenceTests {
     }
 
     @Test
-    func claudeOAuthTokenSelectionPromotesAutoSourceModeInCLI() throws {
+    func `claude OAuth token selection promotes auto source mode in CLI`() throws {
         let account = ProviderTokenAccount(
             id: UUID(),
             label: "Primary",
@@ -171,7 +170,7 @@ struct TokenAccountEnvironmentPrecedenceTests {
     }
 
     @Test
-    func claudeSessionKeySelectionStaysInManualCookieModeInCLISettingsSnapshot() throws {
+    func `claude session key selection stays in manual cookie mode in CLI settings snapshot`() throws {
         let accounts = ProviderTokenAccountData(
             version: 1,
             accounts: [
@@ -202,7 +201,7 @@ struct TokenAccountEnvironmentPrecedenceTests {
     }
 
     @Test
-    func claudeConfigManualCookieUsesSharedRouteInCLISettingsSnapshot() throws {
+    func `claude config manual cookie uses shared route in CLI settings snapshot`() throws {
         let config = CodexBarConfig(
             providers: [
                 ProviderConfig(
@@ -220,7 +219,7 @@ struct TokenAccountEnvironmentPrecedenceTests {
     }
 
     @Test
-    func claudeConfigManualCookieDoesNotPromoteAutoSourceModeInCLI() throws {
+    func `claude config manual cookie does not promote auto source mode in CLI`() throws {
         let config = CodexBarConfig(
             providers: [
                 ProviderConfig(
@@ -241,7 +240,7 @@ struct TokenAccountEnvironmentPrecedenceTests {
     }
 
     @Test
-    func applyAccountLabelInAppPreservesSnapshotFields() {
+    func `apply account label in app preserves snapshot fields`() {
         let settings = Self.makeSettingsStore(suite: "TokenAccountEnvironmentPrecedenceTests-apply-app")
         let store = Self.makeUsageStore(settings: settings)
         let snapshot = Self.makeSnapshotWithAllFields(provider: .zai)
@@ -260,7 +259,7 @@ struct TokenAccountEnvironmentPrecedenceTests {
     }
 
     @Test
-    func applyAccountLabelInCLIPreservesSnapshotFields() throws {
+    func `apply account label in CLI preserves snapshot fields`() throws {
         let context = try TokenAccountCLIContext(
             selection: TokenAccountCLISelection(label: nil, index: nil, allAccounts: false),
             config: CodexBarConfig(providers: []),

@@ -50,7 +50,7 @@ struct ClaudeOAuthFetchStrategyAvailabilityTests {
     }
 
     @Test
-    func autoModeExpiredCreds_cliAvailable_returnsAvailable() async {
+    func `auto mode expired creds cli available returns available`() async {
         let context = self.makeContext(sourceMode: .auto)
         let strategy = ClaudeOAuthFetchStrategy()
         let available = await ClaudeOAuthFetchStrategy.$nonInteractiveCredentialRecordOverride
@@ -63,7 +63,7 @@ struct ClaudeOAuthFetchStrategyAvailabilityTests {
     }
 
     @Test
-    func autoModeExpiredCreds_cliUnavailable_returnsUnavailable() async {
+    func `auto mode expired creds cli unavailable returns unavailable`() async {
         let context = self.makeContext(sourceMode: .auto)
         let strategy = ClaudeOAuthFetchStrategy()
         let available = await ClaudeOAuthFetchStrategy.$nonInteractiveCredentialRecordOverride
@@ -76,7 +76,7 @@ struct ClaudeOAuthFetchStrategyAvailabilityTests {
     }
 
     @Test
-    func oauthModeExpiredCreds_cliAvailable_returnsAvailable() async {
+    func `oauth mode expired creds cli available returns available`() async {
         let context = self.makeContext(sourceMode: .oauth)
         let strategy = ClaudeOAuthFetchStrategy()
         let available = await ClaudeOAuthFetchStrategy.$nonInteractiveCredentialRecordOverride
@@ -89,7 +89,7 @@ struct ClaudeOAuthFetchStrategyAvailabilityTests {
     }
 
     @Test
-    func autoModeExpiredCodexbarCreds_cliUnavailable_stillAvailable() async {
+    func `auto mode expired codexbar creds cli unavailable still available`() async {
         let context = self.makeContext(sourceMode: .auto)
         let strategy = ClaudeOAuthFetchStrategy()
         let available = await ClaudeOAuthFetchStrategy.$nonInteractiveCredentialRecordOverride
@@ -102,7 +102,7 @@ struct ClaudeOAuthFetchStrategyAvailabilityTests {
     }
 
     @Test
-    func oauthModeDoesNotFallbackAfterOAuthFailure() {
+    func `oauth mode does not fallback after O auth failure`() {
         let context = self.makeContext(sourceMode: .oauth)
         let strategy = ClaudeOAuthFetchStrategy()
         #expect(strategy.shouldFallback(
@@ -111,7 +111,7 @@ struct ClaudeOAuthFetchStrategyAvailabilityTests {
     }
 
     @Test
-    func autoModeFallsBackAfterOAuthFailure() {
+    func `auto mode falls back after O auth failure`() {
         let context = self.makeContext(sourceMode: .auto)
         let strategy = ClaudeOAuthFetchStrategy()
         #expect(strategy.shouldFallback(
@@ -120,7 +120,7 @@ struct ClaudeOAuthFetchStrategyAvailabilityTests {
     }
 
     @Test
-    func autoMode_userInitiated_clearsKeychainCooldownGate() async {
+    func `auto mode user initiated clears keychain cooldown gate`() async {
         let context = self.makeContext(sourceMode: .auto)
         let strategy = ClaudeOAuthFetchStrategy()
         let recordWithoutRequiredScope = ClaudeOAuthCredentialRecord(
@@ -153,7 +153,7 @@ struct ClaudeOAuthFetchStrategyAvailabilityTests {
     }
 
     @Test
-    func autoMode_onlyOnUserAction_background_startup_withoutCache_isAvailableForBootstrap() async throws {
+    func `auto mode only on user action background startup without cache is available for bootstrap`() async throws {
         let context = self.makeContext(sourceMode: .auto)
         let strategy = ClaudeOAuthFetchStrategy()
         let service = "com.steipete.codexbar.cache.tests.\(UUID().uuidString)"
@@ -195,7 +195,7 @@ struct ClaudeOAuthFetchStrategyAvailabilityTests {
     }
 
     @Test
-    func autoModeExpiredClaudeCLICreds_envProvidedCLIOverride_returnsAvailable() async throws {
+    func `auto mode expired Claude CLI creds env provided CLI override returns available`() async throws {
         let tempDir = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
@@ -216,7 +216,7 @@ struct ClaudeOAuthFetchStrategyAvailabilityTests {
     }
 
     @Test
-    func autoMode_experimental_reader_ignoresPromptPolicyCooldownGate() async {
+    func `auto mode experimental reader ignores prompt policy cooldown gate`() async {
         let context = self.makeContext(sourceMode: .auto)
         let strategy = ClaudeOAuthFetchStrategy()
         let securityData = Data("""
@@ -265,7 +265,9 @@ struct ClaudeOAuthFetchStrategyAvailabilityTests {
     }
 
     @Test
-    func autoMode_experimental_reader_securityFailure_blocksAvailabilityWhenStoredPolicyBlocksFallback() async {
+    func `auto mode experimental reader security failure blocks availability when stored policy blocks fallback`()
+        async
+    {
         let context = self.makeContext(sourceMode: .auto)
         let strategy = ClaudeOAuthFetchStrategy()
         let fallbackData = Data("""
