@@ -60,8 +60,10 @@ public enum SubprocessRunner {
     }
 
     /// Terminates a process and its process group, escalating from SIGTERM to SIGKILL.
-    private static func terminateProcess(_ process: Process, processGroup: pid_t?) {
-        guard process.isRunning else { return }
+    /// Returns `true` if the process was actually killed, `false` if it had already exited.
+    @discardableResult
+    private static func terminateProcess(_ process: Process, processGroup: pid_t?) -> Bool {
+        guard process.isRunning else { return false }
         process.terminate()
         if let pgid = processGroup {
             kill(-pgid, SIGTERM)
@@ -76,6 +78,7 @@ public enum SubprocessRunner {
             }
             kill(process.processIdentifier, SIGKILL)
         }
+        return true
     }
 
     // MARK: - Public API
@@ -138,8 +141,12 @@ public enum SubprocessRunner {
                 group.addTask {
                     try await Task.sleep(for: .seconds(timeout))
                     // Kill the process BEFORE throwing so the exit-code task can complete
-                    // and withThrowingTaskGroup can exit promptly.
-                    self.terminateProcess(process, processGroup: processGroup)
+                    // and withThrowingTaskGroup can exit promptly. Only throw if we
+                    // actually killed the process; if it already exited, let the exit
+                    // code win the race naturally.
+                    guard self.terminateProcess(process, processGroup: processGroup) else {
+                        return await exitCodeTask.value
+                    }
                     throw SubprocessRunnerError.timedOut(label)
                 }
                 let code = try await group.next()!
@@ -147,10 +154,13 @@ public enum SubprocessRunner {
                 return code
             }
 
-            // Race guard: if the timeout task killed the process but the exit code arrived
-            // at group.next() before the .timedOut throw, the process will have been killed
-            // by a signal. Reclassify as timeout so callers get the correct error type.
-            if process.terminationReason == .uncaughtSignal {
+            // Race guard: our timeout task killed the process (SIGTERM/SIGKILL), but
+            // the exit code arrived at group.next() before the .timedOut throw.
+            // Detect by requiring BOTH a signal termination AND elapsed time at/past the
+            // timeout — this avoids misclassifying processes that crash on their own.
+            if process.terminationReason == .uncaughtSignal,
+               Date().timeIntervalSince(start) >= timeout - 0.5
+            {
                 let duration = Date().timeIntervalSince(start)
                 self.log.warning(
                     "Subprocess error",
