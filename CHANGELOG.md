@@ -14,6 +14,7 @@
 - Cost history: add per-model token counts so token usage is broken out by model (#546). Thanks @iam-brain!
 
 ### Menu & Settings
+- Settings: persist the resolved refresh cadence default to `UserDefaults` on first launch and repair invalid stored values so the setting stays normalized across relaunches (#519). Thanks @Astro-Han!
 - Menu: wrap long status blurbs and preserve wrapped titles for multiline entries (#543). Thanks @zkforge!
 
 ## 0.18.0 — 2026-03-15
