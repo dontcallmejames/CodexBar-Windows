@@ -392,7 +392,7 @@ struct StatusItemAnimationTests {
     }
 
     @Test
-    func `menu bar display text hides when pace unavailable`() {
+    func `menu bar display text falls back to percent when pace unavailable`() {
         let percentWindow = RateWindow(usedPercent: 40, windowMinutes: nil, resetsAt: nil, resetDescription: nil)
 
         let pace = MenuBarDisplayText.displayText(
@@ -405,11 +405,12 @@ struct StatusItemAnimationTests {
             showUsed: true)
 
         #expect(pace == nil)
-        #expect(both == nil)
+        // "Both" mode falls back to percent-only when pace is unavailable
+        #expect(both == "40%")
     }
 
     @Test
-    func `menu bar display text requires provided pace for codex`() {
+    func `menu bar display text falls back to percent when pace nil for codex`() {
         let percentWindow = RateWindow(usedPercent: 40, windowMinutes: nil, resetsAt: nil, resetDescription: nil)
 
         let pace = MenuBarDisplayText.displayText(
@@ -424,7 +425,8 @@ struct StatusItemAnimationTests {
             showUsed: true)
 
         #expect(pace == nil)
-        #expect(both == nil)
+        // "Both" mode falls back to percent-only when pace is unavailable
+        #expect(both == "40%")
     }
 
     @Test
