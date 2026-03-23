@@ -7,10 +7,13 @@
 - Add reset time display for Codex code review limits (#581). Thanks @Q1CHENL!
 - Add GPT-5.4 mini and nano pricing (#561). Thanks @iam-brain!
 - Add per-model token counts to cost history (#546). Thanks @iam-brain!
-- Refactor the Claude provider end to end into clearer, better-tested components while preserving behavior (#494).
+- Add subscription utilization history chart to the menu with DST-safe data point identification (#589). Thanks @maxceem!
+- Fix Antigravity model selection to use stable model-family matching for Claude, Gemini Pro, and Gemini Flash, and preserve fallback lane visibility in the menu bar and icon (#590). Thanks @skainguyen1412!
+- Refactor the Claude provider end to end into clearer, better-tested components while preserving behavior (#494). @ratulsarna
 
 ### Providers & Usage
 - Alibaba: add Coding Plan provider support with region-aware web/API quota fetching, widget integration, and browser-cookie import defaults (#574).
+- Antigravity: replace label-order guessing with stable model-family selection for Claude, Gemini Pro, and Gemini Flash; fix mapping for Claude thinking models and placeholder model IDs; preserve fallback lane visibility in the menu bar and icon when only fallback lanes exist (#590). Thanks @skainguyen1412!
 - Cursor: trust dashboard percent fields for Total/Auto/API usage, preserve on-demand remaining fallback views, and keep scanning imported browser-cookie candidates until a working Cursor session is found (#587, supersedes #579). Thanks @Rag30!
 - Claude: refactor the provider end to end into clearer components, with baseline docs and expanded tests to lock down behavior (#494).
 - Codex: show reset times for code review limits, including Core review reset parsing support (#581). Thanks @Q1CHENL!
@@ -20,6 +23,7 @@
 ### Menu & Settings
 - Menu bar: in Both display mode, fall back to percent when pace data is unavailable so text stays visible for providers without pace metrics (#527). Thanks @Astro-Han!
 - Settings: persist the resolved refresh cadence default to `UserDefaults` on first launch and repair invalid stored values so the setting stays normalized across relaunches (#519). Thanks @Astro-Han!
+- Menu: add subscription utilization history chart with DST-safe chart point identifiers and per-provider plan utilization tracking (#589). Thanks @maxceem!
 - Menu: wrap long status blurbs and preserve wrapped titles for multiline entries (#543). Thanks @zkforge!
 
 ## 0.18.0 — 2026-03-15
