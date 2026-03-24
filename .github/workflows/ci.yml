@@ -84,9 +84,10 @@ jobs:
 
           swiftly install 6.2.1 --use --assume-yes --post-install-file "$POST_INSTALL_SCRIPT"
           if [[ -s "$POST_INSTALL_SCRIPT" ]]; then
-            . "$POST_INSTALL_SCRIPT"
+            sudo bash "$POST_INSTALL_SCRIPT"
           fi
 
+          hash -r
           swift --version
 
       - name: Build CodexBarCLI (release, static Swift stdlib)
