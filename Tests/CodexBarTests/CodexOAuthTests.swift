@@ -121,6 +121,142 @@ struct CodexOAuthTests {
     }
 
     @Test
+    func `maps free weekly only window into secondary`() throws {
+        let json = """
+        {
+          "plan_type": "free",
+          "rate_limit": {
+            "primary_window": {
+              "used_percent": 0,
+              "reset_at": 1775468693,
+              "limit_window_seconds": 604800
+            },
+            "secondary_window": null
+          }
+        }
+        """
+        let creds = CodexOAuthCredentials(
+            accessToken: "access",
+            refreshToken: "refresh",
+            idToken: nil,
+            accountId: nil,
+            lastRefresh: Date())
+        let snapshot = try CodexOAuthFetchStrategy._mapUsageForTesting(Data(json.utf8), credentials: creds)
+        #expect(snapshot.primary == nil)
+        #expect(snapshot.secondary?.usedPercent == 0)
+        #expect(snapshot.secondary?.windowMinutes == 10080)
+    }
+
+    @Test
+    func `keeps single session window as primary`() throws {
+        let json = """
+        {
+          "rate_limit": {
+            "primary_window": {
+              "used_percent": 9,
+              "reset_at": 1766948068,
+              "limit_window_seconds": 18000
+            },
+            "secondary_window": null
+          }
+        }
+        """
+        let creds = CodexOAuthCredentials(
+            accessToken: "access",
+            refreshToken: "refresh",
+            idToken: nil,
+            accountId: nil,
+            lastRefresh: Date())
+        let snapshot = try CodexOAuthFetchStrategy._mapUsageForTesting(Data(json.utf8), credentials: creds)
+        #expect(snapshot.primary?.usedPercent == 9)
+        #expect(snapshot.primary?.windowMinutes == 300)
+        #expect(snapshot.secondary == nil)
+    }
+
+    @Test
+    func `preserves unknown single window as primary`() throws {
+        let json = """
+        {
+          "rate_limit": {
+            "primary_window": {
+              "used_percent": 17,
+              "reset_at": 1766948068,
+              "limit_window_seconds": 32400
+            },
+            "secondary_window": null
+          }
+        }
+        """
+        let creds = CodexOAuthCredentials(
+            accessToken: "access",
+            refreshToken: "refresh",
+            idToken: nil,
+            accountId: nil,
+            lastRefresh: Date())
+        let snapshot = try CodexOAuthFetchStrategy._mapUsageForTesting(Data(json.utf8), credentials: creds)
+        #expect(snapshot.primary?.usedPercent == 17)
+        #expect(snapshot.primary?.windowMinutes == 540)
+        #expect(snapshot.secondary == nil)
+    }
+
+    @Test
+    func `preserves unknown secondary only window as primary`() throws {
+        let json = """
+        {
+          "rate_limit": {
+            "primary_window": null,
+            "secondary_window": {
+              "used_percent": 17,
+              "reset_at": 1766948068,
+              "limit_window_seconds": 32400
+            }
+          }
+        }
+        """
+        let creds = CodexOAuthCredentials(
+            accessToken: "access",
+            refreshToken: "refresh",
+            idToken: nil,
+            accountId: nil,
+            lastRefresh: Date())
+        let snapshot = try CodexOAuthFetchStrategy._mapUsageForTesting(Data(json.utf8), credentials: creds)
+        #expect(snapshot.primary?.usedPercent == 17)
+        #expect(snapshot.primary?.windowMinutes == 540)
+        #expect(snapshot.secondary == nil)
+    }
+
+    @Test
+    func `swaps reversed weekly and unknown windows`() throws {
+        let json = """
+        {
+          "rate_limit": {
+            "primary_window": {
+              "used_percent": 43,
+              "reset_at": 1767407914,
+              "limit_window_seconds": 604800
+            },
+            "secondary_window": {
+              "used_percent": 17,
+              "reset_at": 1766948068,
+              "limit_window_seconds": 32400
+            }
+          }
+        }
+        """
+        let creds = CodexOAuthCredentials(
+            accessToken: "access",
+            refreshToken: "refresh",
+            idToken: nil,
+            accountId: nil,
+            lastRefresh: Date())
+        let snapshot = try CodexOAuthFetchStrategy._mapUsageForTesting(Data(json.utf8), credentials: creds)
+        #expect(snapshot.primary?.usedPercent == 17)
+        #expect(snapshot.primary?.windowMinutes == 540)
+        #expect(snapshot.secondary?.usedPercent == 43)
+        #expect(snapshot.secondary?.windowMinutes == 10080)
+    }
+
+    @Test
     func `resolves chat GPT usage URL from config`() {
         let config = "chatgpt_base_url = \"https://chatgpt.com/backend-api/\"\n"
         let url = CodexOAuthUsageFetcher._resolveUsageURLForTesting(configContents: config)

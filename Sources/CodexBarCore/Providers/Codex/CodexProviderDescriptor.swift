@@ -161,8 +161,11 @@ struct CodexOAuthFetchStrategy: ProviderFetchStrategy {
     }
 
     private static func mapUsage(_ response: CodexUsageResponse, credentials: CodexOAuthCredentials) -> UsageSnapshot {
-        let primary = Self.makeWindow(response.rateLimit?.primaryWindow)
-        let secondary = Self.makeWindow(response.rateLimit?.secondaryWindow)
+        let normalized = Self.normalizeWindows(
+            primary: response.rateLimit?.primaryWindow,
+            secondary: response.rateLimit?.secondaryWindow)
+        let primary = Self.makeWindow(normalized.primary)
+        let secondary = Self.makeWindow(normalized.secondary)
 
         let identity = ProviderIdentitySnapshot(
             providerID: .codex,
@@ -171,11 +174,70 @@ struct CodexOAuthFetchStrategy: ProviderFetchStrategy {
             loginMethod: Self.resolvePlan(response: response, credentials: credentials))
 
         return UsageSnapshot(
-            primary: primary ?? RateWindow(usedPercent: 0, windowMinutes: nil, resetsAt: nil, resetDescription: nil),
+            primary: primary ?? (secondary == nil
+                ? RateWindow(usedPercent: 0, windowMinutes: nil, resetsAt: nil, resetDescription: nil)
+                : nil),
             secondary: secondary,
             tertiary: nil,
             updatedAt: Date(),
             identity: identity)
+    }
+
+    private static func normalizeWindows(
+        primary: CodexUsageResponse.WindowSnapshot?,
+        secondary: CodexUsageResponse.WindowSnapshot?) -> (
+        primary: CodexUsageResponse.WindowSnapshot?,
+        secondary: CodexUsageResponse.WindowSnapshot?)
+    {
+        switch (primary, secondary) {
+        case let (.some(primaryWindow), .some(secondaryWindow)):
+            switch (
+                Self.role(for: primaryWindow),
+                Self.role(for: secondaryWindow))
+            {
+            case (.session, .weekly), (.session, .unknown), (.unknown, .weekly):
+                (primaryWindow, secondaryWindow)
+            case (.weekly, .session), (.weekly, .unknown):
+                (secondaryWindow, primaryWindow)
+            default:
+                (primaryWindow, secondaryWindow)
+            }
+        case let (.some(primaryWindow), .none):
+            switch Self.role(for: primaryWindow) {
+            case .weekly:
+                (nil, primaryWindow)
+            case .session, .unknown:
+                (primaryWindow, nil)
+            }
+        case let (.none, .some(secondaryWindow)):
+            switch Self.role(for: secondaryWindow) {
+            case .session:
+                (secondaryWindow, nil)
+            case .weekly:
+                (nil, secondaryWindow)
+            case .unknown:
+                (secondaryWindow, nil)
+            }
+        case (.none, .none):
+            (nil, nil)
+        }
+    }
+
+    private enum WindowRole {
+        case session
+        case weekly
+        case unknown
+    }
+
+    private static func role(for window: CodexUsageResponse.WindowSnapshot) -> WindowRole {
+        switch window.limitWindowSeconds {
+        case 18000:
+            .session
+        case 604_800:
+            .weekly
+        default:
+            .unknown
+        }
     }
 
     private static func mapCredits(_ credits: CodexUsageResponse.CreditDetails?) -> CreditsSnapshot? {
