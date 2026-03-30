@@ -87,6 +87,30 @@ struct SubprocessRunnerTests {
             "All \(count) concurrent timeouts should fire in ~2s, took \(elapsed)s")
     }
 
+    /// Stress-test the timeout race guard: with very short timeouts, the exit-code task
+    /// and the timeout task race tightly, exercising the KillFlag synchronization path.
+    @Test
+    func timeoutRaceStress() async {
+        for i in 0..<20 {
+            do {
+                _ = try await SubprocessRunner.run(
+                    binary: "/bin/sleep",
+                    arguments: ["30"],
+                    environment: ProcessInfo.processInfo.environment,
+                    timeout: 0.1,
+                    label: "race-stress-\(i)")
+                Issue.record("Expected .timedOut for iteration \(i)")
+            } catch let error as SubprocessRunnerError {
+                guard case .timedOut = error else {
+                    Issue.record("Expected .timedOut, got \(error) at iteration \(i)")
+                    continue
+                }
+            } catch {
+                Issue.record("Unexpected error at iteration \(i): \(error)")
+            }
+        }
+    }
+
     /// Verify that many concurrent SubprocessRunner calls complete without starving each other.
     @Test
     func concurrentCallsDoNotStarve() async throws {
