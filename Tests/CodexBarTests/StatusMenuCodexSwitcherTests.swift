@@ -12,11 +12,7 @@ struct StatusMenuCodexSwitcherTests {
     }
 
     private func makeStatusBarForTesting() -> NSStatusBar {
-        let env = ProcessInfo.processInfo.environment
-        if env["GITHUB_ACTIONS"] == "true" || env["CI"] == "true" {
-            return .system
-        }
-        return NSStatusBar()
+        NSStatusBar()
     }
 
     private func makeSettings() -> SettingsStore {
