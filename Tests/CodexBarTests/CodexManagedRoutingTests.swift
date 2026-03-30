@@ -263,7 +263,7 @@ struct CodexManagedRoutingTests {
         let snapshot = settings.codexSettingsSnapshot(tokenOverride: nil)
 
         #expect(env["CODEX_HOME"] == ambientHome)
-        #expect(settings.providerConfig(for: .codex)?.codexActiveSource == .liveSystem)
+        #expect(settings.providerConfig(for: .codex)?.codexActiveSource == nil)
         #expect(snapshot.managedAccountStoreUnreadable == false)
         #expect(snapshot.managedAccountTargetUnavailable == false)
     }
@@ -370,7 +370,7 @@ struct CodexManagedRoutingTests {
             tokenOverride: nil)
 
         #expect(env["CODEX_HOME"] == ambientHome)
-        #expect(settings.providerConfig(for: .codex)?.codexActiveSource == .liveSystem)
+        #expect(settings.providerConfig(for: .codex)?.codexActiveSource == nil)
     }
 
     @Test

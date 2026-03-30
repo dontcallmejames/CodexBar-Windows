@@ -193,7 +193,7 @@ struct CodexAccountReconciliationTests {
         let snapshot = settings.codexAccountReconciliationSnapshot
 
         #expect(settings.codexActiveSource == .liveSystem)
-        #expect(settings.providerConfig(for: .codex)?.codexActiveSource == .liveSystem)
+        #expect(settings.providerConfig(for: .codex)?.codexActiveSource == nil)
         #expect(snapshot.storedAccounts.map(\.id) == [ambient.id])
         #expect(snapshot.storedAccounts.map(\.email) == [ambient.email])
         #expect(snapshot.activeStoredAccount == nil)

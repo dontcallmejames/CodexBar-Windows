@@ -3,14 +3,7 @@ import Foundation
 
 extension SettingsStore {
     private var codexPersistedActiveSource: CodexActiveSource {
-        if let persistedSource = self.providerConfig(for: .codex)?.codexActiveSource {
-            return persistedSource
-        }
-        let source = CodexActiveSource.liveSystem
-        self.updateProviderConfig(provider: .codex) { entry in
-            entry.codexActiveSource = source
-        }
-        return source
+        self.providerConfig(for: .codex)?.codexActiveSource ?? .liveSystem
     }
 
     private enum ManagedCodexAccountStoreState {
