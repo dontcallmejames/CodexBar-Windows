@@ -3,10 +3,15 @@
 ## 0.20.0 — 2026-03-30
 
 ### Highlights
+- Add basic multi-account support to Codex. Thanks @monterrr and @Rag30 for the initial effort and ideas!
 - Add Perplexity provider with recurring, bonus, and purchased-credit tracking; plan detection (Pro/Max); and browser-cookie auto-import with manual-cookie fallback (#449). Thanks @BeelixGit!
 
 ### Providers & Usage
+- Add the foundation for multi-account support to Codex and basic UX for adding and switching accounts. @ratulsarna
 - Perplexity: add provider support with credit tracking for recurring (monthly), bonus (promotional), and purchased on-demand credits; plan detection (Pro/Max); and browser-cookie auto-import with manual-cookie fallback (#449). Thanks @BeelixGit!
+
+### Menu & Settings
+- Fix alignment of menu chart hover coordinates on macOS. Thanks @cuidong233!
 
 ## 0.19.0 — 2026-03-23
 ### Highlights
