@@ -59,6 +59,18 @@ struct StatusMenuCodexSwitcherTests {
         }
     }
 
+    private func selectCodexVisibleAccountForStatusMenu(
+        id: String,
+        settings: SettingsStore,
+        store: UsageStore) -> Task<Void, Never>?
+    {
+        guard settings.selectCodexVisibleAccount(id: id) else { return nil }
+        _ = store.prepareCodexAccountScopedRefreshIfNeeded()
+        return Task { @MainActor in
+            await store.refreshCodexAccountScopedState(allowDisabled: true)
+        }
+    }
+
     private func installBlockingCodexProvider(on store: UsageStore, blocker: BlockingStatusMenuCodexFetchStrategy) {
         let baseSpec = store.providerSpecs[.codex]!
         store.providerSpecs[.codex] = Self.makeCodexProviderSpec(baseSpec: baseSpec) {
@@ -121,14 +133,7 @@ struct StatusMenuCodexSwitcherTests {
 
         let fetcher = UsageFetcher()
         let store = UsageStore(fetcher: fetcher, browserDetection: BrowserDetection(cacheTTL: 0), settings: settings)
-        let controller = StatusItemController(
-            store: store,
-            settings: settings,
-            account: fetcher.loadAccountInfo(),
-            updater: DisabledUpdaterController(),
-            preferencesSelection: PreferencesSelection(),
-            statusBar: self.makeStatusBarForTesting())
-        let switcher = try #require(controller._test_codexAccountSwitcherState(for: .codex))
+        let projection = settings.codexVisibleAccountProjection
         let descriptor = MenuDescriptor.build(
             provider: .codex,
             store: store,
@@ -136,7 +141,8 @@ struct StatusMenuCodexSwitcherTests {
             account: fetcher.loadAccountInfo(),
             updateReady: false)
 
-        #expect(switcher.accountEmails == ["live@example.com", "managed@example.com"])
+        #expect(projection.visibleAccounts.map(\.email) == ["live@example.com", "managed@example.com"])
+        #expect(projection.activeVisibleAccountID == "live@example.com")
         let actionLabels = self.actionLabels(in: descriptor)
         #expect(actionLabels.contains("Add Account..."))
         #expect(actionLabels.contains("Switch Account...") == false)
@@ -158,13 +164,6 @@ struct StatusMenuCodexSwitcherTests {
 
         let fetcher = UsageFetcher()
         let store = UsageStore(fetcher: fetcher, browserDetection: BrowserDetection(cacheTTL: 0), settings: settings)
-        let controller = StatusItemController(
-            store: store,
-            settings: settings,
-            account: fetcher.loadAccountInfo(),
-            updater: DisabledUpdaterController(),
-            preferencesSelection: PreferencesSelection(),
-            statusBar: self.makeStatusBarForTesting())
         let descriptor = MenuDescriptor.build(
             provider: .codex,
             store: store,
@@ -172,7 +171,7 @@ struct StatusMenuCodexSwitcherTests {
             account: fetcher.loadAccountInfo(),
             updateReady: false)
 
-        #expect(controller._test_codexAccountSwitcherState(for: .codex) == nil)
+        #expect(settings.codexVisibleAccountProjection.visibleAccounts.map(\.email) == ["solo@example.com"])
         #expect(self.actionLabels(in: descriptor).contains("Add Account..."))
     }
 
@@ -207,16 +206,7 @@ struct StatusMenuCodexSwitcherTests {
             observedAt: Date())
         settings.codexActiveSource = .liveSystem
 
-        let fetcher = UsageFetcher()
-        let store = UsageStore(fetcher: fetcher, browserDetection: BrowserDetection(cacheTTL: 0), settings: settings)
-        let controller = StatusItemController(
-            store: store,
-            settings: settings,
-            account: fetcher.loadAccountInfo(),
-            updater: DisabledUpdaterController(),
-            preferencesSelection: PreferencesSelection(),
-            statusBar: self.makeStatusBarForTesting())
-        #expect(controller._test_selectCodexVisibleAccountFromMenu(id: "managed@example.com"))
+        #expect(settings.selectCodexVisibleAccount(id: "managed@example.com"))
 
         #expect(settings.codexActiveSource == .managedAccount(id: managedAccountID))
     }
@@ -273,14 +263,11 @@ struct StatusMenuCodexSwitcherTests {
         let blocker = BlockingStatusMenuCodexFetchStrategy()
         self.installBlockingCodexProvider(on: store, blocker: blocker)
 
-        let controller = StatusItemController(
-            store: store,
-            settings: settings,
-            account: fetcher.loadAccountInfo(),
-            updater: DisabledUpdaterController(),
-            preferencesSelection: PreferencesSelection(),
-            statusBar: self.makeStatusBarForTesting())
-        #expect(controller._test_selectCodexVisibleAccountFromMenu(id: "managed@example.com"))
+        let refreshTask = try #require(
+            self.selectCodexVisibleAccountForStatusMenu(
+                id: "managed@example.com",
+                settings: settings,
+                store: store))
 
         await blocker.waitUntilStarted()
         #expect(settings.codexActiveSource == .managedAccount(id: managedAccountID))
@@ -299,6 +286,7 @@ struct StatusMenuCodexSwitcherTests {
         for _ in 0..<10 where store.snapshots[.codex]?.accountEmail(for: .codex) != "managed@example.com" {
             try? await Task.sleep(for: .milliseconds(20))
         }
+        await refreshTask.value
         #expect(store.snapshots[.codex]?.accountEmail(for: .codex) == "managed@example.com")
     }
 
