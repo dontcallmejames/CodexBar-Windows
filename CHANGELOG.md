@@ -8,7 +8,7 @@
 
 ### Providers & Usage
 - Add the foundation for multi-account support to Codex and basic UX for adding and switching accounts. @ratulsarna
-- Codex: normalize free-plan OAuth rate limits so weekly-only accounts render as Weekly instead of a fake Session, preserve unknown single-window payloads in the primary lane, and hide the empty Session lane in widgets for weekly-only Codex accounts. @ratulsarna
+- Codex: normalize weekly-only rate limits across OAuth and CLI/RPC so free-plan accounts render as Weekly instead of a fake Session, preserve unknown single-window payloads in the primary lane, hide the empty Session lane in widgets, and accept weekly-only Codex CLI `/status`/RPC data without failing. @ratulsarna
 - Perplexity: add provider support with credit tracking for recurring (monthly), bonus (promotional), and purchased on-demand credits; plan detection (Pro/Max); and browser-cookie auto-import with manual-cookie fallback (#449). Thanks @BeelixGit!
 
 ### Menu & Settings
