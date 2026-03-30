@@ -576,12 +576,6 @@ public struct UsageFetcher: Sendable {
         let limits = try await rpc.fetchRateLimits().rateLimits
         let account = try? await rpc.fetchAccount()
 
-        guard let primary = Self.makeWindow(from: limits.primary),
-              let secondary = Self.makeWindow(from: limits.secondary)
-        else {
-            throw UsageError.noRateLimitsFound
-        }
-
         let identity = ProviderIdentitySnapshot(
             providerID: .codex,
             accountEmail: account?.account.flatMap { details in
@@ -591,11 +585,9 @@ public struct UsageFetcher: Sendable {
             loginMethod: account?.account.flatMap { details in
                 if case let .chatgpt(_, plan) = details { plan } else { nil }
             })
-        return UsageSnapshot(
-            primary: primary,
-            secondary: secondary,
-            tertiary: nil,
-            updatedAt: Date(),
+        return try Self.makeCodexUsageSnapshot(
+            primary: Self.makeWindow(from: limits.primary),
+            secondary: Self.makeWindow(from: limits.secondary),
             identity: identity)
     }
 
@@ -604,26 +596,17 @@ public struct UsageFetcher: Sendable {
             keepCLISessionsAlive: keepCLISessionsAlive,
             environment: self.environment)
             .fetch()
-        guard let fiveLeft = status.fiveHourPercentLeft, let weekLeft = status.weeklyPercentLeft else {
-            throw UsageError.noRateLimitsFound
-        }
-
-        let primary = RateWindow(
-            usedPercent: max(0, 100 - Double(fiveLeft)),
-            windowMinutes: 300,
-            resetsAt: status.fiveHourResetsAt,
-            resetDescription: status.fiveHourResetDescription)
-        let secondary = RateWindow(
-            usedPercent: max(0, 100 - Double(weekLeft)),
-            windowMinutes: 10080,
-            resetsAt: status.weeklyResetsAt,
-            resetDescription: status.weeklyResetDescription)
-
-        return UsageSnapshot(
-            primary: primary,
-            secondary: secondary,
-            tertiary: nil,
-            updatedAt: Date(),
+        return try Self.makeCodexUsageSnapshot(
+            primary: Self.makeTTYWindow(
+                percentLeft: status.fiveHourPercentLeft,
+                windowMinutes: 300,
+                resetsAt: status.fiveHourResetsAt,
+                resetDescription: status.fiveHourResetDescription),
+            secondary: Self.makeTTYWindow(
+                percentLeft: status.weeklyPercentLeft,
+                windowMinutes: 10080,
+                resetsAt: status.weeklyResetsAt,
+                resetDescription: status.weeklyResetDescription),
             identity: nil)
     }
 
@@ -719,6 +702,37 @@ public struct UsageFetcher: Sendable {
             resetDescription: resetDescription)
     }
 
+    private static func makeTTYWindow(
+        percentLeft: Int?,
+        windowMinutes: Int,
+        resetsAt: Date?,
+        resetDescription: String?) -> RateWindow?
+    {
+        guard let percentLeft else { return nil }
+        return RateWindow(
+            usedPercent: max(0, 100 - Double(percentLeft)),
+            windowMinutes: windowMinutes,
+            resetsAt: resetsAt,
+            resetDescription: resetDescription)
+    }
+
+    private static func makeCodexUsageSnapshot(
+        primary: RateWindow?,
+        secondary: RateWindow?,
+        identity: ProviderIdentitySnapshot?) throws -> UsageSnapshot
+    {
+        let normalized = CodexRateWindowNormalizer.normalize(primary: primary, secondary: secondary)
+        guard normalized.primary != nil || normalized.secondary != nil else {
+            throw UsageError.noRateLimitsFound
+        }
+        return UsageSnapshot(
+            primary: normalized.primary,
+            secondary: normalized.secondary,
+            tertiary: nil,
+            updatedAt: Date(),
+            identity: identity)
+    }
+
     private static func parseCredits(_ balance: String?) -> Double {
         guard let balance, let val = Double(balance) else { return 0 }
         return val
@@ -740,3 +754,44 @@ public struct UsageFetcher: Sendable {
         return json
     }
 }
+
+#if DEBUG
+extension UsageFetcher {
+    static func _mapCodexRPCLimitsForTesting(
+        primary: (usedPercent: Double, windowMinutes: Int, resetsAt: Int?)?,
+        secondary: (usedPercent: Double, windowMinutes: Int, resetsAt: Int?)?) throws -> UsageSnapshot
+    {
+        try self.makeCodexUsageSnapshot(
+            primary: primary.map(self.makeTestingWindow),
+            secondary: secondary.map(self.makeTestingWindow),
+            identity: nil)
+    }
+
+    static func _mapCodexStatusForTesting(_ status: CodexStatusSnapshot) throws -> UsageSnapshot {
+        try self.makeCodexUsageSnapshot(
+            primary: self.makeTTYWindow(
+                percentLeft: status.fiveHourPercentLeft,
+                windowMinutes: 300,
+                resetsAt: status.fiveHourResetsAt,
+                resetDescription: status.fiveHourResetDescription),
+            secondary: self.makeTTYWindow(
+                percentLeft: status.weeklyPercentLeft,
+                windowMinutes: 10080,
+                resetsAt: status.weeklyResetsAt,
+                resetDescription: status.weeklyResetDescription),
+            identity: nil)
+    }
+
+    private static func makeTestingWindow(
+        _ value: (usedPercent: Double, windowMinutes: Int, resetsAt: Int?))
+        -> RateWindow
+    {
+        let resetsAt = value.resetsAt.map { Date(timeIntervalSince1970: TimeInterval($0)) }
+        return RateWindow(
+            usedPercent: value.usedPercent,
+            windowMinutes: value.windowMinutes,
+            resetsAt: resetsAt,
+            resetDescription: resetsAt.map { UsageFormatter.resetDescription(from: $0) })
+    }
+}
+#endif
