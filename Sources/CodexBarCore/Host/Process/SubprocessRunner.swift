@@ -37,6 +37,15 @@ public struct SubprocessResult: Sendable {
 public enum SubprocessRunner {
     private static let log = CodexBarLog.logger(LogCategories.subprocess)
 
+    /// Thread-safe flag for communicating between concurrent tasks (e.g. timeout → caller).
+    private final class KillFlag: @unchecked Sendable {
+        private let lock = NSLock()
+        private var value = false
+
+        func set() { lock.withLock { value = true } }
+        var isSet: Bool { lock.withLock { value } }
+    }
+
     // MARK: - Helpers to move blocking calls off the cooperative thread pool
 
     /// Runs `readDataToEndOfFile()` on a GCD thread so it does not block the Swift cooperative pool.
@@ -135,6 +144,8 @@ public enum SubprocessRunner {
             await self.waitForExitOffPool(process)
         }
 
+        let killedByTimeout = KillFlag()
+
         do {
             let exitCode = try await withThrowingTaskGroup(of: Int32.self) { group in
                 group.addTask { await exitCodeTask.value }
@@ -147,6 +158,7 @@ public enum SubprocessRunner {
                     guard self.terminateProcess(process, processGroup: processGroup) else {
                         return await exitCodeTask.value
                     }
+                    killedByTimeout.set()
                     throw SubprocessRunnerError.timedOut(label)
                 }
                 let code = try await group.next()!
@@ -154,16 +166,14 @@ public enum SubprocessRunner {
                 return code
             }
 
-            // Race guard: our timeout task killed the process (SIGTERM/SIGKILL), but
-            // the exit code arrived at group.next() before the .timedOut throw.
-            // Detect by requiring BOTH a signal termination AND elapsed time at/past the
-            // timeout — this avoids misclassifying processes that crash on their own.
-            if process.terminationReason == .uncaughtSignal,
-               Date().timeIntervalSince(start) >= timeout - 0.5
-            {
+            // Race guard: our timeout task killed the process, but the exit code
+            // arrived at group.next() before the .timedOut throw. Use the explicit
+            // flag instead of wall-clock heuristics to avoid misclassifying processes
+            // that crash or are killed externally.
+            if killedByTimeout.isSet {
                 let duration = Date().timeIntervalSince(start)
                 self.log.warning(
-                    "Subprocess error",
+                    "Subprocess timed out (race)",
                     metadata: [
                         "label": label,
                         "binary": binaryName,
