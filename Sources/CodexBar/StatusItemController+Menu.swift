@@ -1087,8 +1087,15 @@ extension StatusItemController {
         // Fallback to the dynamic icon renderer if resources are missing (e.g. dev bundle mismatch).
         let snapshot = self.store.snapshot(for: provider)
         let showUsed = self.settings.usageBarsShowUsed
-        let primary = showUsed ? snapshot?.primary?.usedPercent : snapshot?.primary?.remainingPercent
-        var weekly = showUsed ? snapshot?.secondary?.usedPercent : snapshot?.secondary?.remainingPercent
+        let style = self.store.style(for: provider)
+        let resolved = snapshot.map {
+            IconRemainingResolver.resolvedPercents(
+                snapshot: $0,
+                style: style,
+                showUsed: showUsed)
+        }
+        let primary = resolved?.primary
+        var weekly = resolved?.secondary
         if showUsed,
            provider == .warp,
            let remaining = snapshot?.secondary?.remainingPercent,
@@ -1108,7 +1115,6 @@ extension StatusItemController {
         }
         let credits = provider == .codex ? self.store.credits?.remaining : nil
         let stale = self.store.isStale(provider: provider)
-        let style = self.store.style(for: provider)
         let indicator = self.store.statusIndicator(for: provider)
         let image = IconRenderer.makeIcon(
             primaryRemaining: primary,
@@ -1122,16 +1128,6 @@ extension StatusItemController {
             statusIndicator: indicator)
         image.isTemplate = true
         return image
-    }
-
-    nonisolated static func switcherWeeklyMetricPercent(
-        for provider: UsageProvider,
-        snapshot: UsageSnapshot?,
-        showUsed: Bool) -> Double?
-    {
-        let window = snapshot?.switcherWeeklyWindow(for: provider, showUsed: showUsed)
-        guard let window else { return nil }
-        return showUsed ? window.usedPercent : window.remainingPercent
     }
 
     private func switcherWeeklyRemaining(for provider: UsageProvider) -> Double? {
