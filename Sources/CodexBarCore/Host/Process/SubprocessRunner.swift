@@ -42,8 +42,13 @@ public enum SubprocessRunner {
         private let lock = NSLock()
         private var value = false
 
-        func set() { lock.withLock { value = true } }
-        var isSet: Bool { lock.withLock { value } }
+        func set() {
+            self.lock.withLock { self.value = true }
+        }
+
+        var isSet: Bool {
+            self.lock.withLock { self.value }
+        }
     }
 
     // MARK: - Helpers to move blocking calls off the cooperative thread pool
