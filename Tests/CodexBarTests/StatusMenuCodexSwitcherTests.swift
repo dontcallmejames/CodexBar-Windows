@@ -1,5 +1,5 @@
-import AppKit
 import CodexBarCore
+import Foundation
 import Testing
 @testable import CodexBar
 
@@ -9,10 +9,6 @@ struct StatusMenuCodexSwitcherTests {
     private func disableMenuCardsForTesting() {
         StatusItemController.menuCardRenderingEnabled = false
         StatusItemController.menuRefreshEnabled = false
-    }
-
-    private func makeStatusBarForTesting() -> NSStatusBar {
-        NSStatusBar()
     }
 
     private func makeSettings() -> SettingsStore {
@@ -42,14 +38,6 @@ struct StatusMenuCodexSwitcherTests {
             version: FileManagedCodexAccountStore.currentVersion,
             accounts: accounts))
         return storeURL
-    }
-
-    private func menuItem(titled title: String, in menu: NSMenu) -> NSMenuItem? {
-        menu.items.first { $0.title == title }
-    }
-
-    private func representedIDs(in menu: NSMenu) -> [String] {
-        menu.items.compactMap { $0.representedObject as? String }
     }
 
     private func actionLabels(in descriptor: MenuDescriptor) -> [String] {
@@ -291,7 +279,7 @@ struct StatusMenuCodexSwitcherTests {
     }
 
     @Test
-    func `codex menu disables add account while managed authentication is in flight`() async throws {
+    func `codex account state disables add account while managed authentication is in flight`() async throws {
         self.disableMenuCardsForTesting()
         let settings = self.makeSettings()
         settings.statusChecksEnabled = false
@@ -319,32 +307,22 @@ struct StatusMenuCodexSwitcherTests {
 
         let fetcher = UsageFetcher()
         let store = UsageStore(fetcher: fetcher, browserDetection: BrowserDetection(cacheTTL: 0), settings: settings)
-        let controller = StatusItemController(
-            store: store,
+        let pane = ProvidersPane(
             settings: settings,
-            account: fetcher.loadAccountInfo(),
-            updater: DisabledUpdaterController(),
-            preferencesSelection: PreferencesSelection(),
-            managedCodexAccountCoordinator: coordinator,
-            statusBar: self.makeStatusBarForTesting())
+            store: store,
+            managedCodexAccountCoordinator: coordinator)
+        let state = try #require(pane._test_codexAccountsSectionState())
 
-        let menu = controller.makeMenu(for: .codex)
-        controller.menuWillOpen(menu)
-
-        let addItem = try #require(self.menuItem(titled: "Add Account...", in: menu))
-        #expect(addItem.isEnabled == false)
-        if #available(macOS 14.4, *) {
-            #expect(addItem.subtitle == "Managed Codex login in progress…")
-        } else {
-            #expect(addItem.toolTip?.contains("Managed Codex login in progress") == true)
-        }
+        #expect(state.canAddAccount == false)
+        #expect(state.isAuthenticatingManagedAccount)
+        #expect(state.addAccountTitle == "Adding Account…")
 
         await runner.resume()
         _ = try await authTask.value
     }
 
     @Test
-    func `codex menu disables add account when managed store is unreadable`() {
+    func `codex account state disables add account when managed store is unreadable`() throws {
         self.disableMenuCardsForTesting()
         let settings = self.makeSettings()
         settings.statusChecksEnabled = false
@@ -363,24 +341,11 @@ struct StatusMenuCodexSwitcherTests {
 
         let fetcher = UsageFetcher()
         let store = UsageStore(fetcher: fetcher, browserDetection: BrowserDetection(cacheTTL: 0), settings: settings)
-        let controller = StatusItemController(
-            store: store,
-            settings: settings,
-            account: fetcher.loadAccountInfo(),
-            updater: DisabledUpdaterController(),
-            preferencesSelection: PreferencesSelection(),
-            statusBar: self.makeStatusBarForTesting())
+        let pane = ProvidersPane(settings: settings, store: store)
+        let state = try #require(pane._test_codexAccountsSectionState())
 
-        let menu = controller.makeMenu(for: .codex)
-        controller.menuWillOpen(menu)
-
-        let addItem = self.menuItem(titled: "Add Account...", in: menu)
-        #expect(addItem?.isEnabled == false)
-        if #available(macOS 14.4, *) {
-            #expect(addItem?.subtitle == "Managed account storage unavailable")
-        } else {
-            #expect(addItem?.toolTip?.contains("Managed account storage unavailable") == true)
-        }
+        #expect(state.hasUnreadableManagedAccountStore)
+        #expect(state.canAddAccount == false)
     }
 }
 
