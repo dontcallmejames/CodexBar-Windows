@@ -190,7 +190,8 @@ Current behavior that later work must preserve:
   provider-scoped `AccountInfo`.
 - Current Codex source-label decoration is additive:
   - base label comes from current Codex source setting or the last successful source label,
-  - `+ openai-web` is appended only when dashboard data is present and login is not required.
+  - `+ openai-web` is appended only when Codex cookies are enabled, dashboard data is present, and login is not
+    required.
 
 This is a compatibility seam, not a statement that the underlying ownership is already cleanly unified.
 
@@ -244,7 +245,7 @@ This ticket should lock that reality in docs and characterization coverage befor
 
 ## Characterization coverage status
 
-Current partial coverage already exists in:
+Current characterization coverage in this branch includes:
 
 - `Tests/CodexBarTests/CodexCLIWindowNormalizationTests.swift`
 - `Tests/CodexBarTests/StatusProbeTests.swift`
@@ -253,7 +254,9 @@ Current partial coverage already exists in:
 - `Tests/CodexBarTests/MenuDescriptorCodexManagedFallbackTests.swift`
 - `Tests/CodexBarTests/CodexManagedOpenAIWebTests.swift`
 - `Tests/CodexBarTests/CodexAccountScopedRefreshTests.swift`
+- `Tests/CodexBarTests/CodexBaselineCharacterizationTests.swift`
+- `Tests/CodexBarTests/CodexPresentationCharacterizationTests.swift`
 
-RAT-189 should add or consolidate parity-focused characterization around the stable seams above. If a current behavior
-detail is real but not reachable through a stable seam without widening the task, keep it documented here instead of
-forcing invasive hooks.
+RAT-189 adds parity-focused characterization around the stable seams above. If a current behavior detail is real but
+not reachable through a stable seam without widening the task, keep it documented here instead of forcing invasive
+hooks.
