@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.20.0 — 2026-03-30
+## 0.20.0-beta.1 — 2026-04-01
 
 ### Highlights
 - Add basic multi-account support to Codex. Thanks @monterrr and @Rag30 for the initial effort and ideas!
