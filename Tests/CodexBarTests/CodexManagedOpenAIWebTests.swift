@@ -50,6 +50,41 @@ struct CodexManagedOpenAIWebTests {
     }
 
     @Test
+    func `managed codex open A I web targets runtime auth backed email for selected account`() throws {
+        let settings = self.makeSettingsStore(suite: "CodexManagedOpenAIWebTests-managed-runtime-email")
+        let managedHome = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: managedHome) }
+        try Self.writeCodexAuthFile(
+            homeURL: managedHome,
+            email: "renamed@example.com",
+            plan: "pro",
+            accountId: "acct-managed")
+
+        let managedAccount = ManagedCodexAccount(
+            id: UUID(),
+            email: "legacy@example.com",
+            managedHomePath: managedHome.path,
+            createdAt: 1,
+            updatedAt: 1,
+            lastAuthenticatedAt: 1)
+        settings._test_activeManagedCodexAccount = managedAccount
+        settings.codexActiveSource = .managedAccount(id: managedAccount.id)
+        defer { settings._test_activeManagedCodexAccount = nil }
+
+        let store = UsageStore(
+            fetcher: UsageFetcher(environment: [:]),
+            browserDetection: BrowserDetection(cacheTTL: 0),
+            settings: settings,
+            startupBehavior: .testing)
+
+        #expect(store.codexAccountEmailForOpenAIDashboard() == "renamed@example.com")
+        #expect(store.codexAccountEmailForOpenAIDashboard() != managedAccount.email)
+        #expect(store.currentCodexOpenAIWebRefreshGuard().accountKey == "renamed@example.com")
+        #expect(store.currentCodexOpenAIWebRefreshGuard().identity == .providerAccount(id: "acct-managed"))
+    }
+
+    @Test
     func `live system codex open A I web uses live identity and no managed cache scope`() {
         let settings = self.makeSettingsStore(suite: "CodexManagedOpenAIWebTests-live-system")
         let managedAccount = ManagedCodexAccount(
@@ -832,6 +867,49 @@ struct CodexManagedOpenAIWebTests {
         settings._test_liveSystemCodexAccount = nil
         settings._test_codexReconciliationEnvironment = nil
         return settings
+    }
+
+    private static func writeCodexAuthFile(
+        homeURL: URL,
+        email: String,
+        plan: String,
+        accountId: String? = nil) throws
+    {
+        try FileManager.default.createDirectory(at: homeURL, withIntermediateDirectories: true)
+        var tokens: [String: Any] = [
+            "accessToken": "access-token",
+            "refreshToken": "refresh-token",
+            "idToken": Self.fakeJWT(email: email, plan: plan, accountId: accountId),
+        ]
+        if let accountId {
+            tokens["accountId"] = accountId
+        }
+        let data = try JSONSerialization.data(withJSONObject: ["tokens": tokens], options: [.sortedKeys])
+        try data.write(to: homeURL.appendingPathComponent("auth.json"))
+    }
+
+    private static func fakeJWT(email: String, plan: String, accountId: String? = nil) -> String {
+        let header = (try? JSONSerialization.data(withJSONObject: ["alg": "none"])) ?? Data()
+        var authClaims: [String: Any] = [
+            "chatgpt_plan_type": plan,
+        ]
+        if let accountId {
+            authClaims["chatgpt_account_id"] = accountId
+        }
+        let payload = (try? JSONSerialization.data(withJSONObject: [
+            "email": email,
+            "chatgpt_plan_type": plan,
+            "https://api.openai.com/auth": authClaims,
+        ])) ?? Data()
+
+        func base64URL(_ data: Data) -> String {
+            data.base64EncodedString()
+                .replacingOccurrences(of: "=", with: "")
+                .replacingOccurrences(of: "+", with: "-")
+                .replacingOccurrences(of: "/", with: "_")
+        }
+
+        return "\(base64URL(header)).\(base64URL(payload))."
     }
 }
 

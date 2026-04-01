@@ -129,7 +129,7 @@ extension UsageStore {
                 .normalizeCodexAccountScopedKey(self.settings.codexAccountReconciliationSnapshot.liveSystemAccount?
                     .email)
         case .managedAccount:
-            Self.normalizeCodexAccountScopedKey(self.settings.activeManagedCodexAccount?.email)
+            Self.normalizeCodexAccountScopedKey(self.currentManagedCodexRuntimeEmail())
         }
         return CodexAccountScopedRefreshGuard(
             source: source,
@@ -254,7 +254,7 @@ extension UsageStore {
             if self.settings.codexSettingsSnapshot(tokenOverride: nil).managedAccountStoreUnreadable {
                 return nil
             }
-            return Self.normalizeCodexAccountScopedEmail(self.settings.activeManagedCodexAccount?.email)
+            return self.currentManagedCodexRuntimeEmail()
         }
     }
 
@@ -311,6 +311,17 @@ extension UsageStore {
             }
             return self.settings.codexAccountReconciliationSnapshot.runtimeIdentity(for: activeStoredAccount)
         }
+    }
+
+    func currentManagedCodexRuntimeEmail() -> String? {
+        guard !self.settings.codexSettingsSnapshot(tokenOverride: nil).managedAccountStoreUnreadable else {
+            return nil
+        }
+        guard let activeStoredAccount = self.settings.codexAccountReconciliationSnapshot.activeStoredAccount else {
+            return nil
+        }
+        return Self.normalizeCodexAccountScopedEmail(
+            self.settings.codexAccountReconciliationSnapshot.runtimeEmail(for: activeStoredAccount))
     }
 
     private func clearCodexOpenAIWebStateForAccountTransition(targetEmail: String?) {

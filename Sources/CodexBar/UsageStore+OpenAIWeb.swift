@@ -940,7 +940,7 @@ extension UsageStore {
                 return nil
             }
 
-            let managed = self.selectedManagedCodexAccountForOpenAIWeb()?.email
+            let managed = self.currentManagedCodexRuntimeEmail()?
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             if let managed, !managed.isEmpty { return managed }
             return nil
