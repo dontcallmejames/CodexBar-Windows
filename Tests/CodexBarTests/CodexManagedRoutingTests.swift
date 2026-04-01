@@ -144,6 +144,52 @@ struct CodexManagedRoutingTests {
     }
 
     @Test
+    func `provider registry keeps managed routing when same email rows differ by identity strength`() throws {
+        let settings = self.makeSettingsStore(suite: "CodexManagedRoutingTests-same-email-split-by-identity")
+        let managedHome = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+            isDirectory: true)
+        let liveHomePath = "/tmp/system-remote-home"
+        defer { try? FileManager.default.removeItem(at: managedHome) }
+
+        try self.writeCodexAuthFile(
+            homeURL: managedHome,
+            email: "person@example.com",
+            plan: "pro",
+            accountId: "account-managed")
+        let managedAccount = ManagedCodexAccount(
+            id: UUID(),
+            email: "person@example.com",
+            managedHomePath: managedHome.path,
+            createdAt: 1,
+            updatedAt: 1,
+            lastAuthenticatedAt: 1)
+        let liveSystemAccount = ObservedSystemCodexAccount(
+            email: "PERSON@example.com",
+            codexHomePath: liveHomePath,
+            observedAt: Date(),
+            identity: .emailOnly(normalizedEmail: "person@example.com"))
+
+        settings._test_activeManagedCodexAccount = managedAccount
+        settings._test_liveSystemCodexAccount = liveSystemAccount
+        settings.codexActiveSource = .managedAccount(id: managedAccount.id)
+        defer {
+            settings._test_activeManagedCodexAccount = nil
+            settings._test_liveSystemCodexAccount = nil
+        }
+
+        let env = ProviderRegistry.makeEnvironment(
+            base: ["CODEX_HOME": liveHomePath],
+            provider: .codex,
+            settings: settings,
+            tokenOverride: nil)
+
+        #expect(settings.codexResolvedActiveSource == .managedAccount(id: managedAccount.id))
+        #expect(env["CODEX_HOME"] == managedHome.path)
+        #expect(env["CODEX_HOME"] != liveHomePath)
+    }
+
+    @Test
     func `persisted managed source corrects to live system when selected row collapses with live account`() {
         let settings = self.makeSettingsStore(suite: "CodexManagedRoutingTests-same-email-persist-correction")
         let managedAccount = ManagedCodexAccount(
