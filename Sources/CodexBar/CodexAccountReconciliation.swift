@@ -329,7 +329,7 @@ extension CodexVisibleAccountProjection {
     }
 }
 
-private enum CodexIdentityMatcher {
+enum CodexIdentityMatcher {
     static func matches(_ lhs: CodexIdentity, _ rhs: CodexIdentity) -> Bool {
         switch (lhs, rhs) {
         case let (.providerAccount(leftID), .providerAccount(rightID)):

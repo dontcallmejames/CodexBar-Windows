@@ -94,10 +94,10 @@ extension UsageStore {
             source: resolvedSource,
             preferCurrentSnapshot: false,
             allowLastKnownLiveFallback: false)
-        let resolvedIdentity = Self.normalizedCodexIdentity(
-            currentIdentity == .unresolved ? CodexIdentityResolver
-                .resolve(accountId: nil, email: resolvedEmail) : currentIdentity,
-            fallbackEmail: resolvedEmail)
+        let resolvedIdentity = CodexIdentityMatcher.normalized(
+            currentIdentity == .unresolved ? CodexIdentityResolver.resolve(accountId: nil, email: resolvedEmail) :
+                currentIdentity,
+            fallbackEmail: resolvedEmail ?? "")
         let accountKey = Self.normalizeCodexAccountScopedKey(resolvedEmail ?? Self.email(for: resolvedIdentity))
         guard resolvedIdentity != .unresolved || accountKey != nil else { return }
         self.lastCodexAccountScopedRefreshGuard = CodexAccountScopedRefreshGuard(
@@ -362,17 +362,6 @@ extension UsageStore {
 
     static func normalizeCodexAccountScopedKey(_ email: String?) -> String? {
         self.normalizeCodexAccountScopedEmail(email)?.lowercased()
-    }
-
-    private static func normalizedCodexIdentity(_ identity: CodexIdentity, fallbackEmail: String?) -> CodexIdentity {
-        switch identity {
-        case .providerAccount:
-            identity
-        case let .emailOnly(normalizedEmail):
-            CodexIdentityResolver.resolve(accountId: nil, email: normalizedEmail)
-        case .unresolved:
-            CodexIdentityResolver.resolve(accountId: nil, email: fallbackEmail)
-        }
     }
 
     static func codexIdentityGuardKey(_ identity: CodexIdentity) -> String? {
