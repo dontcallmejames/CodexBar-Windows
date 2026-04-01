@@ -35,7 +35,9 @@ extension SettingsStore {
         set {
             self.defaultsState.debugDisableKeychainAccess = newValue
             self.userDefaults.set(newValue, forKey: "debugDisableKeychainAccess")
-            Self.sharedDefaults?.set(newValue, forKey: "debugDisableKeychainAccess")
+            if Self.shouldBridgeSharedDefaults(for: self.userDefaults) {
+                Self.sharedDefaults?.set(newValue, forKey: "debugDisableKeychainAccess")
+            }
             KeychainAccessGate.isDisabled = newValue
         }
     }

@@ -307,99 +307,146 @@ private enum CodexManagedRemoteHomeTestingOverride {
         }
     }
 
+    private final class Entry {
+        weak var settings: SettingsStore?
+        var overrideValue: Override
+
+        init(settings: SettingsStore, overrideValue: Override) {
+            self.settings = settings
+            self.overrideValue = overrideValue
+        }
+    }
+
     @MainActor
-    private static var values: [ObjectIdentifier: Override] = [:]
+    private static var values: [ObjectIdentifier: Entry] = [:]
+
+    @MainActor
+    private static func entry(for settings: SettingsStore) -> Entry? {
+        let key = ObjectIdentifier(settings)
+        guard let entry = self.values[key] else { return nil }
+        guard let storedSettings = entry.settings, storedSettings === settings else {
+            self.values.removeValue(forKey: key)
+            return nil
+        }
+        return entry
+    }
 
     @MainActor
     private static func store(_ override: Override, for key: ObjectIdentifier) {
         if override.isEmpty {
             self.values.removeValue(forKey: key)
         } else {
-            self.values[key] = override
+            if let entry = self.values[key], entry.settings != nil {
+                entry.overrideValue = override
+            }
         }
     }
 
     @MainActor
     static func account(for settings: SettingsStore) -> ManagedCodexAccount? {
-        self.values[ObjectIdentifier(settings)]?.account
+        self.entry(for: settings)?.overrideValue.account
     }
 
     @MainActor
     static func setAccount(_ account: ManagedCodexAccount?, for settings: SettingsStore) {
         let key = ObjectIdentifier(settings)
-        var override = self.values[key] ?? Override()
+        var override = self.entry(for: settings)?.overrideValue ?? Override()
         override.account = account
-        self.store(override, for: key)
+        if override.isEmpty {
+            self.values.removeValue(forKey: key)
+        } else {
+            self.values[key] = Entry(settings: settings, overrideValue: override)
+        }
     }
 
     @MainActor
     static func homePath(for settings: SettingsStore) -> String? {
-        self.values[ObjectIdentifier(settings)]?.homePath
+        self.entry(for: settings)?.overrideValue.homePath
     }
 
     @MainActor
     static func setHomePath(_ value: String?, for settings: SettingsStore) {
         let key = ObjectIdentifier(settings)
-        var override = self.values[key] ?? Override()
+        var override = self.entry(for: settings)?.overrideValue ?? Override()
         override.homePath = value
-        self.store(override, for: key)
+        if override.isEmpty {
+            self.values.removeValue(forKey: key)
+        } else {
+            self.values[key] = Entry(settings: settings, overrideValue: override)
+        }
     }
 
     @MainActor
     static func isUnreadable(for settings: SettingsStore) -> Bool {
-        self.values[ObjectIdentifier(settings)]?.unreadableStore == true
+        self.entry(for: settings)?.overrideValue.unreadableStore == true
     }
 
     @MainActor
     static func setUnreadable(_ value: Bool, for settings: SettingsStore) {
         let key = ObjectIdentifier(settings)
-        var override = self.values[key] ?? Override()
+        var override = self.entry(for: settings)?.overrideValue ?? Override()
         override.unreadableStore = value
-        self.store(override, for: key)
+        if override.isEmpty {
+            self.values.removeValue(forKey: key)
+        } else {
+            self.values[key] = Entry(settings: settings, overrideValue: override)
+        }
     }
 
     @MainActor
     static func liveSystemAccount(for settings: SettingsStore) -> ObservedSystemCodexAccount? {
-        self.values[ObjectIdentifier(settings)]?.liveSystemAccount
+        self.entry(for: settings)?.overrideValue.liveSystemAccount
     }
 
     @MainActor
     static func managedStoreURL(for settings: SettingsStore) -> URL? {
-        self.values[ObjectIdentifier(settings)]?.managedStoreURL
+        self.entry(for: settings)?.overrideValue.managedStoreURL
     }
 
     @MainActor
     static func setManagedStoreURL(_ value: URL?, for settings: SettingsStore) {
         let key = ObjectIdentifier(settings)
-        var override = self.values[key] ?? Override()
+        var override = self.entry(for: settings)?.overrideValue ?? Override()
         override.managedStoreURL = value
-        self.store(override, for: key)
+        if override.isEmpty {
+            self.values.removeValue(forKey: key)
+        } else {
+            self.values[key] = Entry(settings: settings, overrideValue: override)
+        }
     }
 
     @MainActor
     static func setLiveSystemAccount(_ account: ObservedSystemCodexAccount?, for settings: SettingsStore) {
         let key = ObjectIdentifier(settings)
-        var override = self.values[key] ?? Override()
+        var override = self.entry(for: settings)?.overrideValue ?? Override()
         override.liveSystemAccount = account
-        self.store(override, for: key)
+        if override.isEmpty {
+            self.values.removeValue(forKey: key)
+        } else {
+            self.values[key] = Entry(settings: settings, overrideValue: override)
+        }
     }
 
     @MainActor
     static func reconciliationEnvironment(for settings: SettingsStore) -> [String: String]? {
-        self.values[ObjectIdentifier(settings)]?.reconciliationEnvironment
+        self.entry(for: settings)?.overrideValue.reconciliationEnvironment
     }
 
     @MainActor
     static func setReconciliationEnvironment(_ environment: [String: String]?, for settings: SettingsStore) {
         let key = ObjectIdentifier(settings)
-        var override = self.values[key] ?? Override()
+        var override = self.entry(for: settings)?.overrideValue ?? Override()
         override.reconciliationEnvironment = environment
-        self.store(override, for: key)
+        if override.isEmpty {
+            self.values.removeValue(forKey: key)
+        } else {
+            self.values[key] = Entry(settings: settings, overrideValue: override)
+        }
     }
 
     @MainActor
     static func hasAnyOverride(for settings: SettingsStore) -> Bool {
-        self.values[ObjectIdentifier(settings)]?.isEmpty == false
+        self.entry(for: settings)?.overrideValue.isEmpty == false
     }
 }
 
