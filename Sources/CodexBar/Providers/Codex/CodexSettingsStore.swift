@@ -331,17 +331,6 @@ private enum CodexManagedRemoteHomeTestingOverride {
     }
 
     @MainActor
-    private static func store(_ override: Override, for key: ObjectIdentifier) {
-        if override.isEmpty {
-            self.values.removeValue(forKey: key)
-        } else {
-            if let entry = self.values[key], entry.settings != nil {
-                entry.overrideValue = override
-            }
-        }
-    }
-
-    @MainActor
     static func account(for settings: SettingsStore) -> ManagedCodexAccount? {
         self.entry(for: settings)?.overrideValue.account
     }
