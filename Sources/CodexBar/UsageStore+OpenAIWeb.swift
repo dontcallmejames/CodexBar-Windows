@@ -192,10 +192,11 @@ extension UsageStore {
             return
         }
 
-        let allowCurrentSnapshotFallback = expectedGuard?.source == .liveSystem && expectedGuard?.accountKey == nil
+        let allowCurrentSnapshotFallback = expectedGuard?.source == .liveSystem && expectedGuard?
+            .identity == .unresolved
         let targetEmail = self.currentCodexOpenAIWebTargetEmail(
             allowCurrentSnapshotFallback: allowCurrentSnapshotFallback,
-            allowLastKnownLiveFallback: expectedGuard?.accountKey != nil)
+            allowLastKnownLiveFallback: expectedGuard?.identity != .unresolved)
         let refreshKey = self.openAIDashboardRefreshKey(targetEmail: targetEmail, expectedGuard: expectedGuard)
         if !bypassCoalescing,
            let task = self.openAIDashboardRefreshTask,
@@ -352,7 +353,7 @@ extension UsageStore {
     {
         let targetEmail = self.currentCodexOpenAIWebTargetEmail(
             allowCurrentSnapshotFallback: context.allowCurrentSnapshotFallback,
-            allowLastKnownLiveFallback: context.expectedGuard?.accountKey != nil)
+            allowLastKnownLiveFallback: context.expectedGuard?.identity != .unresolved)
         var effectiveEmail = targetEmail
         let imported = await self.importOpenAIDashboardCookiesIfNeeded(targetEmail: targetEmail, force: true)
         latestCookieImportStatus = self.currentOpenAIDashboardCookieImportStatus()
@@ -409,7 +410,7 @@ extension UsageStore {
     {
         let targetEmail = self.currentCodexOpenAIWebTargetEmail(
             allowCurrentSnapshotFallback: context.allowCurrentSnapshotFallback,
-            allowLastKnownLiveFallback: context.expectedGuard?.accountKey != nil)
+            allowLastKnownLiveFallback: context.expectedGuard?.identity != .unresolved)
         var effectiveEmail = targetEmail
         let imported = await self.importOpenAIDashboardCookiesIfNeeded(targetEmail: targetEmail, force: true)
         latestCookieImportStatus = self.currentOpenAIDashboardCookieImportStatus()
@@ -531,14 +532,14 @@ extension UsageStore {
     }
 
     private func shouldApplyOpenAIWebNonSuccessResult(expectedGuard: CodexAccountScopedRefreshGuard) -> Bool {
-        if expectedGuard.accountKey != nil {
+        if expectedGuard.identity != .unresolved {
             return self.shouldApplyCodexScopedNonUsageResult(expectedGuard: expectedGuard)
         }
 
         guard case .liveSystem = expectedGuard.source else { return false }
         let currentGuard = self.currentCodexOpenAIWebRefreshGuard()
         guard currentGuard.source == expectedGuard.source else { return false }
-        guard currentGuard.accountKey == nil else { return false }
+        guard currentGuard.identity == .unresolved else { return false }
         return self.currentCodexOpenAIWebTargetEmail(
             allowCurrentSnapshotFallback: true,
             allowLastKnownLiveFallback: false) != nil
@@ -549,8 +550,9 @@ extension UsageStore {
         expectedGuard: CodexAccountScopedRefreshGuard?) -> String
     {
         let source = String(describing: expectedGuard?.source ?? self.settings.codexResolvedActiveSource)
-        let accountKey = Self.normalizeCodexAccountScopedKey(targetEmail ?? expectedGuard?.accountKey) ?? "unknown"
-        return "\(source)|\(accountKey)"
+        let identityKey = Self.codexIdentityGuardKey(expectedGuard?.identity ?? .unresolved) ?? "unresolved"
+        let accountKey = Self.normalizeCodexAccountScopedKey(targetEmail) ?? "unknown"
+        return "\(source)|\(identityKey)|\(accountKey)"
     }
 
     private func actionableOpenAIDashboardImportFailure(targetEmail: String?) -> String? {

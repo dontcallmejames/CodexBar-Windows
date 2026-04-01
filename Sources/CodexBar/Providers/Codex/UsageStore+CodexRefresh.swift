@@ -16,14 +16,18 @@ extension UsageStore {
     func refreshCreditsIfNeeded(minimumSnapshotUpdatedAt: Date? = nil) async {
         guard self.isEnabled(.codex) else { return }
         var expectedGuard = self.currentCodexAccountScopedRefreshGuard()
-        if expectedGuard.accountKey == nil,
+        if expectedGuard.identity == .unresolved,
            let minimumSnapshotUpdatedAt,
            case .liveSystem = expectedGuard.source
         {
             _ = await self.waitForCodexSnapshotOrRefreshCompletion(minimumUpdatedAt: minimumSnapshotUpdatedAt)
             expectedGuard = self.currentCodexAccountScopedRefreshGuard()
         }
-        guard expectedGuard.accountKey != nil else { return }
+        guard expectedGuard.identity != .unresolved,
+              expectedGuard.accountKey != nil
+        else {
+            return
+        }
         do {
             let credits = try await self.loadLatestCodexCredits()
             guard self.shouldApplyCodexScopedNonUsageResult(expectedGuard: expectedGuard) else { return }

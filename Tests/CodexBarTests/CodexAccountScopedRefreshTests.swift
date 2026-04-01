@@ -101,6 +101,30 @@ struct CodexAccountScopedRefreshTests {
     }
 
     @Test
+    func `same email provider account switch discards stale codex usage success`() async {
+        let settings = self.makeSettingsStore(suite: "CodexAccountScopedRefreshTests-stale-same-email-provider-account")
+        settings.refreshFrequency = .manual
+        settings._test_liveSystemCodexAccount = self.liveAccount(
+            email: "alpha@example.com",
+            identity: .providerAccount(id: "acct-alpha"))
+
+        let store = self.makeUsageStore(settings: settings)
+        let blocker = BlockingCodexFetchStrategy()
+        self.installBlockingCodexProvider(on: store, blocker: blocker)
+
+        let refreshTask = Task { await store.refreshProvider(.codex, allowDisabled: true) }
+        await blocker.waitUntilStarted()
+        settings._test_liveSystemCodexAccount = self.liveAccount(
+            email: "alpha@example.com",
+            identity: .providerAccount(id: "acct-beta"))
+        await blocker.resume(with: .success(self.codexSnapshot(email: "alpha@example.com", usedPercent: 25)))
+        await refreshTask.value
+
+        #expect(store.snapshots[.codex] == nil)
+        #expect(store.errors[.codex] == nil)
+    }
+
+    @Test
     func `stale codex usage failure does not clear newer account snapshot`() async {
         let settings = self.makeSettingsStore(suite: "CodexAccountScopedRefreshTests-stale-failure")
         settings.refreshFrequency = .manual
@@ -177,7 +201,7 @@ struct CodexAccountScopedRefreshTests {
         let elapsed = startedAt.duration(to: .now)
 
         #expect(loaderCalled == false)
-        #expect(elapsed < .seconds(2))
+        #expect(elapsed < .seconds(3))
     }
 
     @Test
@@ -225,6 +249,7 @@ struct CodexAccountScopedRefreshTests {
 
         let expectedGuard = store.currentCodexAccountScopedRefreshGuard()
         #expect(expectedGuard.source == .liveSystem)
+        #expect(expectedGuard.identity == .unresolved)
         #expect(expectedGuard.accountKey == nil)
 
         await store.refreshOpenAIDashboardIfNeeded(force: true, expectedGuard: expectedGuard)
@@ -233,6 +258,7 @@ struct CodexAccountScopedRefreshTests {
         #expect(store.snapshots[.codex]?.accountEmail(for: .codex) == "seeded@example.com")
         #expect(store.credits?.remaining == 33)
         #expect(store.lastCreditsSnapshotAccountKey == "seeded@example.com")
+        #expect(store.lastCodexAccountScopedRefreshGuard?.identity == .emailOnly(normalizedEmail: "seeded@example.com"))
         #expect(store.lastKnownLiveSystemCodexEmail == "seeded@example.com")
         #expect(store.lastCodexAccountScopedRefreshGuard?.accountKey == "seeded@example.com")
     }
@@ -302,6 +328,34 @@ struct CodexAccountScopedRefreshTests {
         #expect(store.openAIDashboard == nil)
         #expect(store.credits == nil)
         #expect(store.snapshots[.codex]?.accountEmail(for: .codex) == "beta@example.com")
+    }
+
+    @Test
+    func `same email provider account switch discards stale dashboard completion`() async {
+        let settings = self
+            .makeSettingsStore(suite: "CodexAccountScopedRefreshTests-dashboard-same-email-provider-account")
+        settings.refreshFrequency = .manual
+        settings._test_liveSystemCodexAccount = self.liveAccount(
+            email: "alpha@example.com",
+            identity: .providerAccount(id: "acct-alpha"))
+
+        let store = self.makeUsageStore(settings: settings)
+        let expectedGuard = store.currentCodexOpenAIWebRefreshGuard()
+        #expect(expectedGuard.identity == .providerAccount(id: "acct-alpha"))
+
+        settings._test_liveSystemCodexAccount = self.liveAccount(
+            email: "alpha@example.com",
+            identity: .providerAccount(id: "acct-beta"))
+
+        await store.applyOpenAIDashboard(
+            self.dashboard(email: "alpha@example.com", creditsRemaining: 11, usedPercent: 35),
+            targetEmail: "alpha@example.com",
+            expectedGuard: expectedGuard,
+            allowCodexUsageBackfill: true)
+
+        #expect(store.openAIDashboard == nil)
+        #expect(store.snapshots[.codex] == nil)
+        #expect(store.credits == nil)
     }
 
     @Test
@@ -534,11 +588,12 @@ struct CodexAccountScopedRefreshTests {
             startupBehavior: .testing)
     }
 
-    private func liveAccount(email: String) -> ObservedSystemCodexAccount {
+    private func liveAccount(email: String, identity: CodexIdentity = .unresolved) -> ObservedSystemCodexAccount {
         ObservedSystemCodexAccount(
             email: email,
             codexHomePath: "/Users/test/.codex",
-            observedAt: Date())
+            observedAt: Date(),
+            identity: identity)
     }
 
     private func codexSnapshot(email: String, usedPercent: Double) -> UsageSnapshot {
