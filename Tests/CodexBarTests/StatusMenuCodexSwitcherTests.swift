@@ -347,6 +347,101 @@ struct StatusMenuCodexSwitcherTests {
         #expect(state.hasUnreadableManagedAccountStore)
         #expect(state.canAddAccount == false)
     }
+
+    @Test
+    func `codex menu switcher can select managed row when same email rows split by identity`() throws {
+        self.disableMenuCardsForTesting()
+        let settings = self.makeSettings()
+        settings.statusChecksEnabled = false
+        settings.refreshFrequency = .manual
+        settings.mergeIcons = false
+        self.enableOnlyCodex(settings)
+
+        let managedHome = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+            isDirectory: true)
+        let managedAccountID = try #require(UUID(uuidString: "AAAAAAAA-BBBB-CCCC-DDDD-222222222222"))
+        let managedAccount = ManagedCodexAccount(
+            id: managedAccountID,
+            email: "same@example.com",
+            managedHomePath: managedHome.path,
+            createdAt: 1,
+            updatedAt: 2,
+            lastAuthenticatedAt: 2)
+        try Self.writeCodexAuthFile(
+            homeURL: managedHome,
+            email: "same@example.com",
+            plan: "pro",
+            accountID: "account-managed")
+        let storeURL = try self.makeManagedAccountStoreURL(accounts: [managedAccount])
+        defer {
+            settings._test_managedCodexAccountStoreURL = nil
+            settings._test_liveSystemCodexAccount = nil
+            try? FileManager.default.removeItem(at: storeURL)
+            try? FileManager.default.removeItem(at: managedHome)
+        }
+
+        settings._test_managedCodexAccountStoreURL = storeURL
+        settings._test_liveSystemCodexAccount = ObservedSystemCodexAccount(
+            email: "SAME@example.com",
+            codexHomePath: "/Users/test/.codex",
+            observedAt: Date(),
+            identity: .emailOnly(normalizedEmail: "same@example.com"))
+        settings.codexActiveSource = .liveSystem
+
+        let projection = settings.codexVisibleAccountProjection
+        #expect(projection.visibleAccounts.count == 2)
+        let managedVisibleAccount = try #require(projection.visibleAccounts
+            .first { $0.storedAccountID == managedAccountID })
+
+        #expect(settings.selectCodexVisibleAccount(id: managedVisibleAccount.id))
+        #expect(settings.codexActiveSource == .managedAccount(id: managedAccountID))
+    }
+}
+
+extension StatusMenuCodexSwitcherTests {
+    private static func writeCodexAuthFile(
+        homeURL: URL,
+        email: String,
+        plan: String,
+        accountID: String? = nil) throws
+    {
+        try FileManager.default.createDirectory(at: homeURL, withIntermediateDirectories: true)
+        var tokens: [String: Any] = [
+            "accessToken": "access-token",
+            "refreshToken": "refresh-token",
+            "idToken": Self.fakeJWT(email: email, plan: plan, accountID: accountID),
+        ]
+        if let accountID {
+            tokens["account_id"] = accountID
+        }
+        let auth = ["tokens": tokens]
+        let data = try JSONSerialization.data(withJSONObject: auth)
+        try data.write(to: homeURL.appendingPathComponent("auth.json"))
+    }
+
+    private static func fakeJWT(email: String, plan: String, accountID: String? = nil) -> String {
+        let header = (try? JSONSerialization.data(withJSONObject: ["alg": "none"])) ?? Data()
+        var payloadObject: [String: Any] = [
+            "email": email,
+            "chatgpt_plan_type": plan,
+        ]
+        if let accountID {
+            payloadObject["https://api.openai.com/auth"] = [
+                "chatgpt_account_id": accountID,
+            ]
+        }
+        let payload = (try? JSONSerialization.data(withJSONObject: payloadObject)) ?? Data()
+
+        func base64URL(_ data: Data) -> String {
+            data.base64EncodedString()
+                .replacingOccurrences(of: "=", with: "")
+                .replacingOccurrences(of: "+", with: "-")
+                .replacingOccurrences(of: "/", with: "_")
+        }
+
+        return "\(base64URL(header)).\(base64URL(payload))."
+    }
 }
 
 private struct StatusMenuTestCodexFetchStrategy: ProviderFetchStrategy {

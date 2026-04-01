@@ -222,8 +222,11 @@ extension SettingsStore {
     }
 
     func selectAuthenticatedManagedCodexAccount(_ account: ManagedCodexAccount) {
-        let visibleAccountID = Self.codexVisibleAccountID(for: account.email)
-        if self.selectCodexVisibleAccount(id: visibleAccountID) {
+        if let visibleAccountID = self.codexVisibleAccountProjection.visibleAccounts
+            .first(where: { $0.storedAccountID == account.id })?
+            .id,
+            self.selectCodexVisibleAccount(id: visibleAccountID)
+        {
             return
         }
 
@@ -283,10 +286,6 @@ extension SettingsStore {
         }
         #endif
         return ProcessInfo.processInfo.environment
-    }
-
-    private static func codexVisibleAccountID(for email: String) -> String {
-        email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     }
 }
 

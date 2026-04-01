@@ -43,7 +43,10 @@ struct CodexAccountReconciliationTests {
         #expect(snapshot.storedAccounts.map(\.email) == [managed.email])
         #expect(snapshot.activeStoredAccount?.id == managed.id)
         #expect(snapshot.activeStoredAccount?.email == managed.email)
-        #expect(snapshot.liveSystemAccount == live)
+        #expect(snapshot.liveSystemAccount?.email == live.email)
+        #expect(snapshot.liveSystemAccount?.codexHomePath == live.codexHomePath)
+        #expect(snapshot.liveSystemAccount?.observedAt == live.observedAt)
+        #expect(snapshot.liveSystemAccount?.identity == .emailOnly(normalizedEmail: "system@example.com"))
         #expect(snapshot.matchingStoredAccountForLiveSystemAccount == nil)
         #expect(snapshot.activeSource == .managedAccount(id: managed.id))
         #expect(snapshot.hasUnreadableAddedAccountStore == false)
@@ -337,6 +340,51 @@ struct CodexAccountReconciliationTests {
     }
 
     @Test
+    func `provider account does not collapse with email only live account on same email`() throws {
+        let managedHome = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+            isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: managedHome) }
+        try Self.writeCodexAuthFile(
+            homeURL: managedHome,
+            email: "user@example.com",
+            plan: "pro",
+            accountID: "account-managed")
+
+        let stored = ManagedCodexAccount(
+            id: UUID(),
+            email: "user@example.com",
+            managedHomePath: managedHome.path,
+            createdAt: 1,
+            updatedAt: 2,
+            lastAuthenticatedAt: 3)
+        let accounts = ManagedCodexAccountSet(version: 1, accounts: [stored])
+        let live = ObservedSystemCodexAccount(
+            email: "USER@example.com",
+            codexHomePath: "/Users/test/.codex",
+            observedAt: Date(),
+            identity: .emailOnly(normalizedEmail: "user@example.com"))
+        let reconciler = DefaultCodexAccountReconciler(
+            storeLoader: { accounts },
+            systemObserver: StubSystemObserver(account: live),
+            activeSource: .managedAccount(id: stored.id))
+
+        let snapshot = reconciler.loadSnapshot(environment: [:])
+        let resolution = CodexActiveSourceResolver.resolve(from: snapshot)
+        let projection = CodexVisibleAccountProjection.make(from: snapshot)
+
+        #expect(snapshot.matchingStoredAccountForLiveSystemAccount == nil)
+        #expect(resolution.resolvedSource == .managedAccount(id: stored.id))
+        #expect(projection.visibleAccounts.count == 2)
+        #expect(Set(projection.visibleAccounts.map(\.email)) == Set(["user@example.com"]))
+        #expect(Set(projection.visibleAccounts.map(\.id)).count == 2)
+        #expect(projection.activeVisibleAccountID == projection.visibleAccounts
+            .first { $0.selectionSource == .managedAccount(id: stored.id) }?.id)
+        #expect(projection.liveVisibleAccountID == projection.visibleAccounts
+            .first { $0.selectionSource == .liveSystem }?.id)
+    }
+
+    @Test
     func `missing managed source resolves to live system when live account exists`() {
         let live = ObservedSystemCodexAccount(
             email: "live@example.com",
@@ -621,6 +669,61 @@ struct CodexAccountReconciliationTests {
         #expect(settings.codexActiveSource == .liveSystem)
         #expect(settings.codexResolvedActiveSource == .liveSystem)
     }
+
+    @Test
+    @MainActor
+    func `selecting authenticated managed account keeps managed source for split identity rows`() throws {
+        let suite = "CodexAccountReconciliationTests-select-authenticated-managed-split"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defaults.removePersistentDomain(forName: suite)
+        let settings = SettingsStore(
+            userDefaults: defaults,
+            configStore: testConfigStore(suiteName: suite),
+            zaiTokenStore: NoopZaiTokenStore(),
+            syntheticTokenStore: NoopSyntheticTokenStore())
+        let managedHome = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString,
+            isDirectory: true)
+        let storeURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer {
+            settings._test_managedCodexAccountStoreURL = nil
+            settings._test_liveSystemCodexAccount = nil
+            try? FileManager.default.removeItem(at: managedHome)
+            try? FileManager.default.removeItem(at: storeURL)
+        }
+
+        try Self.writeCodexAuthFile(
+            homeURL: managedHome,
+            email: "same@example.com",
+            plan: "pro",
+            accountID: "account-managed")
+        let managed = ManagedCodexAccount(
+            id: UUID(),
+            email: "same@example.com",
+            managedHomePath: managedHome.path,
+            createdAt: 1,
+            updatedAt: 2,
+            lastAuthenticatedAt: 3)
+        try Self.writeManagedCodexStore(
+            ManagedCodexAccountSet(version: FileManagedCodexAccountStore.currentVersion, accounts: [managed]),
+            to: storeURL)
+
+        settings._test_managedCodexAccountStoreURL = storeURL
+        settings._test_liveSystemCodexAccount = ObservedSystemCodexAccount(
+            email: "SAME@example.com",
+            codexHomePath: "/Users/test/.codex",
+            observedAt: Date(),
+            identity: .emailOnly(normalizedEmail: "same@example.com"))
+        settings.codexActiveSource = .liveSystem
+
+        let projection = settings.codexVisibleAccountProjection
+        #expect(projection.visibleAccounts.count == 2)
+
+        settings.selectAuthenticatedManagedCodexAccount(managed)
+
+        #expect(settings.codexActiveSource == .managedAccount(id: managed.id))
+        #expect(settings.codexResolvedActiveSource == .managedAccount(id: managed.id))
+    }
 }
 
 private struct StubSystemObserver: CodexSystemAccountObserving {
@@ -637,25 +740,38 @@ extension CodexAccountReconciliationTests {
         try store.storeAccounts(accounts)
     }
 
-    private static func writeCodexAuthFile(homeURL: URL, email: String, plan: String) throws {
+    private static func writeCodexAuthFile(
+        homeURL: URL,
+        email: String,
+        plan: String,
+        accountID: String? = nil) throws
+    {
         try FileManager.default.createDirectory(at: homeURL, withIntermediateDirectories: true)
-        let auth = [
-            "tokens": [
-                "accessToken": "access-token",
-                "refreshToken": "refresh-token",
-                "idToken": Self.fakeJWT(email: email, plan: plan),
-            ],
+        var tokens: [String: Any] = [
+            "accessToken": "access-token",
+            "refreshToken": "refresh-token",
+            "idToken": Self.fakeJWT(email: email, plan: plan, accountID: accountID),
         ]
+        if let accountID {
+            tokens["account_id"] = accountID
+        }
+        let auth = ["tokens": tokens]
         let data = try JSONSerialization.data(withJSONObject: auth)
         try data.write(to: homeURL.appendingPathComponent("auth.json"))
     }
 
-    private static func fakeJWT(email: String, plan: String) -> String {
+    private static func fakeJWT(email: String, plan: String, accountID: String? = nil) -> String {
         let header = (try? JSONSerialization.data(withJSONObject: ["alg": "none"])) ?? Data()
-        let payload = (try? JSONSerialization.data(withJSONObject: [
+        var payloadObject: [String: Any] = [
             "email": email,
             "chatgpt_plan_type": plan,
-        ])) ?? Data()
+        ]
+        if let accountID {
+            payloadObject["https://api.openai.com/auth"] = [
+                "chatgpt_account_id": accountID,
+            ]
+        }
+        let payload = (try? JSONSerialization.data(withJSONObject: payloadObject)) ?? Data()
 
         func base64URL(_ data: Data) -> String {
             data.base64EncodedString()
