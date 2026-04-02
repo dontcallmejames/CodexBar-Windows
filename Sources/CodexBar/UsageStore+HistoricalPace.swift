@@ -66,7 +66,7 @@ extension UsageStore {
             self.setCodexHistoricalDataset(nil, accountKey: nil)
             return
         }
-        let ownership = self.codexHistoricalOwnershipContext(dashboard: self.openAIDashboard)
+        let ownership = self.codexHistoricalOwnershipContext()
         let dataset = await self.historicalUsageHistoryStore.loadCodexDataset(
             canonicalAccountKey: ownership.canonicalKey,
             canonicalEmailHashKey: ownership.canonicalEmailHashKey,
@@ -74,18 +74,28 @@ extension UsageStore {
             hasAdjacentMultiAccountVeto: ownership.hasAdjacentMultiAccountVeto)
         self.setCodexHistoricalDataset(dataset, accountKey: ownership.canonicalKey)
         if let dashboard = self.openAIDashboard {
-            self.backfillCodexHistoricalFromDashboardIfNeeded(dashboard)
+            let authority = self.evaluateCodexDashboardAuthority(
+                dashboard: dashboard,
+                sourceKind: .liveWeb,
+                routingTargetEmail: self.lastOpenAIDashboardTargetEmail)
+            self.backfillCodexHistoricalFromDashboardIfNeeded(
+                dashboard,
+                authorityDecision: authority.decision,
+                attachedAccountEmail: self.codexDashboardAttachmentEmail(from: authority.input))
         }
     }
 
-    func backfillCodexHistoricalFromDashboardIfNeeded(_ dashboard: OpenAIDashboardSnapshot) {
+    func backfillCodexHistoricalFromDashboardIfNeeded(
+        _ dashboard: OpenAIDashboardSnapshot,
+        authorityDecision: CodexDashboardAuthorityDecision,
+        attachedAccountEmail: String?)
+    {
         guard self.settings.historicalTrackingEnabled else { return }
+        guard authorityDecision.allowedEffects.contains(.historicalBackfill) else { return }
         guard !dashboard.usageBreakdown.isEmpty else { return }
 
         let codexSnapshot = self.snapshots[.codex]
-        let ownership = self.codexHistoricalOwnershipContext(
-            preferredEmail: codexSnapshot?.accountEmail(for: .codex),
-            dashboard: dashboard)
+        let ownership = self.codexHistoricalOwnershipContext(preferredEmail: attachedAccountEmail)
         let referenceWindow: RateWindow
         let calibrationAt: Date
         if let dashboardWeekly = dashboard.secondaryLimit {
@@ -126,8 +136,7 @@ extension UsageStore {
     }
 
     private func codexHistoricalOwnershipContext(
-        preferredEmail: String? = nil,
-        dashboard: OpenAIDashboardSnapshot? = nil) -> CodexHistoricalOwnershipContext
+        preferredEmail: String? = nil) -> CodexHistoricalOwnershipContext
     {
         let resolvedIdentity = self.currentCodexRuntimeIdentity(
             source: self.settings.codexResolvedActiveSource,
@@ -139,9 +148,7 @@ extension UsageStore {
         let normalizedEmail = CodexIdentityResolver.normalizeEmail(
             preferredEmail ??
                 activeSourceEmail ??
-                self.snapshots[.codex]?.accountEmail(for: .codex) ??
-                dashboard?.signedInEmail ??
-                self.codexAccountEmailForOpenAIDashboard())
+                self.snapshots[.codex]?.accountEmail(for: .codex))
         let canonicalIdentity: CodexIdentity = switch resolvedIdentity {
         case .unresolved:
             if let normalizedEmail {

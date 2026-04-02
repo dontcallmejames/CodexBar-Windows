@@ -71,6 +71,12 @@ extension UsageStore {
 @MainActor
 @Observable
 final class UsageStore {
+    enum CodexCreditsSource: Sendable {
+        case none
+        case api
+        case dashboardWeb
+    }
+
     enum StartupBehavior {
         case automatic
         case full
@@ -120,6 +126,7 @@ final class UsageStore {
     var historicalPaceRevision: Int = 0
     @ObservationIgnored var lastCreditsSnapshot: CreditsSnapshot?
     @ObservationIgnored var lastCreditsSnapshotAccountKey: String?
+    @ObservationIgnored var lastCreditsSource: CodexCreditsSource = .none
     @ObservationIgnored var creditsFailureStreak: Int = 0
     @ObservationIgnored var lastOpenAIDashboardSnapshot: OpenAIDashboardSnapshot?
     @ObservationIgnored var lastOpenAIDashboardTargetEmail: String?
