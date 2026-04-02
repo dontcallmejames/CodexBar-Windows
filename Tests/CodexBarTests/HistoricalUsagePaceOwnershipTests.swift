@@ -386,7 +386,7 @@ extension HistoricalUsagePaceTests {
 
     @MainActor
     @Test
-    func `refresh historical dataset prefers active account email over stale dashboard email`() async throws {
+    func `refresh historical dataset ignores stale dashboard signals and uses active account ownership`() async throws {
         let historyFileURL = Self.makeTempURL()
         let historyStore = HistoricalUsageHistoryStore(fileURL: historyFileURL)
         let staleEmail = "old@example.com"
@@ -414,6 +414,7 @@ extension HistoricalUsagePaceTests {
             creditsRemaining: nil,
             accountPlan: nil,
             updatedAt: staleResetsAt)
+        store.lastOpenAIDashboardTargetEmail = staleEmail
         defer { store.settings._test_liveSystemCodexAccount = nil }
 
         await store.refreshHistoricalDatasetIfNeeded()
