@@ -299,9 +299,10 @@ struct CodexAccountReconciliationTests {
         let reconciler = DefaultCodexAccountReconciler(
             storeLoader: { accounts },
             systemObserver: StubSystemObserver(account: live),
-            activeSource: .managedAccount(id: stored.id))
+            activeSource: .managedAccount(id: stored.id),
+            baseEnvironment: [:])
 
-        let projection = reconciler.loadVisibleAccounts(environment: [:])
+        let projection = reconciler.loadVisibleAccounts()
 
         #expect(projection.visibleAccounts.count == 1)
         #expect(projection.activeVisibleAccountID == "user@example.com")
@@ -367,9 +368,10 @@ struct CodexAccountReconciliationTests {
         let reconciler = DefaultCodexAccountReconciler(
             storeLoader: { accounts },
             systemObserver: StubSystemObserver(account: live),
-            activeSource: .managedAccount(id: stored.id))
+            activeSource: .managedAccount(id: stored.id),
+            baseEnvironment: [:])
 
-        let snapshot = reconciler.loadSnapshot(environment: [:])
+        let snapshot = reconciler.loadSnapshot()
         let resolution = CodexActiveSourceResolver.resolve(from: snapshot)
         let projection = CodexVisibleAccountProjection.make(from: snapshot)
 
@@ -474,9 +476,10 @@ struct CodexAccountReconciliationTests {
         let reconciler = DefaultCodexAccountReconciler(
             storeLoader: { accounts },
             systemObserver: StubSystemObserver(account: live),
-            activeSource: .managedAccount(id: active.id))
+            activeSource: .managedAccount(id: active.id),
+            baseEnvironment: [:])
 
-        let projection = reconciler.loadVisibleAccounts(environment: [:])
+        let projection = reconciler.loadVisibleAccounts()
 
         #expect(Set(projection.visibleAccounts.map(\.email)) == ["managed@example.com", "system@example.com"])
         #expect(projection.activeVisibleAccountID == "managed@example.com")
@@ -509,9 +512,10 @@ struct CodexAccountReconciliationTests {
         let reconciler = DefaultCodexAccountReconciler(
             storeLoader: { accounts },
             systemObserver: StubSystemObserver(account: live),
-            activeSource: .managedAccount(id: active.id))
+            activeSource: .managedAccount(id: active.id),
+            baseEnvironment: [:])
 
-        let projection = reconciler.loadVisibleAccounts(environment: [:])
+        let projection = reconciler.loadVisibleAccounts()
 
         #expect(Set(projection.visibleAccounts.map(\.email)) == [
             "active@example.com",
@@ -530,9 +534,10 @@ struct CodexAccountReconciliationTests {
             observedAt: Date())
         let reconciler = DefaultCodexAccountReconciler(
             storeLoader: { throw FileManagedCodexAccountStoreError.unsupportedVersion(999) },
-            systemObserver: StubSystemObserver(account: live))
+            systemObserver: StubSystemObserver(account: live),
+            baseEnvironment: [:])
 
-        let projection = reconciler.loadVisibleAccounts(environment: [:])
+        let projection = reconciler.loadVisibleAccounts()
 
         #expect(projection.visibleAccounts.map(\.email) == ["live@example.com"])
         #expect(projection.activeVisibleAccountID == "live@example.com")
@@ -549,9 +554,10 @@ struct CodexAccountReconciliationTests {
             observedAt: Date())
         let reconciler = DefaultCodexAccountReconciler(
             storeLoader: { accounts },
-            systemObserver: StubSystemObserver(account: live))
+            systemObserver: StubSystemObserver(account: live),
+            baseEnvironment: [:])
 
-        let projection = reconciler.loadVisibleAccounts(environment: [:])
+        let projection = reconciler.loadVisibleAccounts()
 
         #expect(projection.visibleAccounts.isEmpty)
         #expect(projection.activeVisibleAccountID == nil)
