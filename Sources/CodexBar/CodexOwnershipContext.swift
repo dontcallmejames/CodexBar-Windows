@@ -46,9 +46,11 @@ extension UsageStore {
         case .providerAccount, .unresolved:
             normalizedEmail
         }
-        let normalizedDashboardSnapshot = includeDashboardFallback
-            ? self.openAIDashboard?.toUsageSnapshot(provider: .codex, accountEmail: normalizedEmail)
+        let attachedDashboardSnapshot = includeDashboardFallback && self.openAIDashboardAttachmentAuthorized
+            ? self.openAIDashboard
             : nil
+        let normalizedDashboardSnapshot = attachedDashboardSnapshot?
+            .toUsageSnapshot(provider: .codex, accountEmail: normalizedEmail)
         let currentWeeklyResetAt = snapshot?.secondary?.resetsAt
             ?? self.snapshots[.codex]?.secondary?.resetsAt
             ?? normalizedDashboardSnapshot?.secondary?.resetsAt

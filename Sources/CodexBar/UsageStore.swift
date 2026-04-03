@@ -128,7 +128,9 @@ final class UsageStore {
     @ObservationIgnored var lastCreditsSnapshotAccountKey: String?
     @ObservationIgnored var lastCreditsSource: CodexCreditsSource = .none
     @ObservationIgnored var creditsFailureStreak: Int = 0
+    @ObservationIgnored var openAIDashboardAttachmentAuthorized: Bool = false
     @ObservationIgnored var lastOpenAIDashboardSnapshot: OpenAIDashboardSnapshot?
+    @ObservationIgnored var lastOpenAIDashboardAttachmentAuthorized: Bool = false
     @ObservationIgnored var lastOpenAIDashboardTargetEmail: String?
     @ObservationIgnored var lastOpenAIDashboardCookieImportAttemptAt: Date?
     @ObservationIgnored var lastOpenAIDashboardCookieImportEmail: String?
