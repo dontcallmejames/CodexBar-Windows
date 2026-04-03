@@ -34,7 +34,7 @@ extension UsageStore {
         phaseDidChange?(.credits)
 
         if self.settings.codexCookieSource.isEnabled {
-        let expectedGuard = self.currentCodexOpenAIWebRefreshGuard()
+            let expectedGuard = self.currentCodexOpenAIWebRefreshGuard()
             await self.refreshOpenAIDashboardIfNeeded(
                 force: true,
                 expectedGuard: expectedGuard,
@@ -210,20 +210,7 @@ extension UsageStore {
     }
 
     func codexDashboardKnownOwnerCandidates() -> [CodexDashboardKnownOwnerCandidate] {
-        let snapshot = self.settings.codexAccountReconciliationSnapshot
-        var candidates = snapshot.storedAccounts.map { account in
-            CodexDashboardKnownOwnerCandidate(
-                identity: snapshot.runtimeIdentity(for: account),
-                normalizedEmail: CodexIdentityResolver.normalizeEmail(snapshot.runtimeEmail(for: account)))
-        }
-
-        if let liveSystemAccount = snapshot.liveSystemAccount {
-            candidates.append(CodexDashboardKnownOwnerCandidate(
-                identity: snapshot.runtimeIdentity(for: liveSystemAccount),
-                normalizedEmail: CodexIdentityResolver.normalizeEmail(liveSystemAccount.email)))
-        }
-
-        return candidates
+        CodexKnownOwnerCatalog.candidates(from: self.settings.codexAccountReconciliationSnapshot)
     }
 
     func trustedCurrentCodexUsageEmailForDashboardAuthority() -> String? {
