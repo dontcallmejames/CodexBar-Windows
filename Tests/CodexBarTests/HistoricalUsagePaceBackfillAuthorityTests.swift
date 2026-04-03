@@ -140,6 +140,61 @@ extension HistoricalUsagePaceTests {
 
     @MainActor
     @Test
+    func `backfill uses normalized dashboard weekly when only primary window is weekly`() async throws {
+        let store = try Self.makeUsageStoreForBackfillTests(
+            suite: "HistoricalUsagePaceTests-backfill-normalized-dashboard-weekly",
+            historyFileURL: Self.makeTempURL())
+        store._setCodexHistoricalDatasetForTesting(nil)
+
+        let snapshotNow = Date(timeIntervalSince1970: 1_770_000_000)
+        let seededSnapshot = UsageSnapshot(
+            primary: RateWindow(
+                usedPercent: 22,
+                windowMinutes: 300,
+                resetsAt: snapshotNow.addingTimeInterval(2 * 60 * 60),
+                resetDescription: nil),
+            secondary: nil,
+            tertiary: nil,
+            updatedAt: snapshotNow,
+            identity: nil)
+        store._setSnapshotForTesting(seededSnapshot, provider: .codex)
+
+        let dashboard = OpenAIDashboardSnapshot(
+            signedInEmail: nil,
+            codeReviewRemainingPercent: nil,
+            creditEvents: [],
+            dailyBreakdown: [],
+            usageBreakdown: Self.syntheticBreakdown(endingAt: snapshotNow, days: 35, dailyCredits: 10),
+            creditsPurchaseURL: nil,
+            primaryLimit: RateWindow(
+                usedPercent: 50,
+                windowMinutes: 10080,
+                resetsAt: snapshotNow.addingTimeInterval(2 * 24 * 60 * 60),
+                resetDescription: nil),
+            secondaryLimit: nil,
+            creditsRemaining: nil,
+            accountPlan: nil,
+            updatedAt: snapshotNow)
+        store.backfillCodexHistoricalFromDashboardIfNeeded(
+            dashboard,
+            authorityDecision: CodexDashboardAuthorityDecision(
+                disposition: .attach,
+                reason: .trustedEmailMatchNoCompetingOwner,
+                allowedEffects: [.historicalBackfill],
+                cleanup: []),
+            attachedAccountEmail: "attached@example.com")
+
+        for _ in 0..<40 {
+            if (store.codexHistoricalDataset?.weeks.count ?? 0) >= 3 {
+                break
+            }
+            try await Task.sleep(for: .milliseconds(50))
+        }
+        #expect((store.codexHistoricalDataset?.weeks.count ?? 0) >= 3)
+    }
+
+    @MainActor
+    @Test
     func `backfill uses attached account email from authority instead of dashboard email`() async throws {
         let store = try Self.makeUsageStoreForBackfillTests(
             suite: "HistoricalUsagePaceTests-backfill-attached-email",

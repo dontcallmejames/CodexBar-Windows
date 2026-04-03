@@ -98,7 +98,13 @@ extension UsageStore {
         let ownership = self.codexHistoricalOwnershipContext(preferredEmail: attachedAccountEmail)
         let referenceWindow: RateWindow
         let calibrationAt: Date
-        if let dashboardWeekly = dashboard.secondaryLimit {
+        if let dashboardWeekly = CodexReconciledState.fromAttachedDashboard(
+            snapshot: dashboard,
+            provider: .codex,
+            accountEmail: attachedAccountEmail,
+            accountPlan: nil)?
+            .weekly
+        {
             referenceWindow = dashboardWeekly
             calibrationAt = dashboard.updatedAt
         } else if let codexSnapshot, let snapshotWeekly = codexSnapshot.secondary {

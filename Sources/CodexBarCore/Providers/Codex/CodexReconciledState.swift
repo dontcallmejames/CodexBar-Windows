@@ -32,16 +32,10 @@ public struct CodexReconciledState: Sendable {
         credentials: CodexOAuthCredentials,
         updatedAt: Date = Date()) -> CodexReconciledState?
     {
-        let identity = ProviderIdentitySnapshot(
-            providerID: .codex,
-            accountEmail: Self.resolveAccountEmail(from: credentials),
-            accountOrganization: nil,
-            loginMethod: Self.resolvePlan(response: response, credentials: credentials))
-
-        return self.make(
-            primary: Self.makeWindow(response.rateLimit?.primaryWindow),
-            secondary: Self.makeWindow(response.rateLimit?.secondaryWindow),
-            identity: identity,
+        self.make(
+            primary: self.makeWindow(response.rateLimit?.primaryWindow),
+            secondary: self.makeWindow(response.rateLimit?.secondaryWindow),
+            identity: self.oauthIdentity(response: response, credentials: credentials),
             updatedAt: updatedAt)
     }
 
@@ -73,6 +67,17 @@ public struct CodexReconciledState: Sendable {
             tertiary: nil,
             updatedAt: self.updatedAt,
             identity: self.identity)
+    }
+
+    public static func oauthIdentity(
+        response: CodexUsageResponse,
+        credentials: CodexOAuthCredentials) -> ProviderIdentitySnapshot
+    {
+        ProviderIdentitySnapshot(
+            providerID: .codex,
+            accountEmail: self.resolveAccountEmail(from: credentials),
+            accountOrganization: nil,
+            loginMethod: self.resolvePlan(response: response, credentials: credentials))
     }
 
     private static func make(
