@@ -139,12 +139,41 @@ extension CodexAccountScopedRefreshTests {
         }
     }
 
+    func installFailingCodexProvider(on store: UsageStore, error: Error) {
+        let baseSpec = store.providerSpecs[.codex]!
+        store.providerSpecs[.codex] = Self.makeThrowingCodexProviderSpec(baseSpec: baseSpec) {
+            throw error
+        }
+    }
+
     static func makeCodexProviderSpec(
         baseSpec: ProviderSpec,
         loader: @escaping @Sendable () async throws -> UsageSnapshot) -> ProviderSpec
     {
         let baseDescriptor = baseSpec.descriptor
         let strategy = TestCodexFetchStrategy(loader: loader)
+        let descriptor = ProviderDescriptor(
+            id: .codex,
+            metadata: baseDescriptor.metadata,
+            branding: baseDescriptor.branding,
+            tokenCost: baseDescriptor.tokenCost,
+            fetchPlan: ProviderFetchPlan(
+                sourceModes: [.auto, .cli, .oauth],
+                pipeline: ProviderFetchPipeline { _ in [strategy] }),
+            cli: baseDescriptor.cli)
+        return ProviderSpec(
+            style: baseSpec.style,
+            isEnabled: baseSpec.isEnabled,
+            descriptor: descriptor,
+            makeFetchContext: baseSpec.makeFetchContext)
+    }
+
+    static func makeThrowingCodexProviderSpec(
+        baseSpec: ProviderSpec,
+        loader: @escaping @Sendable () async throws -> UsageSnapshot) -> ProviderSpec
+    {
+        let baseDescriptor = baseSpec.descriptor
+        let strategy = ThrowingTestCodexFetchStrategy(loader: loader)
         let descriptor = ProviderDescriptor(
             id: .codex,
             metadata: baseDescriptor.metadata,
@@ -188,6 +217,31 @@ struct TestCodexFetchStrategy: ProviderFetchStrategy {
     func fetch(_: ProviderFetchContext) async throws -> ProviderFetchResult {
         let snapshot = try await self.loader()
         return self.makeResult(usage: snapshot, sourceLabel: "test-codex")
+    }
+
+    func shouldFallback(on _: Error, context _: ProviderFetchContext) -> Bool {
+        false
+    }
+}
+
+struct ThrowingTestCodexFetchStrategy: ProviderFetchStrategy {
+    let loader: @Sendable () async throws -> UsageSnapshot
+
+    var id: String {
+        "test-codex-throwing"
+    }
+
+    var kind: ProviderFetchKind {
+        .cli
+    }
+
+    func isAvailable(_: ProviderFetchContext) async -> Bool {
+        true
+    }
+
+    func fetch(_: ProviderFetchContext) async throws -> ProviderFetchResult {
+        let snapshot = try await self.loader()
+        return self.makeResult(usage: snapshot, sourceLabel: "test-codex-throwing")
     }
 
     func shouldFallback(on _: Error, context _: ProviderFetchContext) -> Bool {
