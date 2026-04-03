@@ -149,33 +149,11 @@ struct CodexOAuthFetchStrategy: ProviderFetchStrategy {
             accountId: credentials.accountId,
             env: context.env)
         let updatedAt = Date()
-        let credits = Self.mapCredits(usage.credits)
-
-        guard let reconciled = CodexReconciledState.fromOAuth(
-            response: usage,
+        return try Self.makeResult(
+            usageResponse: usage,
             credentials: credentials,
-            updatedAt: updatedAt)
-        else {
-            guard let credits else {
-                throw UsageError.noRateLimitsFound
-            }
-            return self.makeResult(
-                usage: UsageSnapshot(
-                    primary: nil,
-                    secondary: nil,
-                    tertiary: nil,
-                    updatedAt: updatedAt,
-                    identity: CodexReconciledState.oauthIdentity(
-                        response: usage,
-                        credentials: credentials)),
-                credits: credits,
-                sourceLabel: "oauth")
-        }
-
-        return self.makeResult(
-            usage: reconciled.toUsageSnapshot(),
-            credits: credits,
-            sourceLabel: "oauth")
+            updatedAt: updatedAt,
+            sourceMode: context.sourceMode)
     }
 
     func shouldFallback(on error: Error, context: ProviderFetchContext) -> Bool {
@@ -187,25 +165,17 @@ struct CodexOAuthFetchStrategy: ProviderFetchStrategy {
         guard let credits, let balance = credits.balance else { return nil }
         return CreditsSnapshot(remaining: balance, events: [], updatedAt: Date())
     }
-}
 
-#if DEBUG
-extension CodexOAuthFetchStrategy {
-    static func _mapUsageForTesting(_ data: Data, credentials: CodexOAuthCredentials) throws -> UsageSnapshot? {
-        let usage = try JSONDecoder().decode(CodexUsageResponse.self, from: data)
-        return CodexReconciledState.fromOAuth(response: usage, credentials: credentials)?.toUsageSnapshot()
-    }
-
-    static func _mapResultForTesting(
-        _ data: Data,
-        credentials: CodexOAuthCredentials) throws -> ProviderFetchResult
+    private static func makeResult(
+        usageResponse: CodexUsageResponse,
+        credentials: CodexOAuthCredentials,
+        updatedAt: Date,
+        sourceMode: ProviderSourceMode) throws -> ProviderFetchResult
     {
-        let usage = try JSONDecoder().decode(CodexUsageResponse.self, from: data)
-        let updatedAt = Date()
-        let credits = Self.mapCredits(usage.credits)
+        let credits = Self.mapCredits(usageResponse.credits)
 
         if let reconciled = CodexReconciledState.fromOAuth(
-            response: usage,
+            response: usageResponse,
             credentials: credentials,
             updatedAt: updatedAt)
         {
@@ -219,6 +189,10 @@ extension CodexOAuthFetchStrategy {
             throw UsageError.noRateLimitsFound
         }
 
+        if sourceMode == .auto {
+            throw UsageError.noRateLimitsFound
+        }
+
         return CodexOAuthFetchStrategy().makeResult(
             usage: UsageSnapshot(
                 primary: nil,
@@ -226,10 +200,31 @@ extension CodexOAuthFetchStrategy {
                 tertiary: nil,
                 updatedAt: updatedAt,
                 identity: CodexReconciledState.oauthIdentity(
-                    response: usage,
+                    response: usageResponse,
                     credentials: credentials)),
             credits: credits,
             sourceLabel: "oauth")
+    }
+}
+
+#if DEBUG
+extension CodexOAuthFetchStrategy {
+    static func _mapUsageForTesting(_ data: Data, credentials: CodexOAuthCredentials) throws -> UsageSnapshot? {
+        let usage = try JSONDecoder().decode(CodexUsageResponse.self, from: data)
+        return CodexReconciledState.fromOAuth(response: usage, credentials: credentials)?.toUsageSnapshot()
+    }
+
+    static func _mapResultForTesting(
+        _ data: Data,
+        credentials: CodexOAuthCredentials,
+        sourceMode: ProviderSourceMode = .oauth) throws -> ProviderFetchResult
+    {
+        let usageResponse = try JSONDecoder().decode(CodexUsageResponse.self, from: data)
+        return try Self.makeResult(
+            usageResponse: usageResponse,
+            credentials: credentials,
+            updatedAt: Date(),
+            sourceMode: sourceMode)
     }
 }
 
