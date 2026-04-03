@@ -363,6 +363,50 @@ struct CodexAccountScopedRefreshTests {
     }
 
     @Test
+    func `no usable codex usage does not block weekly only dashboard backfill`() async {
+        let settings = self.makeSettingsStore(
+            suite: "CodexAccountScopedRefreshTests-no-usable-usage-weekly-dashboard-backfill")
+        settings.refreshFrequency = .manual
+        settings.codexCookieSource = .auto
+        settings._test_liveSystemCodexAccount = self.liveAccount(
+            email: "weekly@example.com",
+            identity: .providerAccount(id: "acct-weekly"))
+
+        let store = self.makeUsageStore(settings: settings)
+        self.installFailingCodexProvider(on: store, error: UsageError.noRateLimitsFound)
+
+        await store.refreshProvider(.codex, allowDisabled: true)
+
+        #expect(store.snapshots[.codex] == nil)
+
+        await store.applyOpenAIDashboard(
+            OpenAIDashboardSnapshot(
+                signedInEmail: "weekly@example.com",
+                codeReviewRemainingPercent: 88,
+                creditEvents: [],
+                dailyBreakdown: [],
+                usageBreakdown: [],
+                creditsPurchaseURL: nil,
+                primaryLimit: nil,
+                secondaryLimit: RateWindow(
+                    usedPercent: 27,
+                    windowMinutes: 10080,
+                    resetsAt: Date(timeIntervalSince1970: 1_775_000_000),
+                    resetDescription: "next week"),
+                creditsRemaining: 14,
+                accountPlan: "Pro",
+                updatedAt: Date(timeIntervalSince1970: 1_774_900_000)),
+            targetEmail: "weekly@example.com",
+            allowCodexUsageBackfill: true)
+
+        #expect(store.openAIDashboard?.signedInEmail == "weekly@example.com")
+        #expect(store.snapshots[.codex]?.primary == nil)
+        #expect(store.snapshots[.codex]?.secondary?.usedPercent == 27)
+        #expect(store.snapshots[.codex]?.secondary?.windowMinutes == 10080)
+        #expect(store.lastSourceLabels[.codex] == "openai-web")
+    }
+
+    @Test
     func `dashboard display only keeps dashboard visible and clears dashboard derived data`() async throws {
         let settings = self.makeSettingsStore(suite: "CodexAccountScopedRefreshTests-dashboard-display-only-cleanup")
         let managedHome = FileManager.default.temporaryDirectory
