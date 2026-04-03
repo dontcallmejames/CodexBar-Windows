@@ -102,31 +102,6 @@ extension SettingsStore {
         self.codexAccountReconciliationSnapshot.hasUnreadableAddedAccountStore
     }
 
-    private var hasUnreadableSelectedManagedCodexAccountStore: Bool {
-        guard case .managedAccount = self.codexResolvedActiveSource else {
-            return false
-        }
-        if case .unreadable = self.managedCodexAccountStoreState() {
-            return true
-        }
-        return false
-    }
-
-    private var hasUnavailableSelectedManagedCodexAccount: Bool {
-        guard case let .managedAccount(id) = self.codexResolvedActiveSource else {
-            return false
-        }
-        guard self.hasUnreadableManagedCodexAccountStore == false else {
-            return false
-        }
-        do {
-            let accounts = try self.loadManagedCodexAccounts()
-            return accounts.account(id: id) == nil
-        } catch {
-            return false
-        }
-    }
-
     var codexUsageDataSource: CodexUsageDataSource {
         get {
             let source = self.configSnapshot.providerConfig(for: .codex)?.source
@@ -507,12 +482,14 @@ extension SettingsStore {
 
 extension SettingsStore {
     func codexSettingsSnapshot(tokenOverride: TokenAccountOverride?) -> ProviderSettingsSnapshot.CodexProviderSettings {
-        ProviderSettingsSnapshot.CodexProviderSettings(
+        let reconciliationSnapshot = self.codexAccountReconciliationSnapshot
+        let resolvedActiveSource = CodexActiveSourceResolver.resolve(from: reconciliationSnapshot)
+        return CodexProviderSettingsBuilder.make(input: CodexProviderSettingsBuilderInput(
             usageDataSource: self.codexUsageDataSource,
             cookieSource: self.codexSnapshotCookieSource(tokenOverride: tokenOverride),
             manualCookieHeader: self.codexSnapshotCookieHeader(tokenOverride: tokenOverride),
-            managedAccountStoreUnreadable: self.hasUnreadableSelectedManagedCodexAccountStore,
-            managedAccountTargetUnavailable: self.hasUnavailableSelectedManagedCodexAccount)
+            reconciliationSnapshot: reconciliationSnapshot,
+            resolvedActiveSource: resolvedActiveSource))
     }
 
     private static func codexUsageDataSource(from source: ProviderSourceMode?) -> CodexUsageDataSource {

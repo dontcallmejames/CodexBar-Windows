@@ -222,14 +222,14 @@ struct TokenAccountCLIContext {
         ProviderSettingsSnapshot.CodexProviderSettings
     {
         let config = self.providerConfig(for: .codex)
-        let flags = self.codexManagedAccountFlags()
-        return ProviderSettingsSnapshot.CodexProviderSettings(
+        let reconciliationSnapshot = self.codexAccountReconciler().loadSnapshot()
+        let resolvedActiveSource = CodexActiveSourceResolver.resolve(from: reconciliationSnapshot)
+        return CodexProviderSettingsBuilder.make(input: CodexProviderSettingsBuilderInput(
             usageDataSource: .auto,
             cookieSource: self.cookieSource(provider: .codex, account: account, config: config),
             manualCookieHeader: self.manualCookieHeader(provider: .codex, account: account, config: config),
-            managedAccountStoreUnreadable: flags.storeUnreadable,
-            managedAccountTargetUnavailable: flags.targetUnavailable,
-            dashboardAuthorityKnownOwners: self.codexDashboardKnownOwnerCandidates(account: account))
+            reconciliationSnapshot: reconciliationSnapshot,
+            resolvedActiveSource: resolvedActiveSource))
     }
 
     func environment(
@@ -294,61 +294,13 @@ struct TokenAccountCLIContext {
         self.config.providerConfig(for: provider)
     }
 
-    private func codexManagedAccountFlags() -> (storeUnreadable: Bool, targetUnavailable: Bool) {
-        guard case let .managedAccount(id)? = self.providerConfig(for: .codex)?.codexActiveSource else {
-            return (false, false)
-        }
-
-        do {
-            let accounts = try FileManagedCodexAccountStore().loadAccounts()
-            return (false, accounts.account(id: id) == nil)
-        } catch {
-            return (true, false)
-        }
-    }
-
-    private func codexDashboardKnownOwnerCandidates(
-        account: ProviderTokenAccount?) -> [CodexDashboardKnownOwnerCandidate]
-    {
-        var candidates: [CodexDashboardKnownOwnerCandidate] = []
-
-        let current = self.codexCurrentAuthBackedAccount(account: account)
-        if current.identity != .unresolved || CodexIdentityResolver.normalizeEmail(current.email) != nil {
-            candidates.append(CodexDashboardKnownOwnerCandidate(
-                identity: current.identity,
-                normalizedEmail: CodexIdentityResolver.normalizeEmail(current.email)))
-        }
-
-        guard let managedAccounts = try? FileManagedCodexAccountStore().loadAccounts() else {
-            return candidates
-        }
-
-        for stored in managedAccounts.accounts {
-            let authBacked = self.codexManagedAccountAuthBackedAccount(homePath: stored.managedHomePath)
-            let identity = authBacked.identity == .unresolved
-                ? CodexIdentityResolver.resolve(accountId: nil, email: stored.email)
-                : authBacked.identity
-            candidates.append(CodexDashboardKnownOwnerCandidate(
-                identity: identity,
-                normalizedEmail: CodexIdentityResolver.normalizeEmail(authBacked.email ?? stored.email)))
-        }
-
-        return candidates
-    }
-
-    private func codexCurrentAuthBackedAccount(account: ProviderTokenAccount?) -> CodexAuthBackedAccount {
-        let env = self.environment(
-            base: ProcessInfo.processInfo.environment,
-            provider: .codex,
-            account: account)
-        return UsageFetcher(environment: env).loadAuthBackedCodexAccount()
-    }
-
-    private func codexManagedAccountAuthBackedAccount(homePath: String) -> CodexAuthBackedAccount {
-        let env = CodexHomeScope.scopedEnvironment(
-            base: ProcessInfo.processInfo.environment,
-            codexHome: homePath)
-        return UsageFetcher(environment: env).loadAuthBackedCodexAccount()
+    private func codexAccountReconciler() -> DefaultCodexAccountReconciler {
+        DefaultCodexAccountReconciler(
+            activeSource: self.providerConfig(for: .codex)?.codexActiveSource ?? .liveSystem,
+            baseEnvironment: ProcessInfo.processInfo.environment,
+            managedEnvironmentBuilder: { environment, account in
+                CodexHomeScope.scopedEnvironment(base: environment, codexHome: account.managedHomePath)
+            })
     }
 
     private func manualCookieHeader(
