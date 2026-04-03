@@ -1,19 +1,10 @@
 import CodexBarCore
-import CryptoKit
 import Foundation
 
 extension UsageStore {
     private nonisolated static let planUtilizationMinSampleIntervalSeconds: TimeInterval = 60 * 60
     private nonisolated static let planUtilizationResetEquivalenceToleranceSeconds: TimeInterval = 2 * 60
     private nonisolated static let planUtilizationMaxSamples: Int = 24 * 730
-
-    private struct CodexPlanUtilizationOwnershipContext {
-        let canonicalKey: String?
-        let canonicalEmailHashKey: String?
-        let legacyEmailHash: String?
-        let currentWeeklyResetAt: Date?
-        let hasAdjacentMultiAccountVeto: Bool
-    }
 
     private struct PlanUtilizationSeriesKey: Hashable {
         let name: PlanUtilizationSeriesName
@@ -428,11 +419,6 @@ extension UsageStore {
         return nil
     }
 
-    private nonisolated static func sha256Hex(_ input: String) -> String {
-        let digest = SHA256.hash(data: Data(input.utf8))
-        return digest.map { String(format: "%02x", $0) }.joined()
-    }
-
     private func shouldDeferClaudePlanUtilizationHistory(provider: UsageProvider) -> Bool {
         provider == .claude && self.shouldHidePlanUtilizationMenuItem(for: .claude)
     }
@@ -495,7 +481,7 @@ extension UsageStore {
         shouldAdoptUnscopedHistory: Bool,
         providerBuckets: inout PlanUtilizationHistoryBuckets) -> String?
     {
-        let ownership = self.codexPlanUtilizationOwnershipContext(snapshot: snapshot)
+        let ownership = self.codexOwnershipContext(snapshot: snapshot, includeDashboardFallback: true)
         if let canonicalKey = ownership.canonicalKey {
             let resolvedAccountKey = self.materializeCodexPlanUtilizationHistoryIfNeeded(
                 into: canonicalKey,
@@ -517,7 +503,7 @@ extension UsageStore {
 
     private func materializeCodexPlanUtilizationHistoryIfNeeded(
         into canonicalKey: String,
-        ownership: CodexPlanUtilizationOwnershipContext,
+        ownership: CodexOwnershipContext,
         shouldAdoptUnscopedHistory: Bool,
         providerBuckets: inout PlanUtilizationHistoryBuckets) -> String
     {
@@ -526,7 +512,9 @@ extension UsageStore {
         var legacyRawKeysToRemove: [String] = []
 
         for rawKey in scopedRawKeys {
-            let owner = CodexHistoryOwnership.classifyPersistedKey(rawKey, legacyEmailHash: ownership.legacyEmailHash)
+            let owner = CodexHistoryOwnership.classifyPersistedKey(
+                rawKey,
+                legacyEmailHash: ownership.planUtilizationLegacyEmailHash)
             let matchesTargetContinuity = CodexHistoryOwnership.belongsToTargetContinuity(
                 owner,
                 targetCanonicalKey: canonicalKey,
@@ -559,7 +547,7 @@ extension UsageStore {
                scopedRawKeys: Self.scopedRawKeysRelevantToCodexUnscopedPlanHistory(providerBuckets),
                targetCanonicalKey: canonicalKey,
                canonicalEmailHashKey: ownership.canonicalEmailHashKey,
-               legacyEmailHash: ownership.legacyEmailHash,
+               legacyEmailHash: ownership.planUtilizationLegacyEmailHash,
                hasAdjacentMultiAccountVeto: ownership.hasAdjacentMultiAccountVeto)
         {
             historiesToMerge.append(providerBuckets.unscoped)
@@ -622,52 +610,9 @@ extension UsageStore {
             .sorted()
     }
 
-    private func codexPlanUtilizationOwnershipContext(
-        snapshot: UsageSnapshot?) -> CodexPlanUtilizationOwnershipContext
-    {
-        let resolvedIdentity = self.currentCodexRuntimeIdentity(
-            source: self.settings.codexResolvedActiveSource,
-            preferCurrentSnapshot: true,
-            allowLastKnownLiveFallback: true)
-        let activeSourceEmail = self.codexAccountScopedRefreshEmail(
-            preferCurrentSnapshot: true,
-            allowLastKnownLiveFallback: true)
-        let normalizedEmail = CodexIdentityResolver.normalizeEmail(
-            activeSourceEmail ??
-                snapshot?.accountEmail(for: .codex) ??
-                self.snapshots[.codex]?.accountEmail(for: .codex) ??
-                self.codexAccountEmailForOpenAIDashboard())
-        let canonicalIdentity: CodexIdentity = switch resolvedIdentity {
-        case .unresolved:
-            if let normalizedEmail {
-                .emailOnly(normalizedEmail: normalizedEmail)
-            } else {
-                .unresolved
-            }
-        default:
-            resolvedIdentity
-        }
-        let emailForLegacyHash: String? = switch canonicalIdentity {
-        case let .emailOnly(normalizedEmail):
-            normalizedEmail
-        case .providerAccount, .unresolved:
-            normalizedEmail
-        }
-        let currentWeeklyResetAt = snapshot?.secondary?.resetsAt ??
-            self.snapshots[.codex]?.secondary?.resetsAt ??
-            self.openAIDashboard?.secondaryLimit?.resetsAt
-
-        return CodexPlanUtilizationOwnershipContext(
-            canonicalKey: CodexHistoryOwnership.canonicalKey(for: canonicalIdentity),
-            canonicalEmailHashKey: normalizedEmail.map { CodexHistoryOwnership.canonicalEmailHashKey(for: $0) },
-            legacyEmailHash: emailForLegacyHash.map { Self.codexLegacyPlanUtilizationEmailHashKey(for: $0) },
-            currentWeeklyResetAt: currentWeeklyResetAt,
-            hasAdjacentMultiAccountVeto: self.codexPlanUtilizationHasAdjacentMultiAccountVeto())
-    }
-
     private func recoverableCodexOpaquePlanHistoryRawKey(
         targetCanonicalKey: String,
-        ownership: CodexPlanUtilizationOwnershipContext,
+        ownership: CodexOwnershipContext,
         providerBuckets: PlanUtilizationHistoryBuckets) -> String?
     {
         guard !ownership.hasAdjacentMultiAccountVeto,
@@ -677,7 +622,9 @@ extension UsageStore {
         }
 
         let candidates = providerBuckets.accounts.compactMap { rawKey, histories -> String? in
-            let owner = CodexHistoryOwnership.classifyPersistedKey(rawKey, legacyEmailHash: ownership.legacyEmailHash)
+            let owner = CodexHistoryOwnership.classifyPersistedKey(
+                rawKey,
+                legacyEmailHash: ownership.planUtilizationLegacyEmailHash)
             guard case .legacyOpaqueScoped = owner else { return nil }
             guard Self.isRecoverableCodexOpaquePlanHistory(
                 histories,
@@ -783,7 +730,7 @@ extension UsageStore {
         recoverableRawKey: String,
         targetWeeklyResetAt: Date,
         targetCanonicalKey: String,
-        ownership: CodexPlanUtilizationOwnershipContext,
+        ownership: CodexOwnershipContext,
         providerBuckets: PlanUtilizationHistoryBuckets) -> Bool
     {
         providerBuckets.accounts.contains { rawKey, histories in
@@ -795,7 +742,9 @@ extension UsageStore {
                 return false
             }
 
-            let owner = CodexHistoryOwnership.classifyPersistedKey(rawKey, legacyEmailHash: ownership.legacyEmailHash)
+            let owner = CodexHistoryOwnership.classifyPersistedKey(
+                rawKey,
+                legacyEmailHash: ownership.planUtilizationLegacyEmailHash)
             switch owner {
             case .legacyOpaqueScoped:
                 return false
@@ -819,25 +768,6 @@ extension UsageStore {
                 self.areEquivalentPlanUtilizationResetBoundaries(entry.resetsAt, targetWeeklyResetAt)
             }
         }
-    }
-
-    private func codexPlanUtilizationHasAdjacentMultiAccountVeto() -> Bool {
-        let snapshot = self.settings.codexAccountReconciliationSnapshot
-        var distinctAccounts: Set<String> = []
-
-        if let activeManagedAccount = self.settings.activeManagedCodexAccount {
-            distinctAccounts.insert(CodexIdentityMatcher.selectionKey(
-                for: snapshot.runtimeIdentity(for: activeManagedAccount),
-                fallbackEmail: snapshot.runtimeEmail(for: activeManagedAccount)))
-        }
-
-        if let liveSystemAccount = snapshot.liveSystemAccount {
-            distinctAccounts.insert(CodexIdentityMatcher.selectionKey(
-                for: snapshot.runtimeIdentity(for: liveSystemAccount),
-                fallbackEmail: liveSystemAccount.email))
-        }
-
-        return distinctAccounts.count > 1
     }
 
     private nonisolated static func mergedPlanUtilizationHistories(
@@ -895,10 +825,6 @@ extension UsageStore {
         self.codexLegacyPlanUtilizationEmailHashKey(for: normalizedEmail)
     }
     #endif
-
-    private nonisolated static func codexLegacyPlanUtilizationEmailHashKey(for normalizedEmail: String) -> String {
-        self.sha256Hex("\(UsageProvider.codex.rawValue):email:\(normalizedEmail)")
-    }
 }
 
 actor PlanUtilizationHistoryPersistenceCoordinator {
