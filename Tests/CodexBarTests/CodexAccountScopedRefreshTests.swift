@@ -730,6 +730,55 @@ struct CodexAccountScopedRefreshTests {
     }
 
     @Test
+    func `widget snapshot excludes display only dashboard code review`() async throws {
+        let settings = self.makeSettingsStore(suite: "CodexAccountScopedRefreshTests-widget-display-only-dashboard")
+        settings.refreshFrequency = .manual
+
+        let store = self.makeUsageStore(settings: settings)
+        store._setSnapshotForTesting(self.codexSnapshot(email: "alpha@example.com", usedPercent: 18), provider: .codex)
+        store.openAIDashboard = self.dashboard(
+            email: "alpha@example.com",
+            creditsRemaining: 12,
+            usedPercent: 20)
+        store.openAIDashboardAttachmentAuthorized = false
+
+        var widgetSnapshots: [WidgetSnapshot] = []
+        store._test_widgetSnapshotSaveOverride = { widgetSnapshots.append($0) }
+        defer { store._test_widgetSnapshotSaveOverride = nil }
+
+        store.persistWidgetSnapshot(reason: "display-only-dashboard")
+        await store.widgetSnapshotPersistTask?.value
+
+        let codexEntry = try #require(widgetSnapshots.last?.entries.first { $0.provider == .codex })
+        #expect(codexEntry.creditsRemaining == nil)
+        #expect(codexEntry.codeReviewRemainingPercent == nil)
+    }
+
+    @Test
+    func `widget snapshot includes attached dashboard code review`() async throws {
+        let settings = self.makeSettingsStore(suite: "CodexAccountScopedRefreshTests-widget-attached-dashboard")
+        settings.refreshFrequency = .manual
+
+        let store = self.makeUsageStore(settings: settings)
+        store._setSnapshotForTesting(self.codexSnapshot(email: "alpha@example.com", usedPercent: 18), provider: .codex)
+        store.openAIDashboard = self.dashboard(
+            email: "alpha@example.com",
+            creditsRemaining: 12,
+            usedPercent: 20)
+        store.openAIDashboardAttachmentAuthorized = true
+
+        var widgetSnapshots: [WidgetSnapshot] = []
+        store._test_widgetSnapshotSaveOverride = { widgetSnapshots.append($0) }
+        defer { store._test_widgetSnapshotSaveOverride = nil }
+
+        store.persistWidgetSnapshot(reason: "attached-dashboard")
+        await store.widgetSnapshotPersistTask?.value
+
+        let codexEntry = try #require(widgetSnapshots.last?.entries.first { $0.provider == .codex })
+        #expect(codexEntry.codeReviewRemainingPercent == 88)
+    }
+
+    @Test
     func `codex account refresh reports usage and credits phases before completion`() async {
         let settings = self.makeSettingsStore(suite: "CodexAccountScopedRefreshTests-phases")
         settings.refreshFrequency = .manual
