@@ -148,17 +148,33 @@ struct CodexOAuthFetchStrategy: ProviderFetchStrategy {
             accessToken: credentials.accessToken,
             accountId: credentials.accountId,
             env: context.env)
+        let updatedAt = Date()
+        let credits = Self.mapCredits(usage.credits)
 
         guard let reconciled = CodexReconciledState.fromOAuth(
             response: usage,
-            credentials: credentials)
+            credentials: credentials,
+            updatedAt: updatedAt)
         else {
-            throw UsageError.noRateLimitsFound
+            guard let credits else {
+                throw UsageError.noRateLimitsFound
+            }
+            return self.makeResult(
+                usage: UsageSnapshot(
+                    primary: nil,
+                    secondary: nil,
+                    tertiary: nil,
+                    updatedAt: updatedAt,
+                    identity: CodexReconciledState.oauthIdentity(
+                        response: usage,
+                        credentials: credentials)),
+                credits: credits,
+                sourceLabel: "oauth")
         }
 
         return self.makeResult(
             usage: reconciled.toUsageSnapshot(),
-            credits: Self.mapCredits(usage.credits),
+            credits: credits,
             sourceLabel: "oauth")
     }
 
@@ -178,6 +194,42 @@ extension CodexOAuthFetchStrategy {
     static func _mapUsageForTesting(_ data: Data, credentials: CodexOAuthCredentials) throws -> UsageSnapshot? {
         let usage = try JSONDecoder().decode(CodexUsageResponse.self, from: data)
         return CodexReconciledState.fromOAuth(response: usage, credentials: credentials)?.toUsageSnapshot()
+    }
+
+    static func _mapResultForTesting(
+        _ data: Data,
+        credentials: CodexOAuthCredentials) throws -> ProviderFetchResult
+    {
+        let usage = try JSONDecoder().decode(CodexUsageResponse.self, from: data)
+        let updatedAt = Date()
+        let credits = Self.mapCredits(usage.credits)
+
+        if let reconciled = CodexReconciledState.fromOAuth(
+            response: usage,
+            credentials: credentials,
+            updatedAt: updatedAt)
+        {
+            return CodexOAuthFetchStrategy().makeResult(
+                usage: reconciled.toUsageSnapshot(),
+                credits: credits,
+                sourceLabel: "oauth")
+        }
+
+        guard let credits else {
+            throw UsageError.noRateLimitsFound
+        }
+
+        return CodexOAuthFetchStrategy().makeResult(
+            usage: UsageSnapshot(
+                primary: nil,
+                secondary: nil,
+                tertiary: nil,
+                updatedAt: updatedAt,
+                identity: CodexReconciledState.oauthIdentity(
+                    response: usage,
+                    credentials: credentials)),
+            credits: credits,
+            sourceLabel: "oauth")
     }
 }
 
