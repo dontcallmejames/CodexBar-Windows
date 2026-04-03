@@ -203,7 +203,7 @@ extension SettingsStore {
 
 extension SettingsStore {
     var codexAccountReconciliationSnapshot: CodexAccountReconciliationSnapshot {
-        self.codexAccountReconciler().loadSnapshot(environment: self.codexReconciliationEnvironment())
+        self.codexAccountReconciler().loadSnapshot()
     }
 
     var codexVisibleAccountProjection: CodexVisibleAccountProjection {
@@ -239,6 +239,7 @@ extension SettingsStore {
     }
 
     private func codexAccountReconciler() -> DefaultCodexAccountReconciler {
+        let baseEnvironment = self.codexReconciliationEnvironment()
         #if DEBUG
         let liveSystemAccountOverride = CodexManagedRemoteHomeTestingOverride.liveSystemAccount(for: self)
         let reconciliationEnvironmentOverride = CodexManagedRemoteHomeTestingOverride
@@ -247,7 +248,12 @@ extension SettingsStore {
         let managedStoreURLOverride = CodexManagedRemoteHomeTestingOverride.managedStoreURL(for: self)
         let unreadableStoreOverride = CodexManagedRemoteHomeTestingOverride.isUnreadable(for: self)
         guard CodexManagedRemoteHomeTestingOverride.hasAnyOverride(for: self) else {
-            return DefaultCodexAccountReconciler(activeSource: self.codexPersistedActiveSource)
+            return DefaultCodexAccountReconciler(
+                activeSource: self.codexPersistedActiveSource,
+                baseEnvironment: baseEnvironment,
+                managedEnvironmentBuilder: { environment, account in
+                    CodexHomeScope.scopedEnvironment(base: environment, codexHome: account.managedHomePath)
+                })
         }
 
         let storeLoader: @Sendable () throws -> ManagedCodexAccountSet
@@ -273,9 +279,18 @@ extension SettingsStore {
             systemObserver: CodexManagedRemoteHomeTestingSystemObserver(
                 overrideAccount: liveSystemAccountOverride,
                 usesInjectedEnvironment: reconciliationEnvironmentOverride != nil),
-            activeSource: self.codexPersistedActiveSource)
+            activeSource: self.codexPersistedActiveSource,
+            baseEnvironment: baseEnvironment,
+            managedEnvironmentBuilder: { environment, account in
+                CodexHomeScope.scopedEnvironment(base: environment, codexHome: account.managedHomePath)
+            })
         #else
-        return DefaultCodexAccountReconciler(activeSource: self.codexPersistedActiveSource)
+        return DefaultCodexAccountReconciler(
+            activeSource: self.codexPersistedActiveSource,
+            baseEnvironment: baseEnvironment,
+            managedEnvironmentBuilder: { environment, account in
+                CodexHomeScope.scopedEnvironment(base: environment, codexHome: account.managedHomePath)
+            })
         #endif
     }
 
