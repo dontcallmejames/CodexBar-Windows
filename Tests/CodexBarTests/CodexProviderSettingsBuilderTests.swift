@@ -4,7 +4,7 @@ import Testing
 
 struct CodexProviderSettingsBuilderTests {
     @Test
-    func `builder keeps managed failure flags off when selection resolves back to live system`() {
+    func `builder keeps managed store unreadable fail closed when selection resolves back to live system`() {
         let selectedManagedID = UUID()
         let snapshot = CodexAccountReconciliationSnapshot(
             storedAccounts: [],
@@ -25,7 +25,7 @@ struct CodexProviderSettingsBuilderTests {
             reconciliationSnapshot: snapshot,
             resolvedActiveSource: CodexActiveSourceResolver.resolve(from: snapshot)))
 
-        #expect(settings.managedAccountStoreUnreadable == false)
+        #expect(settings.managedAccountStoreUnreadable == true)
         #expect(settings.managedAccountTargetUnavailable == false)
     }
 
@@ -43,6 +43,39 @@ struct CodexProviderSettingsBuilderTests {
             storedAccounts: [otherStoredAccount],
             activeStoredAccount: nil,
             liveSystemAccount: nil,
+            matchingStoredAccountForLiveSystemAccount: nil,
+            activeSource: .managedAccount(id: selectedManagedID),
+            hasUnreadableAddedAccountStore: false)
+
+        let settings = CodexProviderSettingsBuilder.make(input: CodexProviderSettingsBuilderInput(
+            usageDataSource: .auto,
+            cookieSource: .auto,
+            manualCookieHeader: nil,
+            reconciliationSnapshot: snapshot,
+            resolvedActiveSource: CodexActiveSourceResolver.resolve(from: snapshot)))
+
+        #expect(settings.managedAccountStoreUnreadable == false)
+        #expect(settings.managedAccountTargetUnavailable == true)
+    }
+
+    @Test
+    func `builder keeps missing managed target fail closed when selection resolves back to live system`() {
+        let selectedManagedID = UUID()
+        let otherStoredAccount = ManagedCodexAccount(
+            id: UUID(),
+            email: "other@example.com",
+            managedHomePath: "/tmp/other",
+            createdAt: 1,
+            updatedAt: 2,
+            lastAuthenticatedAt: 3)
+        let snapshot = CodexAccountReconciliationSnapshot(
+            storedAccounts: [otherStoredAccount],
+            activeStoredAccount: nil,
+            liveSystemAccount: ObservedSystemCodexAccount(
+                email: "live@example.com",
+                codexHomePath: "/tmp/live",
+                observedAt: Date(),
+                identity: .providerAccount(id: "acct-live")),
             matchingStoredAccountForLiveSystemAccount: nil,
             activeSource: .managedAccount(id: selectedManagedID),
             hasUnreadableAddedAccountStore: false)
