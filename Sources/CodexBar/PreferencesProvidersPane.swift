@@ -474,7 +474,7 @@ struct ProvidersPane: View {
         if provider == .codex {
             credits = self.store.credits
             creditsError = self.store.userFacingLastCreditsError
-            dashboard = self.store.openAIDashboardRequiresLogin ? nil : self.store.openAIDashboard
+            dashboard = self.store.openAIDashboardRequiresLogin ? nil : self.store.attachedOpenAIDashboardSnapshot
             dashboardError = self.store.userFacingLastOpenAIDashboardError
             tokenSnapshot = self.store.tokenSnapshot(for: provider)
             tokenError = self.store.tokenError(for: provider)

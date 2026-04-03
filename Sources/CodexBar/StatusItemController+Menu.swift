@@ -1522,7 +1522,7 @@ extension StatusItemController {
         }
     }
 
-    private func menuCardModel(
+    func menuCardModel(
         for provider: UsageProvider?,
         snapshotOverride: UsageSnapshot? = nil,
         errorOverride: String? = nil) -> UsageMenuCardView.Model?
@@ -1540,7 +1540,7 @@ extension StatusItemController {
         if target == .codex, snapshotOverride == nil {
             credits = self.store.credits
             creditsError = self.store.userFacingLastCreditsError
-            dashboard = self.store.openAIDashboardRequiresLogin ? nil : self.store.openAIDashboard
+            dashboard = self.store.openAIDashboardRequiresLogin ? nil : self.store.attachedOpenAIDashboardSnapshot
             dashboardError = self.store.userFacingLastOpenAIDashboardError
             tokenSnapshot = self.store.tokenSnapshot(for: target)
             tokenError = self.store.tokenError(for: target)
