@@ -46,8 +46,8 @@ public enum CodexProviderSettingsBuilder {
     public static func make(input: CodexProviderSettingsBuilderInput) -> ProviderSettingsSnapshot
     .CodexProviderSettings {
         let snapshot = input.reconciliationSnapshot
-        let resolvedSource = input.resolvedActiveSource.resolvedSource
-        let managedSourceSelected = switch resolvedSource {
+        let persistedSource = input.resolvedActiveSource.persistedSource
+        let managedSourceSelected = switch persistedSource {
         case .liveSystem:
             false
         case .managedAccount:
