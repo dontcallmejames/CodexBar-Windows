@@ -66,6 +66,11 @@ extension UsageStore {
             }
         }
     }
+
+    var attachedOpenAIDashboardSnapshot: OpenAIDashboardSnapshot? {
+        guard self.openAIDashboardAttachmentAuthorized else { return nil }
+        return self.openAIDashboard
+    }
 }
 
 @MainActor

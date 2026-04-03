@@ -46,8 +46,8 @@ extension UsageStore {
         case .providerAccount, .unresolved:
             normalizedEmail
         }
-        let attachedDashboardSnapshot = includeDashboardFallback && self.openAIDashboardAttachmentAuthorized
-            ? self.openAIDashboard
+        let attachedDashboardSnapshot = includeDashboardFallback
+            ? self.attachedOpenAIDashboardSnapshot
             : nil
         let normalizedDashboardSnapshot = attachedDashboardSnapshot?
             .toUsageSnapshot(provider: .codex, accountEmail: normalizedEmail)

@@ -378,7 +378,8 @@ struct TokenAccountEnvironmentPrecedenceTests {
             createdAt: 1,
             updatedAt: 2,
             lastAuthenticatedAt: 3)
-        let appSettings = Self.makeSettingsStore(suite: "TokenAccountEnvironmentPrecedenceTests-codex-different-identities")
+        let appSettings = Self
+            .makeSettingsStore(suite: "TokenAccountEnvironmentPrecedenceTests-codex-different-identities")
         appSettings._test_activeManagedCodexAccount = managedAccount
         appSettings._test_liveSystemCodexAccount = ObservedSystemCodexAccount(
             email: "live@example.com",
