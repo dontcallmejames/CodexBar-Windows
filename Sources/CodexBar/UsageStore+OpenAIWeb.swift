@@ -89,12 +89,14 @@ extension UsageStore {
         await MainActor.run {
             if let cached = self.lastOpenAIDashboardSnapshot {
                 self.openAIDashboard = cached
+                self.openAIDashboardAttachmentAuthorized = self.lastOpenAIDashboardAttachmentAuthorized
                 let stamp = cached.updatedAt.formatted(date: .abbreviated, time: .shortened)
                 self.lastOpenAIDashboardError =
                     "Last OpenAI dashboard refresh failed: \(message). Cached values from \(stamp)."
             } else {
                 self.lastOpenAIDashboardError = message
                 self.openAIDashboard = nil
+                self.openAIDashboardAttachmentAuthorized = false
             }
         }
     }
@@ -128,6 +130,7 @@ extension UsageStore {
                     "then update OpenAI cookies in Providers → Codex.",
             ].joined(separator: " ")
             self.openAIDashboard = self.lastOpenAIDashboardSnapshot
+            self.openAIDashboardAttachmentAuthorized = self.lastOpenAIDashboardAttachmentAuthorized
             self.openAIDashboardRequiresLogin = true
         }
     }
@@ -147,7 +150,9 @@ extension UsageStore {
         switch decision.disposition {
         case .attach:
             self.openAIDashboard = dashboard
+            self.openAIDashboardAttachmentAuthorized = true
             self.lastOpenAIDashboardSnapshot = dashboard
+            self.lastOpenAIDashboardAttachmentAuthorized = true
             self.lastOpenAIDashboardError = nil
             self.openAIDashboardRequiresLogin = false
 
@@ -194,7 +199,9 @@ extension UsageStore {
         case .displayOnly:
             self.applyOpenAIDashboardCleanup(decision.cleanup, preserveVisibleDashboard: true)
             self.openAIDashboard = dashboard
+            self.openAIDashboardAttachmentAuthorized = false
             self.lastOpenAIDashboardSnapshot = dashboard
+            self.lastOpenAIDashboardAttachmentAuthorized = false
             self.lastOpenAIDashboardError = nil
             self.openAIDashboardRequiresLogin = false
 
@@ -225,7 +232,9 @@ extension UsageStore {
         }
         if cleanup.contains(.dashboardSnapshot), !preserveVisibleDashboard {
             self.openAIDashboard = nil
+            self.openAIDashboardAttachmentAuthorized = false
             self.lastOpenAIDashboardSnapshot = nil
+            self.lastOpenAIDashboardAttachmentAuthorized = false
         }
     }
 
@@ -586,7 +595,9 @@ extension UsageStore {
                     "clearing OpenAI web snapshot")
             self.openAIWebAccountDidChange = true
             self.openAIDashboard = nil
+            self.openAIDashboardAttachmentAuthorized = false
             self.lastOpenAIDashboardSnapshot = nil
+            self.lastOpenAIDashboardAttachmentAuthorized = false
             self.lastOpenAIDashboardError = nil
             self.openAIDashboardRequiresLogin = true
             self.openAIDashboardCookieImportStatus = "Codex account changed; importing browser cookies…"
@@ -973,8 +984,10 @@ extension UsageStore {
     func resetOpenAIWebState() {
         self.invalidateOpenAIDashboardRefreshTask()
         self.openAIDashboard = nil
+        self.openAIDashboardAttachmentAuthorized = false
         self.lastOpenAIDashboardError = nil
         self.lastOpenAIDashboardSnapshot = nil
+        self.lastOpenAIDashboardAttachmentAuthorized = false
         self.lastOpenAIDashboardTargetEmail = nil
         self.openAIDashboardRequiresLogin = false
         self.openAIDashboardCookieImportStatus = nil

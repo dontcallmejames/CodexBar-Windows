@@ -409,7 +409,9 @@ extension UsageStore {
         }
 
         self.openAIDashboard = nil
+        self.openAIDashboardAttachmentAuthorized = false
         self.lastOpenAIDashboardSnapshot = nil
+        self.lastOpenAIDashboardAttachmentAuthorized = false
         self.lastOpenAIDashboardError = nil
         self.openAIDashboardCookieImportDebugLog = nil
         self.lastOpenAIDashboardCookieImportAttemptAt = nil
