@@ -265,6 +265,61 @@ struct UsageStorePlanUtilizationCodexOwnershipTests {
 
     @MainActor
     @Test
+    func `codex opaque recovery uses normalized dashboard weekly reset when snapshot has only session window`() throws {
+        let store = UsageStorePlanUtilizationTests.makeStore()
+        let formatter = ISO8601DateFormatter()
+        let providerAccountKey = try #require(CodexHistoryOwnership.canonicalKey(for: .providerAccount(
+            id: "0c2a5eef-a612-45bb-9796-9aa83ce1bed7")))
+        let opaqueKey = "3e31a7fdc57ea26c62fd7061d25dcab74a91b0da2d8f514b07e99aad800ee897"
+        let weeklyResetAt = try #require(formatter.date(from: "2026-04-08T07:57:12Z"))
+        let expectedOpaqueStart = try #require(formatter.date(from: "2026-03-23T09:55:44Z"))
+        let snapshot = UsageSnapshot(
+            primary: RateWindow(usedPercent: 10, windowMinutes: 300, resetsAt: nil, resetDescription: nil),
+            secondary: nil,
+            updatedAt: weeklyResetAt,
+            identity: ProviderIdentitySnapshot(
+                providerID: .codex,
+                accountEmail: "ratulsarna@gmail.com",
+                accountOrganization: nil,
+                loginMethod: "plus"))
+
+        store.planUtilizationHistory[.codex] = try UsageStorePlanUtilizationTests.loadPlanUtilizationFixture(
+            named: "codex-plan-utilization-real-migration.json")
+        store.openAIDashboard = OpenAIDashboardSnapshot(
+            signedInEmail: "ratulsarna@gmail.com",
+            codeReviewRemainingPercent: nil,
+            creditEvents: [],
+            dailyBreakdown: [],
+            usageBreakdown: [],
+            creditsPurchaseURL: nil,
+            primaryLimit: RateWindow(
+                usedPercent: 12,
+                windowMinutes: 10080,
+                resetsAt: weeklyResetAt,
+                resetDescription: nil),
+            secondaryLimit: nil,
+            creditsRemaining: nil,
+            accountPlan: "plus",
+            updatedAt: weeklyResetAt)
+        store.settings._test_liveSystemCodexAccount = ObservedSystemCodexAccount(
+            email: "ratulsarna@gmail.com",
+            codexHomePath: "/Users/test/.codex",
+            observedAt: weeklyResetAt,
+            identity: .providerAccount(id: "0c2a5eef-a612-45bb-9796-9aa83ce1bed7"))
+        defer { store.settings._test_liveSystemCodexAccount = nil }
+        store._setSnapshotForTesting(snapshot, provider: .codex)
+
+        let history = store.planUtilizationHistory(for: .codex)
+        let buckets = try #require(store.planUtilizationHistory[.codex])
+        let weekly = try #require(findSeries(history, name: .weekly, windowMinutes: 10080))
+
+        #expect(buckets.preferredAccountKey == providerAccountKey)
+        #expect(weekly.entries.first?.capturedAt == expectedOpaqueStart)
+        #expect(buckets.accounts[opaqueKey] == nil)
+    }
+
+    @MainActor
+    @Test
     func `codex adjacent managed and live accounts veto unscoped adoption`() throws {
         let store = UsageStorePlanUtilizationTests.makeStore()
         let managedAccount = ManagedCodexAccount(
