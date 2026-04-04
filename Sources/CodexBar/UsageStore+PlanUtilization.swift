@@ -2,6 +2,15 @@ import CodexBarCore
 import Foundation
 
 extension UsageStore {
+    func supportsPlanUtilizationHistory(for provider: UsageProvider) -> Bool {
+        switch provider {
+        case .codex, .claude:
+            true
+        default:
+            false
+        }
+    }
+
     private nonisolated static let planUtilizationMinSampleIntervalSeconds: TimeInterval = 60 * 60
     private nonisolated static let planUtilizationResetEquivalenceToleranceSeconds: TimeInterval = 2 * 60
     private nonisolated static let planUtilizationMaxSamples: Int = 24 * 730
@@ -43,7 +52,7 @@ extension UsageStore {
     }
 
     func shouldHidePlanUtilizationMenuItem(for provider: UsageProvider) -> Bool {
-        guard provider == .codex || provider == .claude else { return true }
+        guard self.supportsPlanUtilizationHistory(for: provider) else { return true }
         return self.shouldShowRefreshingMenuCard(for: provider)
     }
 
@@ -56,7 +65,7 @@ extension UsageStore {
         now: Date = Date())
         async
     {
-        guard provider == .codex || provider == .claude else { return }
+        guard self.supportsPlanUtilizationHistory(for: provider) else { return }
         guard !self.shouldDeferClaudePlanUtilizationHistory(provider: provider) else { return }
 
         var snapshotToPersist: [UsageProvider: PlanUtilizationHistoryBuckets]?
@@ -71,7 +80,7 @@ extension UsageStore {
                 shouldAdoptUnscopedHistory: shouldAdoptUnscopedHistory,
                 providerBuckets: &providerBuckets)
             let histories = providerBuckets.histories(for: accountKey)
-            let samples = Self.planUtilizationSeriesSamples(provider: provider, snapshot: snapshot, capturedAt: now)
+            let samples = self.planUtilizationSeriesSamples(provider: provider, snapshot: snapshot, capturedAt: now)
 
             guard let updatedHistories = Self.updatedPlanUtilizationHistories(
                 existingHistories: histories,
@@ -186,7 +195,7 @@ extension UsageStore {
         return max(0, min(100, value))
     }
 
-    private nonisolated static func planUtilizationSeriesSamples(
+    private func planUtilizationSeriesSamples(
         provider: UsageProvider,
         snapshot: UsageSnapshot,
         capturedAt: Date) -> [PlanUtilizationSeriesSample]
@@ -197,7 +206,7 @@ extension UsageStore {
             guard let name,
                   let window,
                   let windowMinutes = window.windowMinutes,
-                  let usedPercent = self.clampedPercent(window.usedPercent)
+                  let usedPercent = Self.clampedPercent(window.usedPercent)
             else {
                 return
             }
@@ -214,8 +223,13 @@ extension UsageStore {
 
         switch provider {
         case .codex:
-            appendWindow(snapshot.primary, name: self.codexSeriesName(for: snapshot.primary?.windowMinutes))
-            appendWindow(snapshot.secondary, name: self.codexSeriesName(for: snapshot.secondary?.windowMinutes))
+            let projection = self.codexConsumerProjection(
+                surface: .liveCard,
+                snapshotOverride: snapshot,
+                now: capturedAt)
+            for lane in projection.planUtilizationLanes {
+                appendWindow(lane.window, name: lane.role)
+            }
         case .claude:
             appendWindow(snapshot.primary, name: .session)
             appendWindow(snapshot.secondary, name: .weekly)
@@ -229,17 +243,6 @@ extension UsageStore {
                 return lhs.windowMinutes < rhs.windowMinutes
             }
             return lhs.name.rawValue < rhs.name.rawValue
-        }
-    }
-
-    private nonisolated static func codexSeriesName(for windowMinutes: Int?) -> PlanUtilizationSeriesName? {
-        switch windowMinutes {
-        case 300:
-            .session
-        case 10080:
-            .weekly
-        default:
-            nil
         }
     }
 

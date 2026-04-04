@@ -218,10 +218,8 @@ struct CodexConsumerProjection {
             hasUsageBreakdown: hasUsageBreakdown,
             hasCreditsHistory: hasCreditsHistory,
             rateWindowsByLane: rateWindowsByLane,
-            codeReviewRemainingPercent: supplementalMetrics.contains(.codeReview)
-                ? dashboard?.codeReviewRemainingPercent
-                : nil,
-            codeReviewLimit: supplementalMetrics.contains(.codeReview) ? dashboard?.codeReviewLimit : nil)
+            codeReviewRemainingPercent: dashboardVisibility == .attached ? dashboard?.codeReviewRemainingPercent : nil,
+            codeReviewLimit: dashboardVisibility == .attached ? dashboard?.codeReviewLimit : nil)
     }
 
     func rateWindow(for lane: RateLane) -> RateWindow? {

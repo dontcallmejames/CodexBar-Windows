@@ -3,11 +3,20 @@ import Foundation
 
 @MainActor
 extension UsageStore {
+    func supportsWeeklyPace(for provider: UsageProvider) -> Bool {
+        switch provider {
+        case .codex, .claude:
+            true
+        default:
+            false
+        }
+    }
+
     private static let minimumPaceExpectedPercent: Double = 3
     private static let backfillMaxTimestampMismatch: TimeInterval = 5 * 60
 
     func weeklyPace(provider: UsageProvider, window: RateWindow, now: Date = .init()) -> UsagePace? {
-        guard provider == .codex || provider == .claude else { return nil }
+        guard self.supportsWeeklyPace(for: provider) else { return nil }
         guard window.remainingPercent > 0 else { return nil }
         let resolved: UsagePace?
         if provider == .codex, self.settings.historicalTrackingEnabled {
@@ -33,7 +42,11 @@ extension UsageStore {
 
     func recordCodexHistoricalSampleIfNeeded(snapshot: UsageSnapshot) {
         guard self.settings.historicalTrackingEnabled else { return }
-        guard let weekly = snapshot.secondary else { return }
+        let projection = self.codexConsumerProjection(
+            surface: .liveCard,
+            snapshotOverride: snapshot,
+            now: snapshot.updatedAt)
+        guard let weekly = projection.rateWindow(for: .weekly) else { return }
 
         let sampledAt = snapshot.updatedAt
         let ownership = self.codexOwnershipContext(preferredEmail: snapshot.accountEmail(for: .codex))
@@ -100,7 +113,12 @@ extension UsageStore {
         {
             referenceWindow = dashboardWeekly
             calibrationAt = dashboard.updatedAt
-        } else if let codexSnapshot, let snapshotWeekly = codexSnapshot.secondary {
+        } else if let codexSnapshot,
+                  let snapshotWeekly = self.codexConsumerProjection(
+                      surface: .liveCard,
+                      snapshotOverride: codexSnapshot,
+                      now: codexSnapshot.updatedAt).rateWindow(for: .weekly)
+        {
             let mismatch = abs(codexSnapshot.updatedAt.timeIntervalSince(dashboard.updatedAt))
             guard mismatch <= Self.backfillMaxTimestampMismatch else { return }
             referenceWindow = snapshotWeekly

@@ -736,6 +736,7 @@ struct CodexAccountScopedRefreshTests {
 
         let store = self.makeUsageStore(settings: settings)
         store._setSnapshotForTesting(self.codexSnapshot(email: "alpha@example.com", usedPercent: 18), provider: .codex)
+        store.credits = CreditsSnapshot(remaining: 12, events: [], updatedAt: Date())
         store.openAIDashboard = self.dashboard(
             email: "alpha@example.com",
             creditsRemaining: 12,

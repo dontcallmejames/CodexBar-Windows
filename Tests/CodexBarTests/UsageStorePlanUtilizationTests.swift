@@ -589,6 +589,43 @@ struct UsageStorePlanUtilizationTests {
 
     @MainActor
     @Test
+    func `record plan history keeps semantic codex lanes when durations drift`() async {
+        let store = Self.makeStore()
+        let primaryReset = Date(timeIntervalSince1970: 1_710_000_000)
+        let secondaryReset = Date(timeIntervalSince1970: 1_710_086_400)
+        let snapshot = UsageSnapshot(
+            primary: RateWindow(
+                usedPercent: 18,
+                windowMinutes: 360,
+                resetsAt: primaryReset,
+                resetDescription: "6h"),
+            secondary: RateWindow(
+                usedPercent: 42,
+                windowMinutes: 11040,
+                resetsAt: secondaryReset,
+                resetDescription: "7.67d"),
+            updatedAt: Date(),
+            identity: ProviderIdentitySnapshot(
+                providerID: .codex,
+                accountEmail: "alice@example.com",
+                accountOrganization: nil,
+                loginMethod: "plus"))
+        store._setSnapshotForTesting(snapshot, provider: .codex)
+
+        await store.recordPlanUtilizationHistorySample(
+            provider: .codex,
+            snapshot: snapshot,
+            now: Date(timeIntervalSince1970: 1_700_000_000))
+
+        let histories = store.planUtilizationHistory(for: .codex)
+        #expect(findSeries(histories, name: .session, windowMinutes: 360)?.entries.last?.usedPercent == 18)
+        #expect(findSeries(histories, name: .session, windowMinutes: 360)?.entries.last?.resetsAt == primaryReset)
+        #expect(findSeries(histories, name: .weekly, windowMinutes: 11040)?.entries.last?.usedPercent == 42)
+        #expect(findSeries(histories, name: .weekly, windowMinutes: 11040)?.entries.last?.resetsAt == secondaryReset)
+    }
+
+    @MainActor
+    @Test
     func `record plan history stores claude opus as separate series`() async {
         let store = Self.makeStore()
         let snapshot = UsageSnapshot(

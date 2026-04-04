@@ -69,4 +69,26 @@ struct CodexBarWidgetProviderTests {
         #expect(rows.count == 2)
         #expect(!rows.contains { $0.title == "Code review" })
     }
+
+    @Test
+    func `widget usage rows prefer projected rows over legacy slots`() {
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let entry = WidgetSnapshot.ProviderEntry(
+            provider: .codex,
+            updatedAt: now,
+            primary: RateWindow(usedPercent: 10, windowMinutes: 300, resetsAt: nil, resetDescription: nil),
+            secondary: RateWindow(usedPercent: 25, windowMinutes: 10080, resetsAt: nil, resetDescription: nil),
+            tertiary: nil,
+            usageRows: [
+                WidgetSnapshot.WidgetUsageRowSnapshot(id: "weekly", title: "Weekly", percentLeft: 75),
+            ],
+            creditsRemaining: nil,
+            codeReviewRemainingPercent: nil,
+            tokenUsage: nil,
+            dailyUsage: [])
+
+        let rows = WidgetUsageRow.rows(for: entry)
+
+        #expect(rows == [WidgetUsageRow(id: "weekly", title: "Weekly", percentLeft: 75)])
+    }
 }
