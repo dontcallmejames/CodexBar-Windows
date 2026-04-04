@@ -190,6 +190,8 @@ public struct DefaultCodexAccountReconciler {
             }
             return ObservedSystemCodexAccount(
                 email: normalizedEmail,
+                workspaceLabel: account.workspaceLabel,
+                workspaceAccountID: account.workspaceAccountID,
                 codexHomePath: account.codexHomePath,
                 observedAt: account.observedAt,
                 identity: self.runtimeIdentity(for: account))
@@ -263,6 +265,9 @@ private struct RuntimeManagedCodexAccount: Sendable {
 private struct AccountIdentity: Equatable {
     let id: UUID
     let email: String
+    let providerAccountID: String?
+    let workspaceLabel: String?
+    let workspaceAccountID: String?
     let managedHomePath: String
     let createdAt: TimeInterval
     let updatedAt: TimeInterval
@@ -271,6 +276,9 @@ private struct AccountIdentity: Equatable {
     init(_ account: ManagedCodexAccount) {
         self.id = account.id
         self.email = account.email
+        self.providerAccountID = account.providerAccountID
+        self.workspaceLabel = account.workspaceLabel
+        self.workspaceAccountID = account.workspaceAccountID
         self.managedHomePath = account.managedHomePath
         self.createdAt = account.createdAt
         self.updatedAt = account.updatedAt

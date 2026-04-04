@@ -4,12 +4,62 @@ import Foundation
 struct CodexVisibleAccount: Equatable, Sendable, Identifiable {
     let id: String
     let email: String
+    let workspaceLabel: String?
+    let workspaceAccountID: String?
     let storedAccountID: UUID?
     let selectionSource: CodexActiveSource
     let isActive: Bool
     let isLive: Bool
     let canReauthenticate: Bool
     let canRemove: Bool
+
+    init(
+        id: String,
+        email: String,
+        workspaceLabel: String? = nil,
+        workspaceAccountID: String? = nil,
+        storedAccountID: UUID?,
+        selectionSource: CodexActiveSource,
+        isActive: Bool,
+        isLive: Bool,
+        canReauthenticate: Bool,
+        canRemove: Bool)
+    {
+        self.id = id
+        self.email = email
+        self.workspaceLabel = Self.normalizeWorkspaceLabel(workspaceLabel)
+        self.workspaceAccountID = workspaceAccountID
+        self.storedAccountID = storedAccountID
+        self.selectionSource = selectionSource
+        self.isActive = isActive
+        self.isLive = isLive
+        self.canReauthenticate = canReauthenticate
+        self.canRemove = canRemove
+    }
+
+    var displayName: String {
+        guard let workspaceLabel else { return self.email }
+        return "\(self.email) — \(workspaceLabel)"
+    }
+
+    var menuDisplayName: String {
+        guard let menuWorkspaceLabel else { return self.email }
+        return "\(self.email) — \(menuWorkspaceLabel)"
+    }
+
+    var menuWorkspaceLabel: String? {
+        guard let workspaceLabel, workspaceLabel.compare("Personal", options: [.caseInsensitive]) != .orderedSame else {
+            return nil
+        }
+        return workspaceLabel
+    }
+
+    private static func normalizeWorkspaceLabel(_ workspaceLabel: String?) -> String? {
+        guard let trimmed = workspaceLabel?.trimmingCharacters(in: .whitespacesAndNewlines), !trimmed.isEmpty else {
+            return nil
+        }
+        return trimmed
+    }
 }
 
 struct CodexVisibleAccountProjection: Equatable, Sendable {
@@ -38,6 +88,8 @@ extension CodexVisibleAccountProjection {
             let normalizedEmail = snapshot.runtimeEmail(for: storedAccount)
             drafts.append(VisibleAccountDraft(
                 email: normalizedEmail,
+                workspaceLabel: Self.normalizeWorkspaceLabel(storedAccount.workspaceLabel),
+                workspaceAccountID: storedAccount.workspaceAccountID,
                 storedAccountID: storedAccount.id,
                 selectionSource: .managedAccount(id: storedAccount.id),
                 isLive: false,
@@ -52,17 +104,23 @@ extension CodexVisibleAccountProjection {
             if let existingIndex = drafts.firstIndex(where: { draft in
                 CodexIdentityMatcher.matches(draft.identity, liveIdentity)
             }) {
+                let existingDraft = drafts[existingIndex]
+                let liveWorkspaceLabel = Self.normalizeWorkspaceLabel(liveSystemAccount.workspaceLabel)
                 drafts[existingIndex] = VisibleAccountDraft(
-                    email: drafts[existingIndex].email,
-                    storedAccountID: drafts[existingIndex].storedAccountID,
+                    email: existingDraft.email,
+                    workspaceLabel: liveWorkspaceLabel ?? existingDraft.workspaceLabel,
+                    workspaceAccountID: liveSystemAccount.workspaceAccountID ?? existingDraft.workspaceAccountID,
+                    storedAccountID: existingDraft.storedAccountID,
                     selectionSource: .liveSystem,
                     isLive: true,
-                    canReauthenticate: drafts[existingIndex].canReauthenticate,
-                    canRemove: drafts[existingIndex].canRemove,
+                    canReauthenticate: existingDraft.canReauthenticate,
+                    canRemove: existingDraft.canRemove,
                     identity: liveIdentity)
             } else {
                 drafts.append(VisibleAccountDraft(
                     email: normalizedEmail,
+                    workspaceLabel: Self.normalizeWorkspaceLabel(liveSystemAccount.workspaceLabel),
+                    workspaceAccountID: liveSystemAccount.workspaceAccountID,
                     storedAccountID: nil,
                     selectionSource: .liveSystem,
                     isLive: true,
@@ -85,6 +143,8 @@ extension CodexVisibleAccountProjection {
             return CodexVisibleAccount(
                 id: id,
                 email: draft.email,
+                workspaceLabel: draft.workspaceLabel,
+                workspaceAccountID: draft.workspaceAccountID,
                 storedAccountID: draft.storedAccountID,
                 selectionSource: draft.selectionSource,
                 isActive: isActive,
@@ -98,6 +158,9 @@ extension CodexVisibleAccountProjection {
             if lhs.isLive != rhs.isLive {
                 return lhs.isLive && !rhs.isLive
             }
+            if lhs.displayName != rhs.displayName {
+                return lhs.displayName < rhs.displayName
+            }
             return lhs.id < rhs.id
         }
 
@@ -110,6 +173,13 @@ extension CodexVisibleAccountProjection {
 
     private static func normalizeVisibleEmail(_ email: String) -> String {
         email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    private static func normalizeWorkspaceLabel(_ workspaceLabel: String?) -> String? {
+        guard let trimmed = workspaceLabel?.trimmingCharacters(in: .whitespacesAndNewlines), !trimmed.isEmpty else {
+            return nil
+        }
+        return trimmed
     }
 
     private static func visibleAccountID(for draft: VisibleAccountDraft, emailGroupSize: Int) -> String {
@@ -126,6 +196,8 @@ extension CodexVisibleAccountProjection {
 
 private struct VisibleAccountDraft {
     let email: String
+    let workspaceLabel: String?
+    let workspaceAccountID: String?
     let storedAccountID: UUID?
     let selectionSource: CodexActiveSource
     let isLive: Bool
