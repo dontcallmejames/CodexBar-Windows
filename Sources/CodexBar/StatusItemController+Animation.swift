@@ -444,11 +444,33 @@ extension StatusItemController {
         let percentWindow = self.menuBarPercentWindow(for: provider, snapshot: snapshot)
         let mode = self.settings.menuBarDisplayMode
         let now = Date()
-        let pace: UsagePace? = switch mode {
-        case .percent:
+        let codexProjection: CodexConsumerProjection? = if provider == .codex, let snapshot {
+            CodexConsumerProjection.make(
+                surface: .menuBar,
+                context: CodexConsumerProjection.Context(
+                    snapshot: snapshot,
+                    rawUsageError: nil,
+                    liveCredits: self.store.credits,
+                    rawCreditsError: self.store.lastCreditsError,
+                    liveDashboard: self.store.openAIDashboard,
+                    rawDashboardError: self.store.lastOpenAIDashboardError,
+                    dashboardAttachmentAuthorized: self.store.openAIDashboardAttachmentAuthorized,
+                    dashboardRequiresLogin: self.store.openAIDashboardRequiresLogin,
+                    now: now))
+        } else {
             nil
+        }
+        let pace: UsagePace?
+        switch mode {
+        case .percent:
+            pace = nil
         case .pace, .both:
-            snapshot?.secondary.flatMap { window in
+            let weeklyWindow = if provider == .codex {
+                codexProjection?.rateWindow(for: .weekly)
+            } else {
+                snapshot?.secondary
+            }
+            pace = weeklyWindow.flatMap { window in
                 self.store.weeklyPace(provider: provider, window: window, now: now)
             }
         }
@@ -458,14 +480,11 @@ extension StatusItemController {
             pace: pace,
             showUsed: self.settings.usageBarsShowUsed)
 
-        let sessionExhausted = (snapshot?.primary?.remainingPercent ?? 100) <= 0
-        let weeklyExhausted = (snapshot?.secondary?.remainingPercent ?? 100) <= 0
-
         if provider == .codex,
            mode == .percent,
            !self.settings.usageBarsShowUsed,
-           sessionExhausted || weeklyExhausted,
-           let creditsRemaining = self.store.credits?.remaining,
+           codexProjection?.menuBarFallback == .creditsBalance,
+           let creditsRemaining = codexProjection?.credits?.remaining,
            creditsRemaining > 0
         {
             return UsageFormatter
