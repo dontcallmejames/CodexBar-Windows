@@ -283,6 +283,50 @@ struct CodexAccountReconciliationTests {
     }
 
     @Test
+    func `workspace hydration changes snapshot equality and visible display state`() {
+        let accountID = UUID()
+        let baseAccount = ManagedCodexAccount(
+            id: accountID,
+            email: "user@example.com",
+            providerAccountID: "account-live",
+            managedHomePath: "/tmp/managed-a",
+            createdAt: 1,
+            updatedAt: 2,
+            lastAuthenticatedAt: 3)
+        let hydratedAccount = ManagedCodexAccount(
+            id: accountID,
+            email: "user@example.com",
+            providerAccountID: "account-live",
+            workspaceLabel: "Team Alpha",
+            workspaceAccountID: "account-live",
+            managedHomePath: "/tmp/managed-a",
+            createdAt: 1,
+            updatedAt: 2,
+            lastAuthenticatedAt: 3)
+        let baseSnapshot = CodexAccountReconciliationSnapshot(
+            storedAccounts: [baseAccount],
+            activeStoredAccount: baseAccount,
+            liveSystemAccount: nil,
+            matchingStoredAccountForLiveSystemAccount: nil,
+            activeSource: .managedAccount(id: accountID),
+            hasUnreadableAddedAccountStore: false)
+        let hydratedSnapshot = CodexAccountReconciliationSnapshot(
+            storedAccounts: [hydratedAccount],
+            activeStoredAccount: hydratedAccount,
+            liveSystemAccount: nil,
+            matchingStoredAccountForLiveSystemAccount: nil,
+            activeSource: .managedAccount(id: accountID),
+            hasUnreadableAddedAccountStore: false)
+
+        let baseProjection = CodexVisibleAccountProjection.make(from: baseSnapshot)
+        let hydratedProjection = CodexVisibleAccountProjection.make(from: hydratedSnapshot)
+
+        #expect(baseSnapshot != hydratedSnapshot)
+        #expect(baseProjection.visibleAccounts.first?.displayName == "user@example.com")
+        #expect(hydratedProjection.visibleAccounts.first?.displayName == "user@example.com — Team Alpha")
+    }
+
+    @Test
     func `matching live system account does not duplicate stored identity`() {
         let stored = ManagedCodexAccount(
             id: UUID(),
@@ -307,6 +351,82 @@ struct CodexAccountReconciliationTests {
         #expect(projection.visibleAccounts.count == 1)
         #expect(projection.activeVisibleAccountID == "user@example.com")
         #expect(projection.liveVisibleAccountID == "user@example.com")
+    }
+
+    @Test
+    func `matching live system account prefers live workspace label and keeps stored fallback`() {
+        let stored = ManagedCodexAccount(
+            id: UUID(),
+            email: "user@example.com",
+            providerAccountID: "account-live",
+            workspaceLabel: "Saved Team",
+            workspaceAccountID: "account-live",
+            managedHomePath: "/tmp/managed-a",
+            createdAt: 1,
+            updatedAt: 2,
+            lastAuthenticatedAt: 3)
+        let liveWithLabel = ObservedSystemCodexAccount(
+            email: "USER@example.com",
+            workspaceLabel: "Live Team",
+            workspaceAccountID: "account-live",
+            codexHomePath: "/Users/test/.codex",
+            observedAt: Date(),
+            identity: .providerAccount(id: "account-live"))
+        let labeledSnapshot = CodexAccountReconciliationSnapshot(
+            storedAccounts: [stored],
+            activeStoredAccount: stored,
+            liveSystemAccount: liveWithLabel,
+            matchingStoredAccountForLiveSystemAccount: stored,
+            activeSource: .managedAccount(id: stored.id),
+            hasUnreadableAddedAccountStore: false,
+            storedAccountRuntimeIdentities: [stored.id: .providerAccount(id: "account-live")],
+            storedAccountRuntimeEmails: [stored.id: "user@example.com"])
+        let liveWithoutLabel = ObservedSystemCodexAccount(
+            email: "USER@example.com",
+            workspaceLabel: nil,
+            workspaceAccountID: "account-live",
+            codexHomePath: "/Users/test/.codex",
+            observedAt: Date(),
+            identity: .providerAccount(id: "account-live"))
+        let fallbackSnapshot = CodexAccountReconciliationSnapshot(
+            storedAccounts: [stored],
+            activeStoredAccount: stored,
+            liveSystemAccount: liveWithoutLabel,
+            matchingStoredAccountForLiveSystemAccount: stored,
+            activeSource: .managedAccount(id: stored.id),
+            hasUnreadableAddedAccountStore: false,
+            storedAccountRuntimeIdentities: [stored.id: .providerAccount(id: "account-live")],
+            storedAccountRuntimeEmails: [stored.id: "user@example.com"])
+        let liveWithEmptyLabel = ObservedSystemCodexAccount(
+            email: "USER@example.com",
+            workspaceLabel: "   \n\t  ",
+            workspaceAccountID: "account-live",
+            codexHomePath: "/Users/test/.codex",
+            observedAt: Date(),
+            identity: .providerAccount(id: "account-live"))
+        let emptyLabelSnapshot = CodexAccountReconciliationSnapshot(
+            storedAccounts: [stored],
+            activeStoredAccount: stored,
+            liveSystemAccount: liveWithEmptyLabel,
+            matchingStoredAccountForLiveSystemAccount: stored,
+            activeSource: .managedAccount(id: stored.id),
+            hasUnreadableAddedAccountStore: false,
+            storedAccountRuntimeIdentities: [stored.id: .providerAccount(id: "account-live")],
+            storedAccountRuntimeEmails: [stored.id: "user@example.com"])
+
+        let labeledProjection = CodexVisibleAccountProjection.make(from: labeledSnapshot)
+        let fallbackProjection = CodexVisibleAccountProjection.make(from: fallbackSnapshot)
+        let emptyLabelProjection = CodexVisibleAccountProjection.make(from: emptyLabelSnapshot)
+
+        #expect(labeledProjection.visibleAccounts.count == 1)
+        #expect(labeledProjection.visibleAccounts.first?.workspaceLabel == "Live Team")
+        #expect(labeledProjection.visibleAccounts.first?.displayName == "user@example.com — Live Team")
+        #expect(fallbackProjection.visibleAccounts.count == 1)
+        #expect(fallbackProjection.visibleAccounts.first?.workspaceLabel == "Saved Team")
+        #expect(fallbackProjection.visibleAccounts.first?.displayName == "user@example.com — Saved Team")
+        #expect(emptyLabelProjection.visibleAccounts.count == 1)
+        #expect(emptyLabelProjection.visibleAccounts.first?.workspaceLabel == "Saved Team")
+        #expect(emptyLabelProjection.visibleAccounts.first?.displayName == "user@example.com — Saved Team")
     }
 
     @Test
