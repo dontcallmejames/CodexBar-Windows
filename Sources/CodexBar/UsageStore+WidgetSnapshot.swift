@@ -54,8 +54,9 @@ extension UsageStore {
                 surface: .widget,
                 snapshotOverride: snapshot,
                 now: snapshot.updatedAt)
-            creditsRemaining = projection.credits?.remaining
-            codeReviewRemaining = projection.remainingPercent(for: .codeReview)
+            let displayOnlyExtrasHidden = projection.dashboardVisibility == .displayOnly
+            creditsRemaining = displayOnlyExtrasHidden ? nil : projection.credits?.remaining
+            codeReviewRemaining = displayOnlyExtrasHidden ? nil : projection.remainingPercent(for: .codeReview)
         } else {
             creditsRemaining = nil
             codeReviewRemaining = nil
