@@ -84,7 +84,7 @@ struct CodexConsumerProjectionTests {
 
         #expect(projection.dashboardVisibility == .displayOnly)
         #expect(projection.supplementalMetrics.isEmpty)
-        #expect(!projection.canShowBuyCredits)
+        #expect(projection.canShowBuyCredits)
         #expect(!projection.hasUsageBreakdown)
         #expect(!projection.hasCreditsHistory)
     }
@@ -169,6 +169,44 @@ struct CodexConsumerProjectionTests {
         let projection = store.codexConsumerProjection(surface: .menuBar, now: now)
 
         #expect(projection.menuBarFallback == .creditsBalance)
+    }
+
+    @Test
+    func `live card projection keeps buy credits available without dashboard purchase URL`() {
+        let store = self.makeStore(suite: "CodexConsumerProjectionTests-buy-credits")
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+
+        store._setSnapshotForTesting(
+            UsageSnapshot(
+                primary: RateWindow(
+                    usedPercent: 20,
+                    windowMinutes: 300,
+                    resetsAt: now.addingTimeInterval(1800),
+                    resetDescription: nil),
+                secondary: nil,
+                updatedAt: now),
+            provider: .codex)
+        store.credits = CreditsSnapshot(remaining: 42, events: [], updatedAt: now)
+        store.openAIDashboardAttachmentAuthorized = false
+        store.openAIDashboardRequiresLogin = false
+
+        let projection = store.codexConsumerProjection(surface: .liveCard, now: now)
+
+        #expect(projection.canShowBuyCredits)
+    }
+
+    @Test
+    func `menu bar projection keeps credits fallback when credits load before usage`() {
+        let store = self.makeStore(suite: "CodexConsumerProjectionTests-menu-bar-credits-only")
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+
+        store._setSnapshotForTesting(nil, provider: .codex)
+        store.credits = CreditsSnapshot(remaining: 80, events: [], updatedAt: now)
+
+        let projection = store.codexConsumerProjection(surface: .menuBar, now: now)
+
+        #expect(projection.menuBarFallback == .creditsBalance)
+        #expect(!projection.hasExhaustedRateLane)
     }
 
     private func makeStore(suite: String) -> UsageStore {

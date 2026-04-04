@@ -281,9 +281,10 @@ extension StatusItemController {
         let hasUsageBreakdown = codexProjection?.hasUsageBreakdown == true
         let hasCostHistory = self.settings.isCostUsageEffectivelyEnabled(for: currentProvider) &&
             (self.store.tokenSnapshot(for: currentProvider)?.daily.isEmpty == false)
-        let canShowBuyCredits = codexProjection?.canShowBuyCredits == true
+        let canShowBuyCredits = self.settings.showOptionalCreditsAndExtraUsage &&
+            codexProjection?.canShowBuyCredits == true
         let hasOpenAIWebMenuItems = !showAllTokenAccounts &&
-            (hasCreditsHistory || hasUsageBreakdown || hasCostHistory || canShowBuyCredits)
+            (hasCreditsHistory || hasUsageBreakdown || hasCostHistory)
         return OpenAIWebContext(
             hasUsageBreakdown: hasUsageBreakdown,
             hasCreditsHistory: hasCreditsHistory,
