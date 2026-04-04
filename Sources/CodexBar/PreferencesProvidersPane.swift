@@ -465,17 +465,22 @@ struct ProvidersPane: View {
     func menuCardModel(for provider: UsageProvider) -> UsageMenuCardView.Model {
         let metadata = self.store.metadata(for: provider)
         let snapshot = self.store.snapshot(for: provider)
+        let now = Date()
+        let codexProjection = self.store.codexConsumerProjectionIfNeeded(
+            for: provider,
+            surface: .liveCard,
+            now: now)
         let credits: CreditsSnapshot?
         let creditsError: String?
         let dashboard: OpenAIDashboardSnapshot?
         let dashboardError: String?
         let tokenSnapshot: CostUsageTokenSnapshot?
         let tokenError: String?
-        if provider == .codex {
-            credits = self.store.credits
-            creditsError = self.store.userFacingLastCreditsError
-            dashboard = self.store.openAIDashboardRequiresLogin ? nil : self.store.attachedOpenAIDashboardSnapshot
-            dashboardError = self.store.userFacingLastOpenAIDashboardError
+        if let codexProjection {
+            credits = codexProjection.credits?.snapshot
+            creditsError = codexProjection.credits?.userFacingError
+            dashboard = nil
+            dashboardError = codexProjection.userFacingErrors.dashboard
             tokenSnapshot = self.store.tokenSnapshot(for: provider)
             tokenError = self.store.tokenError(for: provider)
         } else if provider == .claude || provider == .vertexai {
@@ -494,14 +499,20 @@ struct ProvidersPane: View {
             tokenError = nil
         }
 
-        let now = Date()
-        let weeklyPace = snapshot?.secondary.flatMap { window in
-            self.store.weeklyPace(provider: provider, window: window, now: now)
+        let weeklyPace = if let codexProjection,
+                            let weekly = codexProjection.rateWindow(for: .weekly)
+        {
+            self.store.weeklyPace(provider: provider, window: weekly, now: now)
+        } else {
+            snapshot?.secondary.flatMap { window in
+                self.store.weeklyPace(provider: provider, window: window, now: now)
+            }
         }
         let input = UsageMenuCardView.Model.Input(
             provider: provider,
             metadata: metadata,
             snapshot: snapshot,
+            codexProjection: codexProjection,
             credits: credits,
             creditsError: creditsError,
             dashboard: dashboard,
@@ -510,7 +521,7 @@ struct ProvidersPane: View {
             tokenError: tokenError,
             account: self.store.accountInfo(for: provider),
             isRefreshing: self.store.refreshingProviders.contains(provider),
-            lastError: self.store.userFacingError(for: provider),
+            lastError: codexProjection?.userFacingErrors.usage ?? self.store.userFacingError(for: provider),
             usageBarsShowUsed: self.settings.usageBarsShowUsed,
             resetTimeDisplayStyle: self.settings.resetTimeDisplayStyle,
             tokenCostUsageEnabled: self.settings.isCostUsageEffectivelyEnabled(for: provider),

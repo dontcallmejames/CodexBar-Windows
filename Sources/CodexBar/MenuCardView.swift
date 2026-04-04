@@ -653,6 +653,7 @@ extension UsageMenuCardView.Model {
         let provider: UsageProvider
         let metadata: ProviderMetadata
         let snapshot: UsageSnapshot?
+        let codexProjection: CodexConsumerProjection?
         let credits: CreditsSnapshot?
         let creditsError: String?
         let dashboard: OpenAIDashboardSnapshot?
@@ -676,6 +677,7 @@ extension UsageMenuCardView.Model {
             provider: UsageProvider,
             metadata: ProviderMetadata,
             snapshot: UsageSnapshot?,
+            codexProjection: CodexConsumerProjection? = nil,
             credits: CreditsSnapshot?,
             creditsError: String?,
             dashboard: OpenAIDashboardSnapshot?,
@@ -698,6 +700,7 @@ extension UsageMenuCardView.Model {
             self.provider = provider
             self.metadata = metadata
             self.snapshot = snapshot
+            self.codexProjection = codexProjection
             self.credits = credits
             self.creditsError = creditsError
             self.dashboard = dashboard
@@ -729,7 +732,7 @@ extension UsageMenuCardView.Model {
         let usageNotes = Self.usageNotes(input: input)
         let creditsText: String? = if input.provider == .openrouter {
             nil
-        } else if input.provider == .codex, !input.showOptionalCreditsAndExtraUsage {
+        } else if input.codexProjection != nil, !input.showOptionalCreditsAndExtraUsage {
             nil
         } else {
             Self.creditsLine(metadata: input.metadata, credits: input.credits, error: input.creditsError)
@@ -913,7 +916,7 @@ extension UsageMenuCardView.Model {
         let subtitleText = PersonalInfoRedactor.redactEmails(in: subtitle.text, isEnabled: input.hidePersonalInfo)
             ?? subtitle.text
         let creditsHintText = PersonalInfoRedactor.redactEmails(
-            in: Self.dashboardHint(provider: input.provider, error: input.dashboardError),
+            in: Self.dashboardHint(error: input.dashboardError),
             isEnabled: input.hidePersonalInfo)
         let creditsHintCopyText = Self.creditsHintCopyText(
             dashboardError: input.dashboardError,
@@ -1063,9 +1066,12 @@ extension UsageMenuCardView.Model {
                 paceOnTop: true))
         }
 
-        if input.provider == .codex, let remaining = input.dashboard?.codeReviewRemainingPercent {
+        if let codexProjection = input.codexProjection,
+           codexProjection.supplementalMetrics.contains(.codeReview),
+           let remaining = codexProjection.remainingPercent(for: .codeReview)
+        {
             let percent = input.usageBarsShowUsed ? (100 - remaining) : remaining
-            let resetText = input.dashboard?.codeReviewLimit.flatMap {
+            let resetText = codexProjection.limitWindow(for: .codeReview).flatMap {
                 Self.resetText(for: $0, style: input.resetTimeDisplayStyle, now: input.now)
             }
             metrics.append(Metric(
@@ -1218,8 +1224,7 @@ extension UsageMenuCardView.Model {
         return metadata.creditsHint
     }
 
-    private static func dashboardHint(provider: UsageProvider, error: String?) -> String? {
-        guard provider == .codex else { return nil }
+    private static func dashboardHint(error: String?) -> String? {
         guard let error, !error.isEmpty else { return nil }
         return error
     }

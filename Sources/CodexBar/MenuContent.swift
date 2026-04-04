@@ -135,10 +135,24 @@ struct StatusIconView: View {
     }
 
     private var icon: NSImage {
-        IconRenderer.makeIcon(
-            primaryRemaining: self.store.snapshot(for: self.provider)?.primary?.remainingPercent,
-            weeklyRemaining: self.store.snapshot(for: self.provider)?.secondary?.remainingPercent,
-            creditsRemaining: self.provider == .codex ? self.store.credits?.remaining : nil,
+        let snapshot = self.store.snapshot(for: self.provider)
+        let remaining = snapshot.map {
+            IconRemainingResolver.resolvedRemaining(snapshot: $0, style: self.store.style(for: self.provider))
+        }
+        let creditsProjection = self.store.codexConsumerProjectionIfNeeded(
+            for: self.provider,
+            surface: .menuBar,
+            snapshotOverride: snapshot,
+            now: snapshot?.updatedAt ?? Date())
+        let creditsRemaining = creditsProjection?.menuBarFallback == .creditsBalance
+            ? self.store.codexMenuBarCreditsRemaining(
+                snapshotOverride: snapshot,
+                now: snapshot?.updatedAt ?? Date())
+            : nil
+        return IconRenderer.makeIcon(
+            primaryRemaining: remaining?.primary,
+            weeklyRemaining: remaining?.secondary,
+            creditsRemaining: creditsRemaining,
             stale: self.store.isStale(provider: self.provider),
             style: self.store.style(for: self.provider),
             statusIndicator: self.store.statusIndicator(for: self.provider))
