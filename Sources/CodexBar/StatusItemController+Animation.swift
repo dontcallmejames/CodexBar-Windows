@@ -228,8 +228,14 @@ extension StatusItemController {
 
         // IconRenderer treats these values as a left-to-right "progress fill" percentage; depending on the
         // user setting we pass either "percent left" or "percent used".
-        var primary = showUsed ? snapshot?.primary?.usedPercent : snapshot?.primary?.remainingPercent
-        var weekly = showUsed ? snapshot?.secondary?.usedPercent : snapshot?.secondary?.remainingPercent
+        let resolved = snapshot.map {
+            IconRemainingResolver.resolvedPercents(
+                snapshot: $0,
+                style: style,
+                showUsed: showUsed)
+        }
+        var primary = resolved?.primary
+        var weekly = resolved?.secondary
         if showUsed,
            primaryProvider == .warp,
            let remaining = snapshot?.secondary?.remainingPercent,
@@ -247,7 +253,16 @@ extension StatusItemController {
             // In show-used mode, `0` means "unused", not "missing". Keep the weekly lane present.
             weekly = Self.loadingPercentEpsilon
         }
-        var credits: Double? = primaryProvider == .codex ? self.store.credits?.remaining : nil
+        let codexProjection = self.store.codexConsumerProjectionIfNeeded(
+            for: primaryProvider,
+            surface: .menuBar,
+            snapshotOverride: snapshot,
+            now: snapshot?.updatedAt ?? Date())
+        var credits: Double? = codexProjection?.menuBarFallback == .creditsBalance
+            ? self.store.codexMenuBarCreditsRemaining(
+                snapshotOverride: snapshot,
+                now: snapshot?.updatedAt ?? Date())
+            : nil
         var stale = self.store.isStale(provider: primaryProvider)
         var morphProgress: Double?
 
@@ -330,6 +345,7 @@ extension StatusItemController {
         // user setting we pass either "percent left" or "percent used".
         let showUsed = self.settings.usageBarsShowUsed
         let showBrandPercent = self.settings.menuBarShowsBrandIconWithPercent
+        let style: IconStyle = self.store.style(for: provider)
 
         if showBrandPercent,
            let brand = ProviderBrandIcon.image(for: provider)
@@ -351,8 +367,14 @@ extension StatusItemController {
                 for: button)
             return
         }
-        var primary = showUsed ? snapshot?.primary?.usedPercent : snapshot?.primary?.remainingPercent
-        var weekly = showUsed ? snapshot?.secondary?.usedPercent : snapshot?.secondary?.remainingPercent
+        let resolved = snapshot.map {
+            IconRemainingResolver.resolvedPercents(
+                snapshot: $0,
+                style: style,
+                showUsed: showUsed)
+        }
+        var primary = resolved?.primary
+        var weekly = resolved?.secondary
         if showUsed,
            provider == .warp,
            let remaining = snapshot?.secondary?.remainingPercent,
@@ -370,7 +392,16 @@ extension StatusItemController {
             // In show-used mode, `0` means "unused", not "missing". Keep the weekly lane present.
             weekly = Self.loadingPercentEpsilon
         }
-        var credits: Double? = provider == .codex ? self.store.credits?.remaining : nil
+        let codexProjection = self.store.codexConsumerProjectionIfNeeded(
+            for: provider,
+            surface: .menuBar,
+            snapshotOverride: snapshot,
+            now: snapshot?.updatedAt ?? Date())
+        var credits: Double? = codexProjection?.menuBarFallback == .creditsBalance
+            ? self.store.codexMenuBarCreditsRemaining(
+                snapshotOverride: snapshot,
+                now: snapshot?.updatedAt ?? Date())
+            : nil
         var stale = self.store.isStale(provider: provider)
         var morphProgress: Double?
 
@@ -394,7 +425,6 @@ extension StatusItemController {
             }
         }
 
-        let style: IconStyle = self.store.style(for: provider)
         let isLoading = phase != nil && self.shouldAnimate(provider: provider)
         let blink: CGFloat = {
             guard isLoading, style == .warp, let phase else {
@@ -444,32 +474,17 @@ extension StatusItemController {
         let percentWindow = self.menuBarPercentWindow(for: provider, snapshot: snapshot)
         let mode = self.settings.menuBarDisplayMode
         let now = Date()
-        let codexProjection: CodexConsumerProjection? = if provider == .codex, let snapshot {
-            CodexConsumerProjection.make(
-                surface: .menuBar,
-                context: CodexConsumerProjection.Context(
-                    snapshot: snapshot,
-                    rawUsageError: nil,
-                    liveCredits: self.store.credits,
-                    rawCreditsError: self.store.lastCreditsError,
-                    liveDashboard: self.store.openAIDashboard,
-                    rawDashboardError: self.store.lastOpenAIDashboardError,
-                    dashboardAttachmentAuthorized: self.store.openAIDashboardAttachmentAuthorized,
-                    dashboardRequiresLogin: self.store.openAIDashboardRequiresLogin,
-                    now: now))
-        } else {
-            nil
-        }
+        let codexProjection = self.store.codexConsumerProjectionIfNeeded(
+            for: provider,
+            surface: .menuBar,
+            snapshotOverride: snapshot,
+            now: now)
         let pace: UsagePace?
         switch mode {
         case .percent:
             pace = nil
         case .pace, .both:
-            let weeklyWindow = if provider == .codex {
-                codexProjection?.rateWindow(for: .weekly)
-            } else {
-                snapshot?.secondary
-            }
+            let weeklyWindow = codexProjection?.rateWindow(for: .weekly) ?? snapshot?.secondary
             pace = weeklyWindow.flatMap { window in
                 self.store.weeklyPace(provider: provider, window: window, now: now)
             }
@@ -480,8 +495,7 @@ extension StatusItemController {
             pace: pace,
             showUsed: self.settings.usageBarsShowUsed)
 
-        if provider == .codex,
-           mode == .percent,
+        if mode == .percent,
            !self.settings.usageBarsShowUsed,
            codexProjection?.menuBarFallback == .creditsBalance,
            let creditsRemaining = codexProjection?.credits?.remaining,

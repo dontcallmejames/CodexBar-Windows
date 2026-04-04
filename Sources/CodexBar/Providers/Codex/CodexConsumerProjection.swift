@@ -340,6 +340,21 @@ struct CodexConsumerProjection {
 }
 
 extension UsageStore {
+    func codexConsumerProjectionIfNeeded(
+        for provider: UsageProvider,
+        surface: CodexConsumerProjection.Surface,
+        snapshotOverride: UsageSnapshot? = nil,
+        errorOverride: String? = nil,
+        now: Date = Date()) -> CodexConsumerProjection?
+    {
+        guard provider == .codex else { return nil }
+        return self.codexConsumerProjection(
+            surface: surface,
+            snapshotOverride: snapshotOverride,
+            errorOverride: errorOverride,
+            now: now)
+    }
+
     func codexConsumerProjection(
         surface: CodexConsumerProjection.Surface,
         snapshotOverride: UsageSnapshot? = nil,
@@ -357,5 +372,14 @@ extension UsageStore {
             dashboardRequiresLogin: self.openAIDashboardRequiresLogin,
             now: now)
         return CodexConsumerProjection.make(surface: surface, context: context)
+    }
+
+    func codexMenuBarCreditsRemaining(snapshotOverride: UsageSnapshot? = nil, now: Date = Date()) -> Double? {
+        let projection = self.codexConsumerProjection(
+            surface: .menuBar,
+            snapshotOverride: snapshotOverride,
+            now: now)
+        guard projection.menuBarFallback == .creditsBalance else { return nil }
+        return projection.credits?.remaining
     }
 }

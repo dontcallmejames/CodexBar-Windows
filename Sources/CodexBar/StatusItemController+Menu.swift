@@ -4,43 +4,6 @@ import Observation
 import QuartzCore
 import SwiftUI
 
-extension ProviderSwitcherSelection {
-    fileprivate var provider: UsageProvider? {
-        switch self {
-        case .overview:
-            nil
-        case let .provider(provider):
-            provider
-        }
-    }
-}
-
-private struct OverviewMenuCardRowView: View {
-    let model: UsageMenuCardView.Model
-    let width: CGFloat
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            UsageMenuCardHeaderSectionView(
-                model: self.model,
-                showDivider: self.hasUsageBlock,
-                width: self.width)
-            if self.hasUsageBlock {
-                UsageMenuCardUsageSectionView(
-                    model: self.model,
-                    showBottomDivider: false,
-                    bottomPadding: 6,
-                    width: self.width)
-            }
-        }
-        .frame(width: self.width, alignment: .leading)
-    }
-
-    private var hasUsageBlock: Bool {
-        !self.model.metrics.isEmpty || !self.model.usageNotes.isEmpty || self.model.placeholder != nil
-    }
-}
-
 // MARK: - NSMenu construction
 
 extension StatusItemController {
@@ -48,25 +11,6 @@ extension StatusItemController {
     private static let maxOverviewProviders = SettingsStore.mergedOverviewProviderLimit
     private static let overviewRowIdentifierPrefix = "overviewRow-"
     private static let menuOpenRefreshDelay: Duration = .seconds(1.2)
-    private struct OpenAIWebMenuItems {
-        let hasUsageBreakdown: Bool
-        let hasCreditsHistory: Bool
-        let hasCostHistory: Bool
-    }
-
-    private struct TokenAccountMenuDisplay {
-        let provider: UsageProvider
-        let accounts: [ProviderTokenAccount]
-        let snapshots: [TokenAccountUsageSnapshot]
-        let activeIndex: Int
-        let showAll: Bool
-        let showSwitcher: Bool
-    }
-
-    private struct CodexAccountMenuDisplay {
-        let accounts: [CodexVisibleAccount]
-        let activeVisibleAccountID: String?
-    }
 
     private func menuCardWidth(for providers: [UsageProvider], menu: NSMenu? = nil) -> CGFloat {
         _ = menu
@@ -314,6 +258,7 @@ extension StatusItemController {
         let hasUsageBreakdown: Bool
         let hasCreditsHistory: Bool
         let hasCostHistory: Bool
+        let canShowBuyCredits: Bool
         let hasOpenAIWebMenuItems: Bool
     }
 
@@ -329,20 +274,21 @@ extension StatusItemController {
         currentProvider: UsageProvider,
         showAllTokenAccounts: Bool) -> OpenAIWebContext
     {
-        let dashboard = self.store.openAIDashboard
-        let openAIWebEligible = currentProvider == .codex &&
-            self.store.openAIDashboardRequiresLogin == false &&
-            dashboard != nil
-        let hasCreditsHistory = openAIWebEligible && !(dashboard?.dailyBreakdown ?? []).isEmpty
-        let hasUsageBreakdown = openAIWebEligible && !(dashboard?.usageBreakdown ?? []).isEmpty
+        let codexProjection = self.store.codexConsumerProjectionIfNeeded(
+            for: currentProvider,
+            surface: .liveCard)
+        let hasCreditsHistory = codexProjection?.hasCreditsHistory == true
+        let hasUsageBreakdown = codexProjection?.hasUsageBreakdown == true
         let hasCostHistory = self.settings.isCostUsageEffectivelyEnabled(for: currentProvider) &&
             (self.store.tokenSnapshot(for: currentProvider)?.daily.isEmpty == false)
+        let canShowBuyCredits = codexProjection?.canShowBuyCredits == true
         let hasOpenAIWebMenuItems = !showAllTokenAccounts &&
-            (hasCreditsHistory || hasUsageBreakdown || hasCostHistory)
+            (hasCreditsHistory || hasUsageBreakdown || hasCostHistory || canShowBuyCredits)
         return OpenAIWebContext(
             hasUsageBreakdown: hasUsageBreakdown,
             hasCreditsHistory: hasCreditsHistory,
             hasCostHistory: hasCostHistory,
+            canShowBuyCredits: canShowBuyCredits,
             hasOpenAIWebMenuItems: hasOpenAIWebMenuItems)
     }
 
@@ -466,7 +412,8 @@ extension StatusItemController {
             let webItems = OpenAIWebMenuItems(
                 hasUsageBreakdown: context.openAIContext.hasUsageBreakdown,
                 hasCreditsHistory: context.openAIContext.hasCreditsHistory,
-                hasCostHistory: context.openAIContext.hasCostHistory)
+                hasCostHistory: context.openAIContext.hasCostHistory,
+                canShowBuyCredits: context.openAIContext.canShowBuyCredits)
             self.addMenuCardSections(
                 to: menu,
                 model: model,
@@ -480,7 +427,7 @@ extension StatusItemController {
             UsageMenuCardView(model: model, width: context.menuWidth),
             id: "menuCard",
             width: context.menuWidth))
-        if context.currentProvider == .codex, model.creditsText != nil {
+        if context.openAIContext.canShowBuyCredits {
             menu.addItem(self.makeBuyCreditsItem())
         }
         menu.addItem(.separator())
@@ -1048,7 +995,7 @@ extension StatusItemController {
                 id: "menuCardCredits",
                 width: width,
                 submenu: creditsSubmenu))
-            if provider == .codex {
+            if webItems.canShowBuyCredits {
                 menu.addItem(self.makeBuyCreditsItem())
             }
         }
@@ -1118,7 +1065,16 @@ extension StatusItemController {
             // In show-used mode, `0` means "unused", not "missing". Keep the weekly lane present.
             weekly = 0.0001
         }
-        let credits = provider == .codex ? self.store.credits?.remaining : nil
+        let creditsProjection = self.store.codexConsumerProjectionIfNeeded(
+            for: provider,
+            surface: .menuBar,
+            snapshotOverride: snapshot,
+            now: snapshot?.updatedAt ?? Date())
+        let credits = creditsProjection?.menuBarFallback == .creditsBalance
+            ? self.store.codexMenuBarCreditsRemaining(
+                snapshotOverride: snapshot,
+                now: snapshot?.updatedAt ?? Date())
+            : nil
         let stale = self.store.isStale(provider: provider)
         let indicator = self.store.statusIndicator(for: provider)
         let image = IconRenderer.makeIcon(
@@ -1339,7 +1295,7 @@ extension StatusItemController {
         snapshot: UsageSnapshot?,
         webItems: OpenAIWebMenuItems) -> NSMenu?
     {
-        if provider == .codex, webItems.hasUsageBreakdown {
+        if webItems.hasUsageBreakdown {
             return self.makeUsageBreakdownSubmenu()
         }
         if provider == .zai {
@@ -1531,19 +1487,36 @@ extension StatusItemController {
         let metadata = self.store.metadata(for: target)
 
         let snapshot = snapshotOverride ?? self.store.snapshot(for: target)
+        let surface: CodexConsumerProjection.Surface = if snapshotOverride != nil || errorOverride != nil {
+            .overrideCard
+        } else {
+            .liveCard
+        }
+        let now = Date()
+        let codexProjection = self.store.codexConsumerProjectionIfNeeded(
+            for: target,
+            surface: surface,
+            snapshotOverride: snapshotOverride,
+            errorOverride: errorOverride,
+            now: now)
         let credits: CreditsSnapshot?
         let creditsError: String?
         let dashboard: OpenAIDashboardSnapshot?
         let dashboardError: String?
         let tokenSnapshot: CostUsageTokenSnapshot?
         let tokenError: String?
-        if target == .codex, snapshotOverride == nil {
-            credits = self.store.credits
-            creditsError = self.store.userFacingLastCreditsError
-            dashboard = self.store.openAIDashboardRequiresLogin ? nil : self.store.attachedOpenAIDashboardSnapshot
-            dashboardError = self.store.userFacingLastOpenAIDashboardError
-            tokenSnapshot = self.store.tokenSnapshot(for: target)
-            tokenError = self.store.tokenError(for: target)
+        if let codexProjection {
+            credits = codexProjection.credits?.snapshot
+            creditsError = codexProjection.credits?.userFacingError
+            dashboard = nil
+            dashboardError = codexProjection.userFacingErrors.dashboard
+            if surface == .liveCard {
+                tokenSnapshot = self.store.tokenSnapshot(for: target)
+                tokenError = self.store.tokenError(for: target)
+            } else {
+                tokenSnapshot = nil
+                tokenError = nil
+            }
         } else if target == .claude || target == .vertexai, snapshotOverride == nil {
             credits = nil
             creditsError = nil
@@ -1562,14 +1535,20 @@ extension StatusItemController {
 
         let sourceLabel = snapshotOverride == nil ? self.store.sourceLabel(for: target) : nil
         let kiloAutoMode = target == .kilo && self.settings.kiloUsageDataSource == .auto
-        let now = Date()
-        let weeklyPace = snapshot?.secondary.flatMap { window in
-            self.store.weeklyPace(provider: target, window: window, now: now)
+        let weeklyPace = if let codexProjection,
+                            let weekly = codexProjection.rateWindow(for: .weekly)
+        {
+            self.store.weeklyPace(provider: target, window: weekly, now: now)
+        } else {
+            snapshot?.secondary.flatMap { window in
+                self.store.weeklyPace(provider: target, window: window, now: now)
+            }
         }
         let input = UsageMenuCardView.Model.Input(
             provider: target,
             metadata: metadata,
             snapshot: snapshot,
+            codexProjection: codexProjection,
             credits: credits,
             creditsError: creditsError,
             dashboard: dashboard,
@@ -1578,7 +1557,9 @@ extension StatusItemController {
             tokenError: tokenError,
             account: self.store.accountInfo(for: target),
             isRefreshing: self.store.shouldShowRefreshingMenuCard(for: target),
-            lastError: errorOverride ?? self.store.userFacingError(for: target),
+            lastError: errorOverride
+                ?? codexProjection?.userFacingErrors.usage
+                ?? self.store.userFacingError(for: target),
             usageBarsShowUsed: self.settings.usageBarsShowUsed,
             resetTimeDisplayStyle: self.settings.resetTimeDisplayStyle,
             tokenCostUsageEnabled: self.settings.isCostUsageEffectivelyEnabled(for: target),
