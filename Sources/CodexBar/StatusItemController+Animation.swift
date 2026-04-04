@@ -497,7 +497,7 @@ extension StatusItemController {
 
         if mode == .percent,
            !self.settings.usageBarsShowUsed,
-           codexProjection?.menuBarFallback == .creditsBalance,
+           codexProjection?.hasExhaustedRateLane == true,
            let creditsRemaining = codexProjection?.credits?.remaining,
            creditsRemaining > 0
         {

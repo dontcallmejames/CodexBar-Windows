@@ -195,8 +195,6 @@ struct CodexConsumerProjection {
         }
 
         let canShowBuyCredits = surface == .liveCard
-            && dashboardVisibility == .attached
-            && self.isSupportedCreditsPurchaseURL(dashboard?.creditsPurchaseURL)
         let hasUsageBreakdown = surface == .liveCard
             && dashboardVisibility == .attached
             && !(dashboard?.usageBreakdown ?? []).isEmpty
@@ -327,15 +325,12 @@ struct CodexConsumerProjection {
     {
         guard let creditsRemaining, creditsRemaining > 0 else { return .none }
         let hasExhaustedLane = rateWindowsByLane.values.contains { $0.remainingPercent <= 0 }
-        return hasExhaustedLane ? .creditsBalance : .none
+        let hasNoRateWindows = rateWindowsByLane.isEmpty
+        return (hasExhaustedLane || hasNoRateWindows) ? .creditsBalance : .none
     }
 
-    private static func isSupportedCreditsPurchaseURL(_ raw: String?) -> Bool {
-        guard let raw, let url = URL(string: raw) else { return false }
-        guard let host = url.host?.lowercased(), host.contains("chatgpt.com") else { return false }
-        let path = url.path.lowercased()
-        let allowed = ["settings", "usage", "billing", "credits"]
-        return allowed.contains { path.contains($0) }
+    var hasExhaustedRateLane: Bool {
+        self.rateWindowsByLane.values.contains { $0.remainingPercent <= 0 }
     }
 }
 
