@@ -140,6 +140,7 @@ enum CodexAccountPromotionError: Error, Sendable, Equatable {
     case liveAccountUnreadable
     case liveAccountMissingIdentityForPreservation
     case liveAccountAPIKeyOnlyUnsupported
+    case displacedLiveManagedAccountConflict
     case displacedLiveImportFailed
     case managedStoreCommitFailed
     case liveAuthSwapFailed

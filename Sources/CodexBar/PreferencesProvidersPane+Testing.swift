@@ -42,6 +42,10 @@ extension ProvidersPane {
     func _test_reauthenticateCodexAccount(_ account: CodexVisibleAccount) async {
         await self.reauthenticateCodexAccount(account)
     }
+
+    func _test_requestCodexSystemVisibleAccount(id: String) async {
+        await self.requestCodexSystemVisibleAccount(id: id)
+    }
 }
 
 @MainActor

@@ -94,6 +94,35 @@ struct CodexAccountPromotionPlanningTests {
     }
 
     @Test
+    func `planner rejects persisted provider match when readable home belongs to a different account`() async throws {
+        let container = try CodexAccountPromotionTestContainer(
+            suiteName: "CodexAccountPromotionPlanningTests-conflicting-readable-home")
+        defer { container.tearDown() }
+
+        let target = try container.createManagedAccount(
+            persistedEmail: "beta@example.com",
+            authAccountID: "acct-beta")
+        let conflictingManaged = try container.createManagedAccount(
+            persistedEmail: "alpha@example.com",
+            authEmail: "gamma@example.com",
+            authAccountID: "acct-gamma",
+            persistedProviderAccountID: "acct-alpha",
+            useAuthAccountIDAsPersistedProviderAccountID: false)
+        try container.persistAccounts([target, conflictingManaged])
+        _ = try container.writeLiveOAuthAuthFile(email: "alpha@example.com", accountID: "acct-alpha")
+
+        let context = try await self.makeContext(container: container, targetID: target.id)
+        let plan = CodexDisplacedLivePreservationPlanner().makePlan(context: context)
+
+        switch plan {
+        case let .reject(reason):
+            #expect(reason == .conflictingReadableManagedHome)
+        case .none, .importNew, .refreshExisting, .repairExisting:
+            Issue.record("Expected reject plan")
+        }
+    }
+
+    @Test
     func `planner uses legacy email repair instead of import when provider account upgrades old record`() async throws {
         let container = try CodexAccountPromotionTestContainer(
             suiteName: "CodexAccountPromotionPlanningTests-legacy-repair")

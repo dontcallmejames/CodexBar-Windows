@@ -10,6 +10,7 @@ enum CodexDisplacedLivePreservationRejectReason: Sendable, Equatable {
     case liveUnreadable
     case liveAPIKeyOnlyUnsupported
     case liveIdentityMissingForPreservation
+    case conflictingReadableManagedHome
 }
 
 enum CodexDisplacedLivePreservationImportReason: Sendable, Equatable {
@@ -24,7 +25,6 @@ enum CodexDisplacedLivePreservationRefreshReason: Sendable, Equatable {
 enum CodexDisplacedLivePreservationRepairReason: Sendable, Equatable {
     case persistedProviderMatchWithMissingHome
     case persistedProviderMatchWithUnreadableHome
-    case persistedProviderMatchWithConflictingReadableHome
     case persistedLegacyEmailMatch
 }
 
@@ -74,6 +74,10 @@ struct CodexDisplacedLivePreservationPlanner {
             return .refreshExisting(destination: destination, reason: reason)
         }
 
+        if self.hasConflictingReadableHome(in: candidates, liveAuthIdentity: liveAuthIdentity) {
+            return .reject(reason: .conflictingReadableManagedHome)
+        }
+
         if let repaired = self.findPersistedRepairMatch(in: candidates, liveAuthIdentity: liveAuthIdentity) {
             return .repairExisting(destination: repaired.destination, reason: repaired.reason)
         }
@@ -104,8 +108,10 @@ struct CodexDisplacedLivePreservationPlanner {
         switch liveAuthIdentity.identity {
         case let .providerAccount(id):
             let providerAccountID = ManagedCodexAccount.normalizeProviderAccountID(id)
-            if let destination = candidates.first(where: { $0.persisted.providerAccountID == providerAccountID }) {
-                return (destination, self.providerRepairReason(for: destination, liveAuthIdentity: liveAuthIdentity))
+            if let destination = candidates.first(where: { $0.persisted.providerAccountID == providerAccountID }),
+               let reason = self.providerRepairReason(for: destination)
+            {
+                return (destination, reason)
             }
 
             if let liveEmail = liveAuthIdentity.email,
@@ -131,21 +137,35 @@ struct CodexDisplacedLivePreservationPlanner {
         }
     }
 
-    private func providerRepairReason(
-        for destination: PreparedStoredManagedAccount,
+    private func hasConflictingReadableHome(
+        in candidates: [PreparedStoredManagedAccount],
         liveAuthIdentity: PreparedIdentity)
-        -> CodexDisplacedLivePreservationRepairReason
+        -> Bool
+    {
+        guard case let .providerAccount(id) = liveAuthIdentity.identity else {
+            return false
+        }
+
+        let providerAccountID = ManagedCodexAccount.normalizeProviderAccountID(id)
+        return candidates.contains { candidate in
+            guard candidate.persisted.providerAccountID == providerAccountID else { return false }
+            guard case .readable = candidate.homeState else { return false }
+            guard let candidateAuthIdentity = candidate.authIdentity else { return false }
+            return !CodexIdentityMatcher.matches(candidateAuthIdentity.identity, liveAuthIdentity.identity)
+        }
+    }
+
+    private func providerRepairReason(
+        for destination: PreparedStoredManagedAccount)
+        -> CodexDisplacedLivePreservationRepairReason?
     {
         switch destination.homeState {
         case .missing:
-            return .persistedProviderMatchWithMissingHome
+            .persistedProviderMatchWithMissingHome
         case .unreadable:
-            return .persistedProviderMatchWithUnreadableHome
-        case let .readable(authMaterial):
-            if CodexIdentityMatcher.matches(authMaterial.authIdentity.identity, liveAuthIdentity.identity) {
-                return .persistedProviderMatchWithConflictingReadableHome
-            }
-            return .persistedProviderMatchWithConflictingReadableHome
+            .persistedProviderMatchWithUnreadableHome
+        case .readable:
+            nil
         }
     }
 }

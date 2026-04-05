@@ -68,6 +68,8 @@ struct CodexDisplacedLivePreservationExecutor {
             .liveAccountAPIKeyOnlyUnsupported
         case .liveIdentityMissingForPreservation:
             .liveAccountMissingIdentityForPreservation
+        case .conflictingReadableManagedHome:
+            .displacedLiveManagedAccountConflict
         }
     }
 
