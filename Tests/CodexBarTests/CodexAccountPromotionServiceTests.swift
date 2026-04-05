@@ -602,6 +602,36 @@ struct CodexAccountPromotionServiceTests {
     }
 
     @Test
+    func `promotion rejects conflicting readable managed home before overwriting auth`() async throws {
+        let container = try CodexAccountPromotionTestContainer(
+            suiteName: "CodexAccountPromotionServiceTests-conflicting-readable-home")
+        defer { container.tearDown() }
+
+        let target = try container.createManagedAccount(
+            persistedEmail: "beta@example.com",
+            authAccountID: "acct-beta")
+        let conflictingManaged = try container.createManagedAccount(
+            persistedEmail: "alpha@example.com",
+            authEmail: "gamma@example.com",
+            authAccountID: "acct-gamma",
+            persistedProviderAccountID: "acct-alpha",
+            useAuthAccountIDAsPersistedProviderAccountID: false)
+        try container.persistAccounts([target, conflictingManaged])
+        let liveAuthData = try container.writeLiveOAuthAuthFile(email: "alpha@example.com", accountID: "acct-alpha")
+        let conflictingAuthData = try container.managedAuthData(for: conflictingManaged)
+
+        await #expect(throws: CodexAccountPromotionError.displacedLiveManagedAccountConflict) {
+            try await container.makeService().promoteManagedAccount(id: target.id)
+        }
+
+        let accounts = try container.loadAccounts().accounts
+        let persistedConflict = try #require(accounts.first(where: { $0.id == conflictingManaged.id }))
+        #expect(try container.liveAuthData() == liveAuthData)
+        #expect(try container.managedAuthData(for: persistedConflict) == conflictingAuthData)
+        #expect(accounts.count == 2)
+    }
+
+    @Test
     func `api key only live auth is rejected fail closed`() async throws {
         let container = try CodexAccountPromotionTestContainer(
             suiteName: "CodexAccountPromotionServiceTests-api-key-only")

@@ -65,6 +65,28 @@ struct MenuContent: View {
                 }
             }
             .buttonStyle(.plain)
+        case let .submenu(title, systemImageName, submenuItems):
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 8) {
+                    if let systemImageName {
+                        Image(systemName: systemImageName)
+                    }
+                    Text(title).font(.headline)
+                }
+                ForEach(Array(submenuItems.enumerated()), id: \.offset) { _, submenuItem in
+                    HStack(spacing: 8) {
+                        if submenuItem.isChecked {
+                            Image(systemName: "checkmark")
+                                .imageScale(.small)
+                                .frame(width: 18, alignment: .center)
+                        } else {
+                            Spacer().frame(width: 18)
+                        }
+                        Text(submenuItem.title)
+                            .foregroundStyle(submenuItem.isEnabled ? .primary : .secondary)
+                    }
+                }
+            }
         case .divider:
             Divider()
         }
@@ -88,6 +110,8 @@ struct MenuContent: View {
             self.actions.openStatusPage()
         case .addCodexAccount:
             self.actions.addCodexAccount()
+        case .requestCodexSystemPromotion:
+            return
         case let .switchAccount(provider):
             self.actions.switchAccount(provider)
         case let .openTerminal(command):
