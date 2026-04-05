@@ -3,13 +3,14 @@
 ## Unreleased
 
 ### Highlights
-- Add support for switching between system Codex accounts/profiles. No need to manually logout/login between Codex accounts.
+- Add support for switching between system Codex accounts/profiles. No need to manually logout/login between Codex accounts. @ratulsarna
 - Add workspace attribution to codex accounts to allow for workspace labeling and same-email multi-workspace accounts.
 - Improve Codex multi-account support with canonical identity reconciliation, workspace-aware attribution, safer OpenAI dashboard ownership. Thanks @monterrr for the help!
 
 ### Providers & Usage
 - Codex: reconcile live-system and managed accounts by canonical identity, preserve account-scoped usage/history/dashboard state, 
 - Codex: improve workspace-based account attribution, allow OAuth CLI fallback, and tighten OpenAI web ownership gating so quota and credits only attach to the matching account.
+- Codex: refactor the provider end to end into clearer components and better division of responsibilities.
 
 ### Menu & Settings
 - Codex: add UI for switching the system-level Codex account and promoting a managed account into the live system slot.
