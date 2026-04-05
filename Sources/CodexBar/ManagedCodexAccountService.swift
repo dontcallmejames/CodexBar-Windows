@@ -269,6 +269,8 @@ final class ManagedCodexAccountService {
         guard providerAccountID == nil else {
             return nil
         }
+        // Email-only reconciliation is a legacy/hardening fallback. Once an auth payload carries a
+        // provider account ID, matching must stay on that ID so same-email workspaces can coexist.
         return snapshot.account(email: authenticatedEmail)
     }
 
