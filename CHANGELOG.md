@@ -8,6 +8,7 @@
 - Improve Codex multi-account support with canonical identity reconciliation, workspace-aware attribution, safer OpenAI dashboard ownership. Thanks @monterrr for the help!
 
 ### Providers & Usage
+- Claude: fix token and cost inflation caused by cross-file double counting of subagent JSONL logs, fix streaming chunk dedup to keep the final cumulative chunk instead of the first partial one, and add `claude-sonnet-4-6` pricing. Thanks @enzonaute for the investigation!
 - Codex: reconcile live-system and managed accounts by canonical identity, preserve account-scoped usage/history/dashboard state, 
 - Codex: improve workspace-based account attribution, allow OAuth CLI fallback, and tighten OpenAI web ownership gating so quota and credits only attach to the matching account.
 - Codex: refactor the provider end to end into clearer components and better division of responsibilities.
