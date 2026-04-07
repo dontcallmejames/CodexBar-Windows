@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.20 — 2026-04-07
 
 ### Highlights
 - Add support for switching between system Codex accounts/profiles. No need to manually logout/login between Codex accounts. @ratulsarna
