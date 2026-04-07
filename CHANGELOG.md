@@ -6,12 +6,15 @@
 - Add support for switching between system Codex accounts/profiles. No need to manually logout/login between Codex accounts. @ratulsarna
 - Add workspace attribution to codex accounts to allow for workspace labeling and same-email multi-workspace accounts.
 - Improve Codex multi-account support with canonical identity reconciliation, workspace-aware attribution, safer OpenAI dashboard ownership. Thanks @monterrr for the help!
+- Add OpenCode Go as a separate provider with 5-hour, weekly, and monthly web usage tracking, widget integration, and browser-cookie support.
 
 ### Providers & Usage
 - Claude: fix token and cost inflation caused by cross-file double counting of subagent JSONL logs, fix streaming chunk dedup to keep the final cumulative chunk instead of the first partial one, and add `claude-sonnet-4-6` pricing. Thanks @enzonaute for the investigation!
 - Codex: reconcile live-system and managed accounts by canonical identity, preserve account-scoped usage/history/dashboard state, 
 - Codex: improve workspace-based account attribution, allow OAuth CLI fallback, and tighten OpenAI web ownership gating so quota and credits only attach to the matching account.
 - Codex: refactor the provider end to end into clearer components and better division of responsibilities.
+- OpenCode: preserve product separation between Zen and Go, improve null/unsupported usage handling, and harden cookie/domain behavior for authenticated web fetches.
+- OpenCode Go: add a dedicated provider, parse live authenticated workspace Go usage from the web app, keep monthly optional and honor workspace env overrides.
 - Cost history: merge supported pi session usage into Codex/Claude provider history (#653). Thanks @ngutman!
 
 ### Menu & Settings

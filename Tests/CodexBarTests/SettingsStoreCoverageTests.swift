@@ -132,6 +132,28 @@ struct SettingsStoreCoverageTests {
     }
 
     @Test
+    func `opencode go token accounts force manual cookie routing`() {
+        let settings = Self.makeSettingsStore()
+        settings.addTokenAccount(provider: .opencodego, label: "Go", token: "auth=go-cookie")
+
+        let snapshot = settings.opencodegoSettingsSnapshot(tokenOverride: nil)
+
+        #expect(settings.opencodegoCookieSource == .manual)
+        #expect(snapshot.cookieSource == .manual)
+        #expect(snapshot.manualCookieHeader == "auth=go-cookie")
+    }
+
+    @Test
+    func `opencode go snapshot preserves nil workspace id when settings are unset`() {
+        let settings = Self.makeSettingsStore()
+
+        let snapshot = settings.opencodegoSettingsSnapshot(tokenOverride: nil)
+
+        #expect(settings.opencodegoWorkspaceID.isEmpty)
+        #expect(snapshot.workspaceID == nil)
+    }
+
+    @Test
     func `token cost usage source detection`() throws {
         let fileManager = FileManager.default
         let root = fileManager.temporaryDirectory.appendingPathComponent(
