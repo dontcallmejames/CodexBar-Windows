@@ -17,6 +17,7 @@
 ### Menu & Settings
 - Codex: add UI for switching the system-level Codex account and promoting a managed account into the live system slot.
 - Codex: hide display-only OpenAI web extras in widgets and fix buy-credits / credits-only presentation regressions.
+- Claude: enable “Avoid Keychain prompts” by default, remove the experimental label, and preserve user-action cooldown clearing plus startup bootstrap when Security.framework fallback is still needed.
 
 ## 0.20.0-beta.1 — 2026-04-01
 
