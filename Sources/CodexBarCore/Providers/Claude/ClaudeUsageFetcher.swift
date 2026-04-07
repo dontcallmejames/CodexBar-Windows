@@ -58,7 +58,9 @@ public enum ClaudeUsageError: LocalizedError, Sendable {
 }
 
 public struct ClaudeUsageFetcher: ClaudeUsageFetching, Sendable {
-    private struct Configuration: Sendable {
+    private static let sessionWindowMinutes = 5 * 60
+    private static let weeklyWindowMinutes = 7 * 24 * 60
+    private struct Configuration {
         let environment: [String: String]
         let runtime: ProviderRuntime
         let dataSource: ClaudeUsageDataSource
@@ -117,7 +119,7 @@ public struct ClaudeUsageFetcher: ClaudeUsageFetching, Sendable {
         self.configuration.browserDetection
     }
 
-    private struct ClaudeOAuthKeychainPromptPolicy: Sendable {
+    private struct ClaudeOAuthKeychainPromptPolicy {
         let mode: ClaudeOAuthKeychainPromptMode
         let isApplicable: Bool
         let interaction: ProviderInteraction
@@ -144,20 +146,27 @@ public struct ClaudeUsageFetcher: ClaudeUsageFetching, Sendable {
         }
     }
 
-    private static func currentClaudeOAuthKeychainPromptPolicy() -> ClaudeOAuthKeychainPromptPolicy {
-        let isApplicable = ClaudeOAuthKeychainPromptPreference.isApplicable()
+    private static func currentClaudeOAuthInteractivePromptPolicy() -> ClaudeOAuthKeychainPromptPolicy {
         let policy = ClaudeOAuthKeychainPromptPolicy(
-            mode: ClaudeOAuthKeychainPromptPreference.current(),
-            isApplicable: isApplicable,
+            mode: ClaudeOAuthKeychainPromptPreference.securityFrameworkFallbackMode(),
+            isApplicable: true,
             interaction: ProviderInteractionContext.current)
 
-        // User actions should be able to immediately retry a repair after a background cooldown was recorded.
-        if policy.isApplicable, policy.interaction == .userInitiated {
+        // User actions should be able to immediately retry a Security.framework fallback repair after a background
+        // cooldown was recorded, even when /usr/bin/security is the primary reader.
+        if policy.interaction == .userInitiated {
             if ClaudeOAuthKeychainAccessGate.clearDenied() {
                 Self.log.info("Claude OAuth keychain cooldown cleared by user action")
             }
         }
         return policy
+    }
+
+    private static func currentClaudeOAuthDelegatedRefreshPolicy() -> ClaudeOAuthKeychainPromptPolicy {
+        ClaudeOAuthKeychainPromptPolicy(
+            mode: ClaudeOAuthKeychainPromptPreference.current(),
+            isApplicable: ClaudeOAuthKeychainPromptPreference.isApplicable(),
+            interaction: ProviderInteractionContext.current)
     }
 
     private static func assertDelegatedRefreshAllowedInCurrentInteraction(
@@ -221,12 +230,12 @@ public struct ClaudeUsageFetcher: ClaudeUsageFetching, Sendable {
             browserDetection: browserDetection)
     }
 
-    private struct OAuthExecutor: Sendable {
+    private struct OAuthExecutor {
         let fetcher: ClaudeUsageFetcher
 
         func load(allowDelegatedRetry: Bool) async throws -> ClaudeUsageSnapshot {
             do {
-                let promptPolicy = ClaudeUsageFetcher.currentClaudeOAuthKeychainPromptPolicy()
+                let promptPolicy = ClaudeUsageFetcher.currentClaudeOAuthInteractivePromptPolicy()
 
                 #if DEBUG
                 let hasCache = ClaudeUsageFetcher.hasCachedCredentialsOverride
@@ -286,10 +295,11 @@ public struct ClaudeUsageFetcher: ClaudeUsageFetching, Sendable {
             policy: ClaudeOAuthKeychainPromptPolicy,
             hasCache: Bool) -> Bool
         {
-            guard policy.isApplicable else { return false }
             guard self.fetcher.allowStartupBootstrapPrompt else { return false }
             guard !hasCache else { return false }
-            guard policy.mode == .onlyOnUserAction else { return false }
+            guard ClaudeOAuthKeychainPromptPreference.securityFrameworkFallbackMode() == .onlyOnUserAction else {
+                return false
+            }
             guard policy.interaction == .background else { return false }
             return ProviderRefreshContext.current == .startup
         }
@@ -303,7 +313,7 @@ public struct ClaudeUsageFetcher: ClaudeUsageFetching, Sendable {
 
             try Task.checkCancellation()
 
-            let delegatedPromptPolicy = ClaudeUsageFetcher.currentClaudeOAuthKeychainPromptPolicy()
+            let delegatedPromptPolicy = ClaudeUsageFetcher.currentClaudeOAuthDelegatedRefreshPolicy()
             try ClaudeUsageFetcher.assertDelegatedRefreshAllowedInCurrentInteraction(
                 policy: delegatedPromptPolicy,
                 allowBackgroundDelegatedRefresh: self.fetcher.allowBackgroundDelegatedRefresh)
@@ -335,7 +345,7 @@ public struct ClaudeUsageFetcher: ClaudeUsageFetching, Sendable {
                 let didSyncSilently = delegatedOutcome == .attemptedSucceeded
                     && ClaudeOAuthCredentialsStore.syncFromClaudeKeychainWithoutPrompt(now: Date())
 
-                let promptPolicy = ClaudeUsageFetcher.currentClaudeOAuthKeychainPromptPolicy()
+                let promptPolicy = ClaudeUsageFetcher.currentClaudeOAuthInteractivePromptPolicy()
                 ClaudeUsageFetcher.logDeferredBackgroundDelegatedRecoveryIfNeeded(
                     delegatedOutcome: delegatedOutcome,
                     didSyncSilently: didSyncSilently,
@@ -415,7 +425,7 @@ public struct ClaudeUsageFetcher: ClaudeUsageFetching, Sendable {
         }
     }
 
-    private struct StepExecutor: Sendable {
+    private struct StepExecutor {
         let fetcher: ClaudeUsageFetcher
 
         func loadLatestUsage(model: String) async throws -> ClaudeUsageSnapshot {
@@ -548,21 +558,26 @@ extension ClaudeUsageFetcher {
             return nil
         }
 
-        func makeWindow(_ dict: [String: Any]?) -> RateWindow? {
+        func makeWindow(_ dict: [String: Any]?, windowMinutes: Int) -> RateWindow? {
             guard let dict else { return nil }
             let pct = (dict["pct_used"] as? NSNumber)?.doubleValue ?? 0
             let resetText = dict["resets"] as? String
             return RateWindow(
                 usedPercent: pct,
-                windowMinutes: nil,
+                windowMinutes: windowMinutes,
                 resetsAt: Self.parseReset(text: resetText),
                 resetDescription: resetText)
         }
 
-        guard let session = makeWindow(firstWindowDict(["session_5h"])) else {
+        guard let session = makeWindow(
+            firstWindowDict(["session_5h"]),
+            windowMinutes: Self.sessionWindowMinutes)
+        else {
             throw ClaudeUsageError.parseFailed("missing session data")
         }
-        let weekAll = makeWindow(firstWindowDict(["week_all_models", "week_all"]))
+        let weekAll = makeWindow(
+            firstWindowDict(["week_all_models", "week_all"]),
+            windowMinutes: Self.weeklyWindowMinutes)
 
         let rawEmail = (obj["account_email"] as? String)?.trimmingCharacters(
             in: .whitespacesAndNewlines)
@@ -583,7 +598,7 @@ extension ClaudeUsageFetcher {
             let resets = opus["resets"] as? String
             return RateWindow(
                 usedPercent: pct,
-                windowMinutes: nil,
+                windowMinutes: Self.weeklyWindowMinutes,
                 resetsAt: Self.parseReset(text: resets),
                 resetDescription: resets)
         }()
@@ -943,21 +958,29 @@ extension ClaudeUsageFetcher {
             throw ClaudeUsageError.parseFailed("missing session data")
         }
 
-        func makeWindow(pctLeft: Int?, reset: String?) -> RateWindow? {
+        func makeWindow(pctLeft: Int?, reset: String?, windowMinutes: Int) -> RateWindow? {
             guard let left = pctLeft else { return nil }
             let used = max(0, min(100, 100 - Double(left)))
             let resetClean = reset?.trimmingCharacters(in: .whitespacesAndNewlines)
             return RateWindow(
                 usedPercent: used,
-                windowMinutes: nil,
+                windowMinutes: windowMinutes,
                 resetsAt: ClaudeStatusProbe.parseResetDate(from: resetClean),
                 resetDescription: resetClean)
         }
 
-        let primary = makeWindow(pctLeft: sessionPctLeft, reset: snap.primaryResetDescription)!
+        let primary = makeWindow(
+            pctLeft: sessionPctLeft,
+            reset: snap.primaryResetDescription,
+            windowMinutes: Self.sessionWindowMinutes)!
         let weekly = makeWindow(
-            pctLeft: snap.weeklyPercentLeft, reset: snap.secondaryResetDescription)
-        let opus = makeWindow(pctLeft: snap.opusPercentLeft, reset: snap.opusResetDescription)
+            pctLeft: snap.weeklyPercentLeft,
+            reset: snap.secondaryResetDescription,
+            windowMinutes: Self.weeklyWindowMinutes)
+        let opus = makeWindow(
+            pctLeft: snap.opusPercentLeft,
+            reset: snap.opusResetDescription,
+            windowMinutes: Self.weeklyWindowMinutes)
 
         return ClaudeUsageSnapshot(
             primary: primary,

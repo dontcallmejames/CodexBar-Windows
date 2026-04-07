@@ -42,6 +42,7 @@ enum MenuBarMetricPreference: String, CaseIterable, Identifiable {
     case automatic
     case primary
     case secondary
+    case tertiary
     case average
 
     var id: String {
@@ -53,6 +54,7 @@ enum MenuBarMetricPreference: String, CaseIterable, Identifiable {
         case .automatic: "Automatic"
         case .primary: "Primary"
         case .secondary: "Secondary"
+        case .tertiary: "Tertiary"
         case .average: "Average"
         }
     }
@@ -81,6 +83,13 @@ final class SettingsStore {
     var configRevision: Int = 0
     var providerOrder: [UsageProvider] = []
     var providerEnablement: [UsageProvider: Bool] = [:]
+
+    static func shouldBridgeSharedDefaults(for userDefaults: UserDefaults) -> Bool {
+        if !self.isRunningTests { return true }
+        if userDefaults === UserDefaults.standard { return true }
+        if let shared = sharedDefaults, userDefaults === shared { return true }
+        return false
+    }
 
     init(
         userDefaults: UserDefaults = .standard,
@@ -147,25 +156,34 @@ final class SettingsStore {
         userDefaults.removeObject(forKey: "showClaudeUsage")
         LaunchAtLoginManager.setEnabled(self.launchAtLogin)
         self.runInitialProviderDetectionIfNeeded()
+        self.ensureAlibabaProviderAutoEnabledIfNeeded()
         self.applyTokenCostDefaultIfNeeded()
         if self.claudeUsageDataSource != .cli { self.claudeWebExtrasEnabled = false }
         self.openAIWebAccessEnabled = self.codexCookieSource.isEnabled
-        Self.sharedDefaults?.set(self.debugDisableKeychainAccess, forKey: "debugDisableKeychainAccess")
+        if Self.shouldBridgeSharedDefaults(for: userDefaults) {
+            Self.sharedDefaults?.set(self.debugDisableKeychainAccess, forKey: "debugDisableKeychainAccess")
+        }
         KeychainAccessGate.isDisabled = self.debugDisableKeychainAccess
     }
 }
 
 extension SettingsStore {
     private static func loadDefaultsState(userDefaults: UserDefaults) -> SettingsDefaultsState {
-        let refreshRaw = userDefaults.string(forKey: "refreshFrequency") ?? RefreshFrequency.fiveMinutes.rawValue
-        let refreshFrequency = RefreshFrequency(rawValue: refreshRaw) ?? .fiveMinutes
+        let refreshDefault = userDefaults.string(forKey: "refreshFrequency")
+            .flatMap(RefreshFrequency.init(rawValue:))
+        let refreshFrequency = refreshDefault ?? .fiveMinutes
+        if refreshDefault == nil {
+            userDefaults.set(refreshFrequency.rawValue, forKey: "refreshFrequency")
+        }
         let launchAtLogin = userDefaults.object(forKey: "launchAtLogin") as? Bool ?? false
         let debugMenuEnabled = userDefaults.object(forKey: "debugMenuEnabled") as? Bool ?? false
         let debugDisableKeychainAccess: Bool = {
             if let stored = userDefaults.object(forKey: "debugDisableKeychainAccess") as? Bool {
                 return stored
             }
-            if let shared = Self.sharedDefaults?.object(forKey: "debugDisableKeychainAccess") as? Bool {
+            if Self.shouldBridgeSharedDefaults(for: userDefaults),
+               let shared = Self.sharedDefaults?.object(forKey: "debugDisableKeychainAccess") as? Bool
+            {
                 userDefaults.set(shared, forKey: "debugDisableKeychainAccess")
                 return shared
             }

@@ -29,12 +29,39 @@ struct UsageMenuCardView: View {
             let title: String
             let percent: Double
             let percentStyle: PercentStyle
+            let statusText: String?
             let resetText: String?
             let detailText: String?
             let detailLeftText: String?
             let detailRightText: String?
             let pacePercent: Double?
             let paceOnTop: Bool
+
+            init(
+                id: String,
+                title: String,
+                percent: Double,
+                percentStyle: PercentStyle,
+                statusText: String? = nil,
+                resetText: String?,
+                detailText: String?,
+                detailLeftText: String?,
+                detailRightText: String?,
+                pacePercent: Double?,
+                paceOnTop: Bool)
+            {
+                self.id = id
+                self.title = title
+                self.percent = percent
+                self.percentStyle = percentStyle
+                self.statusText = statusText
+                self.resetText = resetText
+                self.detailText = detailText
+                self.detailLeftText = detailLeftText
+                self.detailRightText = detailRightText
+                self.pacePercent = pacePercent
+                self.paceOnTop = paceOnTop
+            }
 
             var percentLabel: String {
                 String(format: "%.0f%% %@", self.percent, self.percentStyle.labelSuffix)
@@ -330,49 +357,56 @@ private struct MetricRow: View {
             Text(self.title)
                 .font(.body)
                 .fontWeight(.medium)
-            UsageProgressBar(
-                percent: self.metric.percent,
-                tint: self.progressColor,
-                accessibilityLabel: self.metric.percentStyle.accessibilityLabel,
-                pacePercent: self.metric.pacePercent,
-                paceOnTop: self.metric.paceOnTop)
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text(self.metric.percentLabel)
-                        .font(.footnote)
-                        .lineLimit(1)
-                    Spacer()
-                    if let rightLabel = self.metric.resetText {
-                        Text(rightLabel)
-                            .font(.footnote)
-                            .foregroundStyle(MenuHighlightStyle.secondary(self.isHighlighted))
-                            .lineLimit(1)
-                    }
-                }
-                if self.metric.detailLeftText != nil || self.metric.detailRightText != nil {
+            if let statusText = self.metric.statusText {
+                Text(statusText)
+                    .font(.footnote)
+                    .foregroundStyle(MenuHighlightStyle.secondary(self.isHighlighted))
+                    .lineLimit(1)
+            } else {
+                UsageProgressBar(
+                    percent: self.metric.percent,
+                    tint: self.progressColor,
+                    accessibilityLabel: self.metric.percentStyle.accessibilityLabel,
+                    pacePercent: self.metric.pacePercent,
+                    paceOnTop: self.metric.paceOnTop)
+                VStack(alignment: .leading, spacing: 2) {
                     HStack(alignment: .firstTextBaseline) {
-                        if let detailLeft = self.metric.detailLeftText {
-                            Text(detailLeft)
-                                .font(.footnote)
-                                .foregroundStyle(MenuHighlightStyle.primary(self.isHighlighted))
-                                .lineLimit(1)
-                        }
+                        Text(self.metric.percentLabel)
+                            .font(.footnote)
+                            .lineLimit(1)
                         Spacer()
-                        if let detailRight = self.metric.detailRightText {
-                            Text(detailRight)
+                        if let rightLabel = self.metric.resetText {
+                            Text(rightLabel)
                                 .font(.footnote)
                                 .foregroundStyle(MenuHighlightStyle.secondary(self.isHighlighted))
                                 .lineLimit(1)
                         }
                     }
+                    if self.metric.detailLeftText != nil || self.metric.detailRightText != nil {
+                        HStack(alignment: .firstTextBaseline) {
+                            if let detailLeft = self.metric.detailLeftText {
+                                Text(detailLeft)
+                                    .font(.footnote)
+                                    .foregroundStyle(MenuHighlightStyle.primary(self.isHighlighted))
+                                    .lineLimit(1)
+                            }
+                            Spacer()
+                            if let detailRight = self.metric.detailRightText {
+                                Text(detailRight)
+                                    .font(.footnote)
+                                    .foregroundStyle(MenuHighlightStyle.secondary(self.isHighlighted))
+                                    .lineLimit(1)
+                            }
+                        }
+                    }
                 }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            if let detail = self.metric.detailText {
-                Text(detail)
-                    .font(.footnote)
-                    .foregroundStyle(MenuHighlightStyle.secondary(self.isHighlighted))
-                    .lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                if let detail = self.metric.detailText {
+                    Text(detail)
+                        .font(.footnote)
+                        .foregroundStyle(MenuHighlightStyle.secondary(self.isHighlighted))
+                        .lineLimit(1)
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -619,6 +653,7 @@ extension UsageMenuCardView.Model {
         let provider: UsageProvider
         let metadata: ProviderMetadata
         let snapshot: UsageSnapshot?
+        let codexProjection: CodexConsumerProjection?
         let credits: CreditsSnapshot?
         let creditsError: String?
         let dashboard: OpenAIDashboardSnapshot?
@@ -642,6 +677,7 @@ extension UsageMenuCardView.Model {
             provider: UsageProvider,
             metadata: ProviderMetadata,
             snapshot: UsageSnapshot?,
+            codexProjection: CodexConsumerProjection? = nil,
             credits: CreditsSnapshot?,
             creditsError: String?,
             dashboard: OpenAIDashboardSnapshot?,
@@ -664,6 +700,7 @@ extension UsageMenuCardView.Model {
             self.provider = provider
             self.metadata = metadata
             self.snapshot = snapshot
+            self.codexProjection = codexProjection
             self.credits = credits
             self.creditsError = creditsError
             self.dashboard = dashboard
@@ -695,7 +732,7 @@ extension UsageMenuCardView.Model {
         let usageNotes = Self.usageNotes(input: input)
         let creditsText: String? = if input.provider == .openrouter {
             nil
-        } else if input.provider == .codex, !input.showOptionalCreditsAndExtraUsage {
+        } else if input.codexProjection != nil, !input.showOptionalCreditsAndExtraUsage {
             nil
         } else {
             Self.creditsLine(metadata: input.metadata, credits: input.credits, error: input.creditsError)
@@ -879,7 +916,7 @@ extension UsageMenuCardView.Model {
         let subtitleText = PersonalInfoRedactor.redactEmails(in: subtitle.text, isEnabled: input.hidePersonalInfo)
             ?? subtitle.text
         let creditsHintText = PersonalInfoRedactor.redactEmails(
-            in: Self.dashboardHint(provider: input.provider, error: input.dashboardError),
+            in: Self.dashboardHint(error: input.dashboardError),
             isEnabled: input.hidePersonalInfo)
         let creditsHintCopyText = Self.creditsHintCopyText(
             dashboardError: input.dashboardError,
@@ -898,77 +935,34 @@ extension UsageMenuCardView.Model {
 
     private static func metrics(input: Input) -> [Metric] {
         guard let snapshot = input.snapshot else { return [] }
+        if input.provider == .antigravity {
+            return Self.antigravityMetrics(input: input, snapshot: snapshot)
+        }
         var metrics: [Metric] = []
         let percentStyle: PercentStyle = input.usageBarsShowUsed ? .used : .left
         let zaiUsage = input.provider == .zai ? snapshot.zaiUsage : nil
         let zaiTokenDetail = Self.zaiLimitDetailText(limit: zaiUsage?.tokenLimit)
         let zaiTimeDetail = Self.zaiLimitDetailText(limit: zaiUsage?.timeLimit)
         let openRouterQuotaDetail = Self.openRouterQuotaDetail(provider: input.provider, snapshot: snapshot)
-        if let primary = snapshot.primary {
-            var primaryDetailText: String? = input.provider == .zai ? zaiTokenDetail : nil
-            var primaryResetText = Self.resetText(for: primary, style: input.resetTimeDisplayStyle, now: input.now)
-            if input.provider == .openrouter,
-               let openRouterQuotaDetail
-            {
-                primaryResetText = openRouterQuotaDetail
-            }
-            if input.provider == .warp || input.provider == .kilo,
-               let detail = primary.resetDescription,
-               !detail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            {
-                primaryDetailText = detail
-            }
-            if input.provider == .warp || input.provider == .kilo, primary.resetsAt == nil {
-                primaryResetText = nil
-            }
-            metrics.append(Metric(
-                id: "primary",
-                title: input.metadata.sessionLabel,
-                percent: Self.clamped(
-                    input.usageBarsShowUsed ? primary.usedPercent : primary.remainingPercent),
+        if input.provider == .codex, let codexProjection = input.codexProjection {
+            metrics.append(contentsOf: Self.codexRateMetrics(
+                input: input,
+                projection: codexProjection,
+                percentStyle: percentStyle))
+        } else if let primary = snapshot.primary {
+            metrics.append(Self.primaryMetric(
+                input: input,
+                primary: primary,
                 percentStyle: percentStyle,
-                resetText: primaryResetText,
-                detailText: primaryDetailText,
-                detailLeftText: nil,
-                detailRightText: nil,
-                pacePercent: nil,
-                paceOnTop: true))
+                zaiTokenDetail: zaiTokenDetail,
+                openRouterQuotaDetail: openRouterQuotaDetail))
         }
-        if let weekly = snapshot.secondary {
-            let paceDetail = Self.weeklyPaceDetail(
-                window: weekly,
-                now: input.now,
-                pace: input.weeklyPace,
-                showUsed: input.usageBarsShowUsed)
-            var weeklyResetText = Self.resetText(for: weekly, style: input.resetTimeDisplayStyle, now: input.now)
-            var weeklyDetailText: String? = input.provider == .zai ? zaiTimeDetail : nil
-            if input.provider == .warp,
-               let detail = weekly.resetDescription,
-               !detail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            {
-                weeklyResetText = nil
-                weeklyDetailText = detail
-            }
-            if input.provider == .kilo,
-               let detail = weekly.resetDescription,
-               !detail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            {
-                weeklyDetailText = detail
-                if weekly.resetsAt == nil {
-                    weeklyResetText = nil
-                }
-            }
-            metrics.append(Metric(
-                id: "secondary",
-                title: input.metadata.weeklyLabel,
-                percent: Self.clamped(input.usageBarsShowUsed ? weekly.usedPercent : weekly.remainingPercent),
+        if input.provider != .codex, let weekly = snapshot.secondary {
+            metrics.append(Self.secondaryMetric(
+                input: input,
+                weekly: weekly,
                 percentStyle: percentStyle,
-                resetText: weeklyResetText,
-                detailText: weeklyDetailText,
-                detailLeftText: paceDetail?.leftLabel,
-                detailRightText: paceDetail?.rightLabel,
-                pacePercent: paceDetail?.pacePercent,
-                paceOnTop: paceDetail?.paceOnTop ?? true))
+                zaiTimeDetail: zaiTimeDetail))
         }
         if input.provider == .kilo,
            metrics.contains(where: { $0.id == "primary" }),
@@ -983,27 +977,44 @@ extension UsageMenuCardView.Model {
             }
         }
         if input.metadata.supportsOpus, let opus = snapshot.tertiary {
+            var tertiaryDetailText: String?
+            if input.provider == .alibaba,
+               let detail = opus.resetDescription,
+               !detail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            {
+                tertiaryDetailText = detail
+            }
+            // Perplexity purchased credits don't reset; show balance without "Resets" prefix.
+            let opusResetText: String? = input.provider == .perplexity
+                ? opus.resetDescription?.trimmingCharacters(in: .whitespacesAndNewlines)
+                : Self.resetText(for: opus, style: input.resetTimeDisplayStyle, now: input.now)
             metrics.append(Metric(
                 id: "tertiary",
                 title: input.metadata.opusLabel ?? "Sonnet",
                 percent: Self.clamped(input.usageBarsShowUsed ? opus.usedPercent : opus.remainingPercent),
                 percentStyle: percentStyle,
-                resetText: Self.resetText(for: opus, style: input.resetTimeDisplayStyle, now: input.now),
-                detailText: nil,
+                resetText: opusResetText,
+                detailText: tertiaryDetailText,
                 detailLeftText: nil,
                 detailRightText: nil,
                 pacePercent: nil,
                 paceOnTop: true))
         }
 
-        if input.provider == .codex, let remaining = input.dashboard?.codeReviewRemainingPercent {
+        if let codexProjection = input.codexProjection,
+           codexProjection.supplementalMetrics.contains(.codeReview),
+           let remaining = codexProjection.remainingPercent(for: .codeReview)
+        {
             let percent = input.usageBarsShowUsed ? (100 - remaining) : remaining
+            let resetText = codexProjection.limitWindow(for: .codeReview).flatMap {
+                Self.resetText(for: $0, style: input.resetTimeDisplayStyle, now: input.now)
+            }
             metrics.append(Metric(
                 id: "code-review",
                 title: "Code review",
                 percent: Self.clamped(percent),
                 percentStyle: percentStyle,
-                resetText: nil,
+                resetText: resetText,
                 detailText: nil,
                 detailLeftText: nil,
                 detailRightText: nil,
@@ -1011,6 +1022,204 @@ extension UsageMenuCardView.Model {
                 paceOnTop: true))
         }
         return metrics
+    }
+
+    private static func primaryMetric(
+        input: Input,
+        primary: RateWindow,
+        percentStyle: PercentStyle,
+        zaiTokenDetail: String?,
+        openRouterQuotaDetail: String?) -> Metric
+    {
+        var primaryDetailText: String? = input.provider == .zai ? zaiTokenDetail : nil
+        var primaryResetText = Self.resetText(for: primary, style: input.resetTimeDisplayStyle, now: input.now)
+        if input.provider == .openrouter,
+           let openRouterQuotaDetail
+        {
+            primaryResetText = openRouterQuotaDetail
+        }
+        if input.provider == .warp || input.provider == .kilo,
+           let detail = primary.resetDescription,
+           !detail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        {
+            primaryDetailText = detail
+        }
+        if input.provider == .alibaba,
+           let detail = primary.resetDescription,
+           !detail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        {
+            primaryDetailText = detail
+        }
+        if input.provider == .warp || input.provider == .kilo, primary.resetsAt == nil {
+            primaryResetText = nil
+        }
+        return Metric(
+            id: "primary",
+            title: input.metadata.sessionLabel,
+            percent: Self.clamped(
+                input.usageBarsShowUsed ? primary.usedPercent : primary.remainingPercent),
+            percentStyle: percentStyle,
+            resetText: primaryResetText,
+            detailText: primaryDetailText,
+            detailLeftText: nil,
+            detailRightText: nil,
+            pacePercent: nil,
+            paceOnTop: true)
+    }
+
+    private static func secondaryMetric(
+        input: Input,
+        weekly: RateWindow,
+        percentStyle: PercentStyle,
+        zaiTimeDetail: String?) -> Metric
+    {
+        let paceDetail = Self.weeklyPaceDetail(
+            window: weekly,
+            now: input.now,
+            pace: input.weeklyPace,
+            showUsed: input.usageBarsShowUsed)
+        var weeklyResetText = Self.resetText(for: weekly, style: input.resetTimeDisplayStyle, now: input.now)
+        var weeklyDetailText: String? = input.provider == .zai ? zaiTimeDetail : nil
+        if input.provider == .warp,
+           let detail = weekly.resetDescription,
+           !detail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        {
+            weeklyResetText = nil
+            weeklyDetailText = detail
+        }
+        if input.provider == .kilo,
+           let detail = weekly.resetDescription,
+           !detail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        {
+            weeklyDetailText = detail
+            if weekly.resetsAt == nil {
+                weeklyResetText = nil
+            }
+        }
+        if input.provider == .alibaba,
+           let detail = weekly.resetDescription,
+           !detail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        {
+            weeklyDetailText = detail
+        }
+        // Perplexity bonus credits don't reset; show balance without "Resets" prefix.
+        if input.provider == .perplexity,
+           let detail = weekly.resetDescription?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !detail.isEmpty
+        {
+            weeklyResetText = detail
+        }
+        return Metric(
+            id: "secondary",
+            title: input.metadata.weeklyLabel,
+            percent: Self.clamped(input.usageBarsShowUsed ? weekly.usedPercent : weekly.remainingPercent),
+            percentStyle: percentStyle,
+            resetText: weeklyResetText,
+            detailText: weeklyDetailText,
+            detailLeftText: paceDetail?.leftLabel,
+            detailRightText: paceDetail?.rightLabel,
+            pacePercent: paceDetail?.pacePercent,
+            paceOnTop: paceDetail?.paceOnTop ?? true)
+    }
+
+    private static func codexRateMetrics(
+        input: Input,
+        projection: CodexConsumerProjection,
+        percentStyle: PercentStyle) -> [Metric]
+    {
+        projection.visibleRateLanes.compactMap { lane in
+            guard let window = projection.rateWindow(for: lane) else { return nil }
+
+            let title: String
+            let id: String
+            let paceDetail: PaceDetail?
+            switch lane {
+            case .session:
+                title = input.metadata.sessionLabel
+                id = "primary"
+                paceDetail = nil
+            case .weekly:
+                title = input.metadata.weeklyLabel
+                id = "secondary"
+                paceDetail = Self.weeklyPaceDetail(
+                    window: window,
+                    now: input.now,
+                    pace: input.weeklyPace,
+                    showUsed: input.usageBarsShowUsed)
+            }
+
+            return Metric(
+                id: id,
+                title: title,
+                percent: Self.clamped(input.usageBarsShowUsed ? window.usedPercent : window.remainingPercent),
+                percentStyle: percentStyle,
+                resetText: Self.resetText(for: window, style: input.resetTimeDisplayStyle, now: input.now),
+                detailText: nil,
+                detailLeftText: paceDetail?.leftLabel,
+                detailRightText: paceDetail?.rightLabel,
+                pacePercent: paceDetail?.pacePercent,
+                paceOnTop: paceDetail?.paceOnTop ?? true)
+        }
+    }
+
+    private static func antigravityMetrics(input: Input, snapshot: UsageSnapshot) -> [Metric] {
+        let percentStyle: PercentStyle = input.usageBarsShowUsed ? .used : .left
+        return [
+            Self.antigravityMetric(
+                id: "primary",
+                title: input.metadata.sessionLabel,
+                window: snapshot.primary,
+                input: input,
+                percentStyle: percentStyle),
+            Self.antigravityMetric(
+                id: "secondary",
+                title: input.metadata.weeklyLabel,
+                window: snapshot.secondary,
+                input: input,
+                percentStyle: percentStyle),
+            Self.antigravityMetric(
+                id: "tertiary",
+                title: input.metadata.opusLabel ?? "Gemini Flash",
+                window: snapshot.tertiary,
+                input: input,
+                percentStyle: percentStyle),
+        ]
+    }
+
+    private static func antigravityMetric(
+        id: String,
+        title: String,
+        window: RateWindow?,
+        input: Input,
+        percentStyle: PercentStyle) -> Metric
+    {
+        guard let window else {
+            let placeholderPercent = input.usageBarsShowUsed ? 100.0 : 0.0
+            return Metric(
+                id: id,
+                title: title,
+                percent: placeholderPercent,
+                percentStyle: percentStyle,
+                statusText: nil,
+                resetText: nil,
+                detailText: nil,
+                detailLeftText: nil,
+                detailRightText: nil,
+                pacePercent: nil,
+                paceOnTop: true)
+        }
+        let percent = input.usageBarsShowUsed ? window.usedPercent : window.remainingPercent
+        return Metric(
+            id: id,
+            title: title,
+            percent: Self.clamped(percent),
+            percentStyle: percentStyle,
+            resetText: Self.resetText(for: window, style: input.resetTimeDisplayStyle, now: input.now),
+            detailText: nil,
+            detailLeftText: nil,
+            detailRightText: nil,
+            pacePercent: nil,
+            paceOnTop: true)
     }
 
     private static func zaiLimitDetailText(limit: ZaiLimitEntry?) -> String? {
@@ -1088,8 +1297,7 @@ extension UsageMenuCardView.Model {
         return metadata.creditsHint
     }
 
-    private static func dashboardHint(provider: UsageProvider, error: String?) -> String? {
-        guard provider == .codex else { return nil }
+    private static func dashboardHint(error: String?) -> String? {
         guard let error, !error.isEmpty else { return nil }
         return error
     }
