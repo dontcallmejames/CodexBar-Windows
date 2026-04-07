@@ -7,12 +7,14 @@ enum ProviderChoice: String, AppEnum {
     case codex
     case claude
     case gemini
+    case alibaba
     case antigravity
     case zai
     case copilot
     case minimax
     case kilo
     case opencode
+    case opencodego
 
     static let typeDisplayRepresentation = TypeDisplayRepresentation(name: "Provider")
 
@@ -20,12 +22,14 @@ enum ProviderChoice: String, AppEnum {
         .codex: DisplayRepresentation(title: "Codex"),
         .claude: DisplayRepresentation(title: "Claude"),
         .gemini: DisplayRepresentation(title: "Gemini"),
+        .alibaba: DisplayRepresentation(title: "Alibaba"),
         .antigravity: DisplayRepresentation(title: "Antigravity"),
         .zai: DisplayRepresentation(title: "z.ai"),
         .copilot: DisplayRepresentation(title: "Copilot"),
         .minimax: DisplayRepresentation(title: "MiniMax"),
         .kilo: DisplayRepresentation(title: "Kilo"),
         .opencode: DisplayRepresentation(title: "OpenCode"),
+        .opencodego: DisplayRepresentation(title: "OpenCode Go"),
     ]
 
     var provider: UsageProvider {
@@ -33,12 +37,14 @@ enum ProviderChoice: String, AppEnum {
         case .codex: .codex
         case .claude: .claude
         case .gemini: .gemini
+        case .alibaba: .alibaba
         case .antigravity: .antigravity
         case .zai: .zai
         case .copilot: .copilot
         case .minimax: .minimax
         case .kilo: .kilo
         case .opencode: .opencode
+        case .opencodego: .opencodego
         }
     }
 
@@ -48,9 +54,11 @@ enum ProviderChoice: String, AppEnum {
         case .codex: self = .codex
         case .claude: self = .claude
         case .gemini: self = .gemini
+        case .alibaba: self = .alibaba
         case .antigravity: self = .antigravity
         case .cursor: return nil // Cursor not yet supported in widgets
         case .opencode: self = .opencode
+        case .opencodego: self = .opencodego
         case .zai: self = .zai
         case .factory: return nil // Factory not yet supported in widgets
         case .copilot: self = .copilot
@@ -67,6 +75,7 @@ enum ProviderChoice: String, AppEnum {
         case .synthetic: return nil // Synthetic not yet supported in widgets
         case .openrouter: return nil // OpenRouter not yet supported in widgets
         case .warp: return nil // Warp not yet supported in widgets
+        case .perplexity: return nil // Perplexity not yet supported in widgets
         }
     }
 }
@@ -218,6 +227,10 @@ struct CodexBarSwitcherTimelineProvider: TimelineProvider {
     }
 
     private func availableProviders(from snapshot: WidgetSnapshot) -> [UsageProvider] {
+        Self.supportedProviders(from: snapshot)
+    }
+
+    static func supportedProviders(from snapshot: WidgetSnapshot) -> [UsageProvider] {
         let enabled = snapshot.enabledProviders
         let providers = enabled.isEmpty ? snapshot.entries.map(\.provider) : enabled
         let supported = providers.filter { ProviderChoice(provider: $0) != nil }

@@ -1,6 +1,67 @@
 # Changelog
 
-## Unreleased
+## 0.20 — 2026-04-07
+
+### Highlights
+- Add support for switching between system Codex accounts/profiles. No need to manually logout/login between Codex accounts. @ratulsarna
+- Add workspace attribution to codex accounts to allow for workspace labeling and same-email multi-workspace accounts.
+- Improve Codex multi-account support with canonical identity reconciliation, workspace-aware attribution, safer OpenAI dashboard ownership. Thanks @monterrr for the help!
+- Add OpenCode Go as a separate provider with 5-hour, weekly, and monthly web usage tracking, widget integration, and browser-cookie support.
+
+### Providers & Usage
+- Claude: fix token and cost inflation caused by cross-file double counting of subagent JSONL logs, fix streaming chunk dedup to keep the final cumulative chunk instead of the first partial one, and add `claude-sonnet-4-6` pricing. Thanks @enzonaute for the investigation!
+- Codex: reconcile live-system and managed accounts by canonical identity, preserve account-scoped usage/history/dashboard state, 
+- Codex: improve workspace-based account attribution, allow OAuth CLI fallback, and tighten OpenAI web ownership gating so quota and credits only attach to the matching account.
+- Codex: refactor the provider end to end into clearer components and better division of responsibilities.
+- OpenCode: preserve product separation between Zen and Go, improve null/unsupported usage handling, and harden cookie/domain behavior for authenticated web fetches.
+- OpenCode Go: add a dedicated provider, parse live authenticated workspace Go usage from the web app, keep monthly optional and honor workspace env overrides.
+- Cost history: merge supported pi session usage into Codex/Claude provider history (#653). Thanks @ngutman!
+
+### Menu & Settings
+- Codex: add UI for switching the system-level Codex account and promoting a managed account into the live system slot.
+- Codex: hide display-only OpenAI web extras in widgets and fix buy-credits / credits-only presentation regressions.
+- Claude: enable “Avoid Keychain prompts” by default, remove the experimental label, and preserve user-action cooldown clearing plus startup bootstrap when Security.framework fallback is still needed.
+
+## 0.20.0-beta.1 — 2026-04-01
+
+### Highlights
+- Add basic multi-account support to Codex. Thanks @monterrr and @Rag30 for the initial effort and ideas!
+- Add Perplexity provider with recurring, bonus, and purchased-credit tracking; plan detection (Pro/Max); and browser-cookie auto-import with manual-cookie fallback (#449). Thanks @BeelixGit!
+
+### Providers & Usage
+- Add the foundation for multi-account support to Codex and basic UX for adding and switching accounts. @ratulsarna
+- Codex: normalize weekly-only rate limits across OAuth and CLI/RPC so free-plan accounts render as Weekly instead of a fake Session, preserve unknown single-window payloads in the primary lane, hide the empty Session lane in widgets, and accept weekly-only Codex CLI `/status`/RPC data without failing. @ratulsarna
+- Perplexity: add provider support with credit tracking for recurring (monthly), bonus (promotional), and purchased on-demand credits; plan detection (Pro/Max); and browser-cookie auto-import with manual-cookie fallback (#449). Thanks @BeelixGit!
+
+### Menu & Settings
+- Fix alignment of menu chart hover coordinates on macOS. Thanks @cuidong233!
+
+## 0.19.0 — 2026-03-23
+### Highlights
+- Add Alibaba Coding Plan provider with region-aware quota fetching, widget integration, and browser-cookie import defaults (#574).
+- Align Cursor usage with the dashboard's Total/Auto/API lanes. (#587). Thanks @Rag30!
+- Add subscription utilization history chart to the menu with DST-safe data point identification (#589). Thanks @maxceem!
+- Refactor the Claude provider end to end into clearer, better-tested components while preserving behavior (#494). @ratulsarna
+- Add reset time display for Codex code review limits (#581). Thanks @Q1CHENL!
+- Add per-model token counts to cost history (#546). Thanks @iam-brain!
+- Fix Antigravity model selection to use stable model-family matching for Claude, Gemini Pro, and Gemini Flash, and preserve fallback lane visibility in the menu bar and icon (#590). Thanks @skainguyen1412!
+- Add GPT-5.4 mini and nano pricing (#561). Thanks @iam-brain!
+
+### Providers & Usage
+- Alibaba: add Coding Plan provider support with region-aware web/API quota fetching, widget integration, and browser-cookie import defaults (#574).
+- Cursor: trust dashboard percent fields for Total/Auto/API usage, preserve on-demand remaining fallback views, and keep scanning imported browser-cookie candidates until a working Cursor session is found (#587, supersedes #579). Thanks @Rag30!
+- Claude: refactor the provider end to end into clearer components, with baseline docs and expanded tests to lock down behavior (#494).
+- Codex: show reset times for code review limits, including Core review reset parsing support (#581). Thanks @Q1CHENL!
+- Cost history: add per-model token counts so token usage is broken out by model (#546). Thanks @iam-brain!
+- Antigravity: replace label-order guessing with stable model-family selection for Claude, Gemini Pro, and Gemini Flash; fix mapping for Claude thinking models and placeholder model IDs; preserve fallback lane visibility in the menu bar and icon when only fallback lanes exist (#590). Thanks @skainguyen1412!
+- Kimi: tolerate API responses without `resetTime` so usage decoding no longer fails on sparse payloads.
+- Codex: add GPT-5.4 mini and nano pricing (#561). Thanks @iam-brain!
+
+### Menu & Settings
+- Menu: add subscription utilization history chart with DST-safe chart point identifiers and per-provider plan utilization tracking (#589). Thanks @maxceem!
+- Menu bar: in Both display mode, fall back to percent when pace data is unavailable so text stays visible for providers without pace metrics (#527). Thanks @Astro-Han!
+- Settings: persist the resolved refresh cadence default to `UserDefaults` on first launch and repair invalid stored values so the setting stays normalized across relaunches (#519). Thanks @Astro-Han!
+- Menu: wrap long status blurbs and preserve wrapped titles for multiline entries (#543). Thanks @zkforge!
 
 ## 0.18.0 — 2026-03-15
 ### Highlights
