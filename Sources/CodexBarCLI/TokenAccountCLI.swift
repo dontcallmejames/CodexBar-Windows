@@ -108,6 +108,14 @@ struct TokenAccountCLIContext {
                     cookieSource: cookieSource,
                     manualCookieHeader: cookieHeader,
                     workspaceID: config?.workspaceID))
+        case .opencodego:
+            let cookieHeader = self.manualCookieHeader(provider: provider, account: account, config: config)
+            let cookieSource = self.cookieSource(provider: provider, account: account, config: config)
+            return self.makeSnapshot(
+                opencodego: ProviderSettingsSnapshot.OpenCodeProviderSettings(
+                    cookieSource: cookieSource,
+                    manualCookieHeader: cookieHeader,
+                    workspaceID: config?.workspaceID))
         case .alibaba:
             let cookieHeader = self.manualCookieHeader(provider: provider, account: account, config: config)
             let cookieSource = self.cookieSource(provider: provider, account: account, config: config)
@@ -188,6 +196,7 @@ struct TokenAccountCLIContext {
         claude: ProviderSettingsSnapshot.ClaudeProviderSettings? = nil,
         cursor: ProviderSettingsSnapshot.CursorProviderSettings? = nil,
         opencode: ProviderSettingsSnapshot.OpenCodeProviderSettings? = nil,
+        opencodego: ProviderSettingsSnapshot.OpenCodeProviderSettings? = nil,
         alibaba: ProviderSettingsSnapshot.AlibabaCodingPlanProviderSettings? = nil,
         factory: ProviderSettingsSnapshot.FactoryProviderSettings? = nil,
         minimax: ProviderSettingsSnapshot.MiniMaxProviderSettings? = nil,
@@ -205,6 +214,7 @@ struct TokenAccountCLIContext {
             claude: claude,
             cursor: cursor,
             opencode: opencode,
+            opencodego: opencodego,
             alibaba: alibaba,
             factory: factory,
             minimax: minimax,

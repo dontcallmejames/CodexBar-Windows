@@ -11,6 +11,12 @@ struct CodexBarWidgetProviderTests {
     }
 
     @Test
+    func `provider choice supports opencode go`() {
+        #expect(ProviderChoice(provider: .opencodego) == .opencodego)
+        #expect(ProviderChoice.opencodego.provider == .opencodego)
+    }
+
+    @Test
     func `supported providers keep alibaba when it is the only enabled provider`() {
         let now = Date(timeIntervalSince1970: 1_700_000_000)
         let entry = WidgetSnapshot.ProviderEntry(

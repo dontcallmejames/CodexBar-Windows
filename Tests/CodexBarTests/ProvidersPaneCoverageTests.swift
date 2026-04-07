@@ -90,6 +90,36 @@ struct ProvidersPaneCoverageTests {
     }
 
     @Test
+    func `opencode manual cookie source hides cached browser trailing text`() {
+        let settings = Self.makeSettingsStore(suite: "ProvidersPaneCoverageTests-opencode-manual")
+        let store = Self.makeUsageStore(settings: settings)
+        settings.opencodeCookieSource = .manual
+        CookieHeaderCache.store(provider: .opencode, cookieHeader: "auth=cache", sourceLabel: "Chrome")
+        defer { CookieHeaderCache.clear(provider: .opencode) }
+
+        let pane = ProvidersPane(settings: settings, store: store)
+        let picker = pane._test_settingsPickers(for: .opencode).first { $0.id == "opencode-cookie-source" }
+
+        #expect(picker?.dynamicSubtitle?() == "Paste a Cookie header captured from the billing page.")
+        #expect(picker?.trailingText?() == nil)
+    }
+
+    @Test
+    func `opencode go manual cookie source hides cached browser trailing text`() {
+        let settings = Self.makeSettingsStore(suite: "ProvidersPaneCoverageTests-opencodego-manual")
+        let store = Self.makeUsageStore(settings: settings)
+        settings.opencodegoCookieSource = .manual
+        CookieHeaderCache.store(provider: .opencodego, cookieHeader: "auth=cache", sourceLabel: "Chrome")
+        defer { CookieHeaderCache.clear(provider: .opencodego) }
+
+        let pane = ProvidersPane(settings: settings, store: store)
+        let picker = pane._test_settingsPickers(for: .opencodego).first { $0.id == "opencodego-cookie-source" }
+
+        #expect(picker?.dynamicSubtitle?() == "Paste a Cookie header captured from the billing page.")
+        #expect(picker?.trailingText?() == nil)
+    }
+
+    @Test
     func `codex providers pane uses managed account fallback instead of ambient account`() throws {
         let settings = Self.makeSettingsStore(suite: "ProvidersPaneCoverageTests-codex-managed-fallback")
         let ambientHome = FileManager.default.temporaryDirectory.appendingPathComponent(
