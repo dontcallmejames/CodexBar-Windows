@@ -28,7 +28,7 @@ struct SubprocessRunnerTests {
         do {
             _ = try await SubprocessRunner.run(
                 binary: "/bin/sleep",
-                arguments: ["30"],
+                arguments: ["5"],
                 environment: ProcessInfo.processInfo.environment,
                 timeout: 1,
                 label: "hung-process-test")
@@ -44,8 +44,8 @@ struct SubprocessRunnerTests {
         }
 
         let elapsed = Date().timeIntervalSince(start)
-        // Must complete in well under 30s (the sleep duration). Allow generous bound for CI.
-        #expect(elapsed < 10, "Timeout should fire in ~1s, not wait for process to exit naturally")
+        // Must complete in well under 5s (the sleep duration). Allow generous bound for CI.
+        #expect(elapsed < 3, "Timeout should fire in ~1s, not wait for process to exit naturally")
     }
 
     /// Multiple concurrent hung subprocesses must all time out independently, proving that
@@ -62,7 +62,7 @@ struct SubprocessRunnerTests {
                     do {
                         _ = try await SubprocessRunner.run(
                             binary: "/bin/sleep",
-                            arguments: ["30"],
+                            arguments: ["5"],
                             environment: ProcessInfo.processInfo.environment,
                             timeout: 2,
                             label: "concurrent-hung-\(i)")
@@ -80,10 +80,10 @@ struct SubprocessRunnerTests {
         }
 
         let elapsed = Date().timeIntervalSince(start)
-        // All 8 should time out in ~2s (parallel), not 8×30s (sequential/starved).
-        // Use generous 15s bound for slow CI.
+        // All 8 should time out in ~2s (parallel), not wait for the 5s sleep.
+        // Use a generous 4s bound for slow CI.
         #expect(
-            elapsed < 15,
+            elapsed < 4,
             "All \(count) concurrent timeouts should fire in ~2s, took \(elapsed)s")
     }
 
@@ -95,7 +95,7 @@ struct SubprocessRunnerTests {
             do {
                 _ = try await SubprocessRunner.run(
                     binary: "/bin/sleep",
-                    arguments: ["30"],
+                    arguments: ["1"],
                     environment: ProcessInfo.processInfo.environment,
                     timeout: 0.1,
                     label: "race-stress-\(i)")
