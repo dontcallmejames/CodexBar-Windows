@@ -3,6 +3,7 @@ import CodexBarCore
 import Testing
 @testable import CodexBar
 
+@Suite(.serialized)
 @MainActor
 struct StatusItemAnimationCodexCreditsTests {
     private func makeStatusBarForTesting() -> NSStatusBar {
