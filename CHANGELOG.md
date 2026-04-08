@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.21 — Unreleased
+
+### Highlights
+
+### Providers & Usage
+
+### Menu & Settings
+
 ## 0.20 — 2026-04-07
 
 ### Highlights
