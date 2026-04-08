@@ -51,24 +51,56 @@ public enum SubprocessRunner {
         }
     }
 
-    // MARK: - Helpers to move blocking calls off the cooperative thread pool
+    private final class ProcessTermination: @unchecked Sendable {
+        private let lock = NSLock()
+        private var status: Int32?
+        private var continuation: CheckedContinuation<Int32, Never>?
 
-    /// Runs `readDataToEndOfFile()` on a GCD thread so it does not block the Swift cooperative pool.
-    private static func readDataOffPool(_ fileHandle: FileHandle) async -> Data {
-        await withCheckedContinuation { continuation in
-            DispatchQueue.global().async {
-                let data = fileHandle.readDataToEndOfFile()
-                continuation.resume(returning: data)
+        func resolve(_ status: Int32) {
+            let continuation: CheckedContinuation<Int32, Never>?
+            self.lock.lock()
+            self.status = status
+            continuation = self.continuation
+            self.continuation = nil
+            self.lock.unlock()
+            continuation?.resume(returning: status)
+        }
+
+        func wait() async -> Int32 {
+            await withCheckedContinuation { continuation in
+                let status: Int32?
+                self.lock.lock()
+                status = self.status
+                if status == nil {
+                    self.continuation = continuation
+                }
+                self.lock.unlock()
+
+                if let status {
+                    continuation.resume(returning: status)
+                }
             }
         }
     }
 
-    /// Runs `waitUntilExit()` on a GCD thread so it does not block the Swift cooperative pool.
-    private static func waitForExitOffPool(_ process: Process) async -> Int32 {
+    // MARK: - Helpers to move blocking calls off the cooperative thread pool
+
+    /// Reads pipe data on a GCD thread so it does not block the Swift cooperative pool.
+    private static func readDataOffPool(_ fileHandle: FileHandle) async -> Data {
         await withCheckedContinuation { continuation in
             DispatchQueue.global().async {
-                process.waitUntilExit()
-                continuation.resume(returning: process.terminationStatus)
+                var output = Data()
+                while true {
+                    do {
+                        guard let data = try fileHandle.read(upToCount: 64 * 1024), data.isEmpty == false else {
+                            break
+                        }
+                        output.append(data)
+                    } catch {
+                        break
+                    }
+                }
+                continuation.resume(returning: output)
             }
         }
     }
@@ -125,6 +157,25 @@ public enum SubprocessRunner {
         process.standardError = stderrPipe
         process.standardInput = nil
 
+        let termination = ProcessTermination()
+        process.terminationHandler = { process in
+            termination.resolve(process.terminationStatus)
+        }
+
+        do {
+            try process.run()
+        } catch {
+            process.terminationHandler = nil
+            stdoutPipe.fileHandleForReading.closeFile()
+            stdoutPipe.fileHandleForWriting.closeFile()
+            stderrPipe.fileHandleForReading.closeFile()
+            stderrPipe.fileHandleForWriting.closeFile()
+            throw SubprocessRunnerError.launchFailed(error.localizedDescription)
+        }
+
+        let pid = process.processIdentifier
+        let processGroup: pid_t? = setpgid(pid, pid) == 0 ? pid : nil
+
         let stdoutTask = Task<Data, Never> {
             await self.readDataOffPool(stdoutPipe.fileHandleForReading)
         }
@@ -132,21 +183,8 @@ public enum SubprocessRunner {
             await self.readDataOffPool(stderrPipe.fileHandleForReading)
         }
 
-        do {
-            try process.run()
-        } catch {
-            stdoutTask.cancel()
-            stderrTask.cancel()
-            stdoutPipe.fileHandleForReading.closeFile()
-            stderrPipe.fileHandleForReading.closeFile()
-            throw SubprocessRunnerError.launchFailed(error.localizedDescription)
-        }
-
-        let pid = process.processIdentifier
-        let processGroup: pid_t? = setpgid(pid, pid) == 0 ? pid : nil
-
         let exitCodeTask = Task<Int32, Never> {
-            await self.waitForExitOffPool(process)
+            await termination.wait()
         }
 
         let killedByTimeout = KillFlag()
@@ -186,8 +224,6 @@ public enum SubprocessRunner {
                     ])
                 stdoutTask.cancel()
                 stderrTask.cancel()
-                stdoutPipe.fileHandleForReading.closeFile()
-                stderrPipe.fileHandleForReading.closeFile()
                 throw SubprocessRunnerError.timedOut(label)
             }
 
@@ -233,8 +269,6 @@ public enum SubprocessRunner {
             exitCodeTask.cancel()
             stdoutTask.cancel()
             stderrTask.cancel()
-            stdoutPipe.fileHandleForReading.closeFile()
-            stderrPipe.fileHandleForReading.closeFile()
             throw error
         }
     }
