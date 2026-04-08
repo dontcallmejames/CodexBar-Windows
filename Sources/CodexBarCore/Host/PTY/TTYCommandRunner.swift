@@ -487,6 +487,16 @@ public struct TTYCommandRunner {
             return appended
         }
 
+        func drainRemainingOutput(until drainDeadline: Date) {
+            while Date() < drainDeadline {
+                let newData = readChunk()
+                if newData.isEmpty {
+                    usleep(20000)
+                    continue
+                }
+            }
+        }
+
         func firstLink(in data: Data) -> String? {
             guard let s = String(data: data, encoding: .utf8) else { return nil }
             let pattern = #"https?://[A-Za-z0-9._~:/?#\[\]@!$&'()*+,;=%-]+"#
@@ -620,6 +630,13 @@ public struct TTYCommandRunner {
                         }
                         usleep(50000)
                     }
+                }
+            } else if !proc.isRunning {
+                // PTY-backed scripts can exit before their final echo becomes readable on the parent side.
+                // Give the kernel a brief non-blocking drain window so we don't lose the last line of output.
+                let drainFor = max(0, min(0.2, deadline.timeIntervalSinceNow))
+                if drainFor > 0 {
+                    drainRemainingOutput(until: Date().addingTimeInterval(drainFor))
                 }
             }
 
