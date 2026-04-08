@@ -252,6 +252,13 @@ final class OpenAIDashboardWebViewCache {
     }
 
     private func prepareWebView(_ webView: WKWebView, usageURL: URL, timeout: TimeInterval) async throws {
+        #if DEBUG
+        if usageURL.absoluteString == "about:blank" {
+            _ = webView.loadHTMLString("", baseURL: nil)
+            return
+        }
+        #endif
+
         try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
             let delegate = NavigationDelegate { result in
                 cont.resume(with: result)
