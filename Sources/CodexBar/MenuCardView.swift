@@ -1165,6 +1165,7 @@ extension UsageMenuCardView.Model {
                 paceOnTop: paceDetail?.paceOnTop ?? true)
         }
     }
+
     private static func antigravityMetrics(input: Input, snapshot: UsageSnapshot) -> [Metric] {
         let percentStyle: PercentStyle = input.usageBarsShowUsed ? .used : .left
         return [
