@@ -114,13 +114,13 @@ struct UsageStoreCodexAccountScopedRefresher: CodexAccountScopedRefreshing {
     }
 }
 
-struct CodexAccountPromotionResult: Sendable, Equatable {
-    enum Outcome: Sendable, Equatable {
+struct CodexAccountPromotionResult: Equatable {
+    enum Outcome: Equatable {
         case promoted
         case convergedNoOp
     }
 
-    enum DisplacedLiveDisposition: Sendable, Equatable {
+    enum DisplacedLiveDisposition: Equatable {
         case none
         case alreadyManaged(managedAccountID: UUID)
         case imported(managedAccountID: UUID)
@@ -133,7 +133,7 @@ struct CodexAccountPromotionResult: Sendable, Equatable {
     let resultingActiveSource: CodexActiveSource
 }
 
-enum CodexAccountPromotionError: Error, Sendable, Equatable {
+enum CodexAccountPromotionError: Error, Equatable {
     case targetManagedAccountNotFound
     case targetManagedAccountAuthMissing
     case targetManagedAccountAuthUnreadable

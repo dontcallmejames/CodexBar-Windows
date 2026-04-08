@@ -2,7 +2,7 @@ import CodexBarCore
 import Foundation
 import Observation
 
-enum ManagedCodexAccountCoordinatorError: Error, Equatable, Sendable {
+enum ManagedCodexAccountCoordinatorError: Error, Equatable {
     case authenticationInProgress
 }
 

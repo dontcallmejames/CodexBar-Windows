@@ -1,34 +1,34 @@
 import CodexBarCore
 import Foundation
 
-enum CodexDisplacedLivePreservationNoneReason: Sendable, Equatable {
+enum CodexDisplacedLivePreservationNoneReason: Equatable {
     case liveMissing
     case targetMatchesLiveAuthIdentity
 }
 
-enum CodexDisplacedLivePreservationRejectReason: Sendable, Equatable {
+enum CodexDisplacedLivePreservationRejectReason: Equatable {
     case liveUnreadable
     case liveAPIKeyOnlyUnsupported
     case liveIdentityMissingForPreservation
     case conflictingReadableManagedHome
 }
 
-enum CodexDisplacedLivePreservationImportReason: Sendable, Equatable {
+enum CodexDisplacedLivePreservationImportReason: Equatable {
     case noExistingManagedDestination
 }
 
-enum CodexDisplacedLivePreservationRefreshReason: Sendable, Equatable {
+enum CodexDisplacedLivePreservationRefreshReason: Equatable {
     case readableHomeIdentityMatch
     case readableHomeIdentityMatchUsingPersistedEmailFallback
 }
 
-enum CodexDisplacedLivePreservationRepairReason: Sendable, Equatable {
+enum CodexDisplacedLivePreservationRepairReason: Equatable {
     case persistedProviderMatchWithMissingHome
     case persistedProviderMatchWithUnreadableHome
     case persistedLegacyEmailMatch
 }
 
-enum CodexDisplacedLivePreservationPlan: Sendable {
+enum CodexDisplacedLivePreservationPlan {
     case none(reason: CodexDisplacedLivePreservationNoneReason)
     case reject(reason: CodexDisplacedLivePreservationRejectReason)
     case importNew(reason: CodexDisplacedLivePreservationImportReason)

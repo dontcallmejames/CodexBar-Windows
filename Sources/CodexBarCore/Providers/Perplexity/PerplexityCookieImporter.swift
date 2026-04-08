@@ -232,7 +232,7 @@ public enum PerplexityCookieImporter {
     }
 }
 
-enum PerplexityCookieImportError: LocalizedError, Sendable {
+enum PerplexityCookieImportError: LocalizedError {
     case noCookies
 
     var errorDescription: String? {

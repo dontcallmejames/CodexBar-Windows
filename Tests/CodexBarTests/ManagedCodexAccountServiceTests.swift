@@ -726,7 +726,7 @@ private final class TestManagedCodexHomeFactory: ManagedCodexHomeProducing, @unc
     }
 }
 
-private struct UnsafeManagedCodexHomeFactory: ManagedCodexHomeProducing, Sendable {
+private struct UnsafeManagedCodexHomeFactory: ManagedCodexHomeProducing {
     let root: URL
     let homeURL: URL
 
@@ -739,7 +739,7 @@ private struct UnsafeManagedCodexHomeFactory: ManagedCodexHomeProducing, Sendabl
     }
 }
 
-private struct StubManagedCodexLoginRunner: ManagedCodexLoginRunning, Sendable {
+private struct StubManagedCodexLoginRunner: ManagedCodexLoginRunning {
     let result: CodexLoginRunner.Result
 
     func run(homePath: String, timeout: TimeInterval) async -> CodexLoginRunner.Result {
@@ -785,7 +785,7 @@ private final class StubManagedCodexIdentityReader: ManagedCodexIdentityReading,
     }
 }
 
-private struct StubManagedCodexWorkspaceResolver: ManagedCodexWorkspaceResolving, Sendable {
+private struct StubManagedCodexWorkspaceResolver: ManagedCodexWorkspaceResolving {
     let identities: [String: CodexOpenAIWorkspaceIdentity]
 
     init(identities: [String: CodexOpenAIWorkspaceIdentity] = [:]) {

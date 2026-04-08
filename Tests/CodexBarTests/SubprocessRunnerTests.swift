@@ -23,7 +23,7 @@ struct SubprocessRunnerTests {
     /// the cooperative thread pool, starving the timeout task. The fix moves blocking calls
     /// to `DispatchQueue.global()`, making this test reliable.
     @Test
-    func throwsTimedOutWhenProcessHangs() async throws {
+    func `throws timed out when process hangs`() async throws {
         let start = Date()
         do {
             _ = try await SubprocessRunner.run(
@@ -52,7 +52,7 @@ struct SubprocessRunnerTests {
     /// one blocked subprocess does not starve the timeout mechanism of others.
     /// This is the core scenario that caused the original permanent-refresh-stall bug.
     @Test
-    func concurrentHungProcessesAllTimeOut() async {
+    func `concurrent hung processes all time out`() async {
         let start = Date()
         let count = 8
 
@@ -90,7 +90,7 @@ struct SubprocessRunnerTests {
     /// Stress-test the timeout race guard: with very short timeouts, the exit-code task
     /// and the timeout task race tightly, exercising the KillFlag synchronization path.
     @Test
-    func timeoutRaceStress() async {
+    func `timeout race stress`() async {
         for i in 0..<20 {
             do {
                 _ = try await SubprocessRunner.run(
@@ -113,7 +113,7 @@ struct SubprocessRunnerTests {
 
     /// Verify that many concurrent SubprocessRunner calls complete without starving each other.
     @Test
-    func concurrentCallsDoNotStarve() async throws {
+    func `concurrent calls do not starve`() async throws {
         try await withThrowingTaskGroup(of: SubprocessResult.self) { group in
             for i in 0..<20 {
                 group.addTask {

@@ -50,12 +50,12 @@ enum CostUsageScanner {
         let parsedBytes: Int64
     }
 
-    enum ClaudePathRole: String, Codable, Sendable {
+    enum ClaudePathRole: String, Codable {
         case parent
         case subagent
     }
 
-    struct ClaudeUsageRow: Codable, Sendable {
+    struct ClaudeUsageRow: Codable {
         let dayKey: String
         let model: String
         let sessionId: String?

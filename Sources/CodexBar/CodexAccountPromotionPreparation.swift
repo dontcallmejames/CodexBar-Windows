@@ -1,7 +1,7 @@
 import CodexBarCore
 import Foundation
 
-struct PreparedIdentity: Sendable, Equatable {
+struct PreparedIdentity: Equatable {
     let email: String?
     let identity: CodexIdentity
     let providerAccountID: String?
@@ -9,7 +9,7 @@ struct PreparedIdentity: Sendable, Equatable {
     let workspaceAccountID: String?
 }
 
-struct PreparedAuthMaterial: Sendable {
+struct PreparedAuthMaterial {
     let homeURL: URL
     let rawData: Data
     let credentials: CodexOAuthCredentials
@@ -17,13 +17,13 @@ struct PreparedAuthMaterial: Sendable {
     let authIdentity: PreparedIdentity
 }
 
-enum PreparedManagedHomeState: Sendable {
+enum PreparedManagedHomeState {
     case readable(PreparedAuthMaterial)
     case missing(homeURL: URL)
     case unreadable(homeURL: URL)
 }
 
-struct PreparedStoredManagedAccount: Sendable {
+struct PreparedStoredManagedAccount {
     let persisted: ManagedCodexAccount
     let persistedIdentity: PreparedIdentity
     let homeState: PreparedManagedHomeState
@@ -38,14 +38,14 @@ struct PreparedStoredManagedAccount: Sendable {
     }
 }
 
-enum PreparedLiveHomeState: Sendable {
+enum PreparedLiveHomeState {
     case missing(homeURL: URL)
     case unreadable(homeURL: URL)
     case apiKeyOnly(PreparedAuthMaterial)
     case readable(PreparedAuthMaterial)
 }
 
-struct PreparedLiveAccount: Sendable {
+struct PreparedLiveAccount {
     let homeState: PreparedLiveHomeState
 
     var homeURL: URL {
@@ -67,7 +67,7 @@ struct PreparedLiveAccount: Sendable {
     }
 }
 
-struct PreparedPromotionContext: Sendable {
+struct PreparedPromotionContext {
     let snapshot: CodexAccountReconciliationSnapshot
     let managedAccounts: ManagedCodexAccountSet
     let storedManagedAccounts: [PreparedStoredManagedAccount]

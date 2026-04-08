@@ -372,7 +372,7 @@ extension CodexAccountsSettingsSectionTests {
     }
 }
 
-private struct TestManagedCodexHomeFactoryForSettingsSectionTests: ManagedCodexHomeProducing, Sendable {
+private struct TestManagedCodexHomeFactoryForSettingsSectionTests: ManagedCodexHomeProducing {
     let root: URL
     private let nextID = UUID().uuidString
 
@@ -385,7 +385,7 @@ private struct TestManagedCodexHomeFactoryForSettingsSectionTests: ManagedCodexH
     }
 }
 
-private struct StubManagedCodexLoginRunnerForSettingsSectionTests: ManagedCodexLoginRunning, Sendable {
+private struct StubManagedCodexLoginRunnerForSettingsSectionTests: ManagedCodexLoginRunning {
     let result: CodexLoginRunner.Result
 
     func run(homePath _: String, timeout _: TimeInterval) async -> CodexLoginRunner.Result {

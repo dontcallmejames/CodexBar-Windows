@@ -677,7 +677,7 @@ struct CodexAccountPromotionServiceTests {
     }
 }
 
-private struct HomePathWorkspaceResolver: ManagedCodexWorkspaceResolving, Sendable {
+private struct HomePathWorkspaceResolver: ManagedCodexWorkspaceResolving {
     let byHomePath: [String: CodexOpenAIWorkspaceIdentity]
 
     func resolveWorkspaceIdentity(

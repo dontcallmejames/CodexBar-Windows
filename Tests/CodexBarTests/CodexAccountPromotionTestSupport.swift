@@ -452,7 +452,7 @@ enum PromotionTestError: Error, Equatable {
     case unexpectedDisposition
 }
 
-private struct StubManagedCodexWorkspaceResolver: ManagedCodexWorkspaceResolving, Sendable {
+private struct StubManagedCodexWorkspaceResolver: ManagedCodexWorkspaceResolving {
     let identities: [String: CodexOpenAIWorkspaceIdentity]
 
     func resolveWorkspaceIdentity(
