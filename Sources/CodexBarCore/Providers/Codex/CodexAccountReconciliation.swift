@@ -257,7 +257,7 @@ public enum CodexIdentityMatcher {
     }
 }
 
-private struct RuntimeManagedCodexAccount: Sendable {
+private struct RuntimeManagedCodexAccount {
     let email: String
     let identity: CodexIdentity
 }

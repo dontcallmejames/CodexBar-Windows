@@ -2,7 +2,7 @@ import CodexBarCore
 import CryptoKit
 import Foundation
 
-struct CodexOwnershipContext: Sendable {
+struct CodexOwnershipContext {
     let canonicalKey: String?
     let canonicalEmailHashKey: String?
     let historicalLegacyEmailHash: String?

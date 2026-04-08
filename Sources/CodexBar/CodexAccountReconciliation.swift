@@ -1,7 +1,7 @@
 import CodexBarCore
 import Foundation
 
-struct CodexVisibleAccount: Equatable, Sendable, Identifiable {
+struct CodexVisibleAccount: Equatable, Identifiable {
     let id: String
     let email: String
     let workspaceLabel: String?
@@ -62,7 +62,7 @@ struct CodexVisibleAccount: Equatable, Sendable, Identifiable {
     }
 }
 
-struct CodexVisibleAccountProjection: Equatable, Sendable {
+struct CodexVisibleAccountProjection: Equatable {
     let visibleAccounts: [CodexVisibleAccount]
     let activeVisibleAccountID: String?
     let liveVisibleAccountID: String?

@@ -3,7 +3,7 @@ import Foundation
 public struct CodexOpenAIWorkspaceIdentityCache: @unchecked Sendable {
     public static let currentVersion = 1
 
-    private struct Payload: Codable, Sendable {
+    private struct Payload: Codable {
         let version: Int
         var labelsByWorkspaceAccountID: [String: String]
 

@@ -2,7 +2,7 @@ import CodexBarCore
 import CryptoKit
 import Foundation
 
-enum CodexHistoryPersistedOwner: Equatable, Sendable {
+enum CodexHistoryPersistedOwner: Equatable {
     case canonical(String)
     case legacyEmailHash(String)
     case legacyOpaqueScoped(String)

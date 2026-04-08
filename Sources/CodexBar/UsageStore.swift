@@ -76,7 +76,7 @@ extension UsageStore {
 @MainActor
 @Observable
 final class UsageStore {
-    enum CodexCreditsSource: Sendable {
+    enum CodexCreditsSource {
         case none
         case api
         case dashboardWeb

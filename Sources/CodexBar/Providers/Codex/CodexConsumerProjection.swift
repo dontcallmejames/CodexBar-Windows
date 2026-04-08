@@ -87,34 +87,34 @@ struct CodexUIErrorMapper {
 }
 
 struct CodexConsumerProjection {
-    enum Surface: Sendable {
+    enum Surface {
         case liveCard
         case overrideCard
         case widget
         case menuBar
     }
 
-    enum RateLane: String, Sendable {
+    enum RateLane: String {
         case session
         case weekly
     }
 
-    enum SupplementalMetric: String, Sendable {
+    enum SupplementalMetric: String {
         case codeReview
     }
 
-    struct PlanUtilizationLane: Sendable {
+    struct PlanUtilizationLane {
         let role: PlanUtilizationSeriesName
         let window: RateWindow
     }
 
-    enum DashboardVisibility: Sendable {
+    enum DashboardVisibility {
         case hidden
         case displayOnly
         case attached
     }
 
-    struct CreditsProjection: Sendable {
+    struct CreditsProjection {
         let snapshot: CreditsSnapshot?
         let userFacingError: String?
 
@@ -123,7 +123,7 @@ struct CodexConsumerProjection {
         }
     }
 
-    struct UserFacingErrors: Sendable {
+    struct UserFacingErrors {
         let usage: String?
         let credits: String?
         let dashboard: String?
@@ -141,7 +141,7 @@ struct CodexConsumerProjection {
         let now: Date
     }
 
-    enum MenuBarFallback: Sendable {
+    enum MenuBarFallback {
         case none
         case creditsBalance
     }

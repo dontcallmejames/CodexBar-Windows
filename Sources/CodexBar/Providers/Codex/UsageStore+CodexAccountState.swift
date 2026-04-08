@@ -1,7 +1,7 @@
 import CodexBarCore
 import Foundation
 
-enum CodexAccountScopedRefreshPhase: Sendable {
+enum CodexAccountScopedRefreshPhase {
     case invalidated
     case usage
     case credits
@@ -9,7 +9,7 @@ enum CodexAccountScopedRefreshPhase: Sendable {
     case completed
 }
 
-struct CodexAccountScopedRefreshGuard: Equatable, Sendable {
+struct CodexAccountScopedRefreshGuard: Equatable {
     let source: CodexActiveSource
     let identity: CodexIdentity
     let accountKey: String?

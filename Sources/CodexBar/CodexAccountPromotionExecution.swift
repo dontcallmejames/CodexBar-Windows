@@ -1,12 +1,12 @@
 import CodexBarCore
 import Foundation
 
-private struct CodexPreparedImportedAccount: Sendable {
+private struct CodexPreparedImportedAccount {
     let account: ManagedCodexAccount
     let homeURL: URL
 }
 
-struct CodexDisplacedLivePreservationExecutionResult: Sendable, Equatable {
+struct CodexDisplacedLivePreservationExecutionResult: Equatable {
     let displacedLiveDisposition: CodexAccountPromotionResult.DisplacedLiveDisposition
 }
 

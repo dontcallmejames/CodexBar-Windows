@@ -18,13 +18,13 @@ protocol ManagedCodexWorkspaceResolving: Sendable {
     func resolveWorkspaceIdentity(homePath: String, providerAccountID: String) async -> CodexOpenAIWorkspaceIdentity?
 }
 
-enum ManagedCodexAccountServiceError: Error, Equatable, Sendable {
+enum ManagedCodexAccountServiceError: Error, Equatable {
     case loginFailed
     case missingEmail
     case unsafeManagedHome(String)
 }
 
-struct ManagedCodexHomeFactory: ManagedCodexHomeProducing, Sendable {
+struct ManagedCodexHomeFactory: ManagedCodexHomeProducing {
     let root: URL
 
     init(root: URL = Self.defaultRootURL(), fileManager: FileManager = .default) {
