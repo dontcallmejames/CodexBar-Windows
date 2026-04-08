@@ -236,7 +236,7 @@ public struct OpenAIDashboardBrowserCookieImporter {
         // Safari first: avoids touching Keychain ("Chrome Safe Storage") when Safari already matches.
         do {
             let query = BrowserCookieQuery(domains: Self.cookieDomains)
-            let sources = try Self.cookieClient.records(
+            let sources = try Self.cookieClient.codexBarRecords(
                 matching: query,
                 in: .safari,
                 logger: log)
@@ -285,7 +285,7 @@ public struct OpenAIDashboardBrowserCookieImporter {
         // Chrome fallback: may trigger Keychain prompt. Only do this if Safari didn't match.
         do {
             let query = BrowserCookieQuery(domains: Self.cookieDomains)
-            let chromeSources = try Self.cookieClient.records(
+            let chromeSources = try Self.cookieClient.codexBarRecords(
                 matching: query,
                 in: .chrome)
             for source in chromeSources {
@@ -328,7 +328,7 @@ public struct OpenAIDashboardBrowserCookieImporter {
         // Firefox fallback: no Keychain, but still only after Safari/Chrome.
         do {
             let query = BrowserCookieQuery(domains: Self.cookieDomains)
-            let firefoxSources = try Self.cookieClient.records(
+            let firefoxSources = try Self.cookieClient.codexBarRecords(
                 matching: query,
                 in: .firefox)
             for source in firefoxSources {

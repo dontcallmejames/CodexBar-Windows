@@ -111,6 +111,17 @@ public enum BrowserCookieAccessGate {
         UserDefaults.standard.set(raw, forKey: self.defaultsKey)
     }
 }
+
+extension BrowserCookieClient {
+    public func codexBarRecords(
+        matching query: BrowserCookieQuery,
+        in browser: Browser,
+        logger: ((String) -> Void)? = nil) throws -> [BrowserCookieStoreRecords]
+    {
+        guard BrowserCookieAccessGate.shouldAttempt(browser) else { return [] }
+        return try self.records(matching: query, in: browser, logger: logger)
+    }
+}
 #else
 public enum BrowserCookieAccessGate {
     public static func shouldAttempt(_ browser: Browser, now: Date = Date()) -> Bool {
