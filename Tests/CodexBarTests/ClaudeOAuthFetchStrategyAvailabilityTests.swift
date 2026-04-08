@@ -177,12 +177,14 @@ struct ClaudeOAuthFetchStrategyAvailabilityTests {
                 try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
                 let fileURL = tempDir.appendingPathComponent("credentials.json")
 
-                let available = await ClaudeOAuthCredentialsStore.withCredentialsURLOverrideForTesting(fileURL) {
-                    await ClaudeOAuthKeychainReadStrategyPreference.withTaskOverrideForTesting(.securityFramework) {
-                        await ClaudeOAuthKeychainPromptPreference.withTaskOverrideForTesting(.onlyOnUserAction) {
-                            await ProviderRefreshContext.$current.withValue(.startup) {
-                                await ProviderInteractionContext.$current.withValue(.background) {
-                                    await strategy.isAvailable(context)
+                let available = await KeychainAccessGate.withTaskOverrideForTesting(false) {
+                    await ClaudeOAuthCredentialsStore.withCredentialsURLOverrideForTesting(fileURL) {
+                        await ClaudeOAuthKeychainReadStrategyPreference.withTaskOverrideForTesting(.securityFramework) {
+                            await ClaudeOAuthKeychainPromptPreference.withTaskOverrideForTesting(.onlyOnUserAction) {
+                                await ProviderRefreshContext.$current.withValue(.startup) {
+                                    await ProviderInteractionContext.$current.withValue(.background) {
+                                        await strategy.isAvailable(context)
+                                    }
                                 }
                             }
                         }
@@ -240,12 +242,14 @@ struct ClaudeOAuthFetchStrategyAvailabilityTests {
                 try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
                 let fileURL = tempDir.appendingPathComponent("credentials.json")
 
-                let available = await ClaudeOAuthCredentialsStore.withCredentialsURLOverrideForTesting(fileURL) {
-                    await ClaudeOAuthKeychainPromptPreference.withTaskOverrideForTesting(.onlyOnUserAction) {
-                        await ClaudeOAuthCredentialsStore.withSecurityCLIReadOverrideForTesting(.nonZeroExit) {
-                            await ProviderRefreshContext.$current.withValue(.startup) {
-                                await ProviderInteractionContext.$current.withValue(.background) {
-                                    await strategy.isAvailable(context)
+                let available = await KeychainAccessGate.withTaskOverrideForTesting(false) {
+                    await ClaudeOAuthCredentialsStore.withCredentialsURLOverrideForTesting(fileURL) {
+                        await ClaudeOAuthKeychainPromptPreference.withTaskOverrideForTesting(.onlyOnUserAction) {
+                            await ClaudeOAuthCredentialsStore.withSecurityCLIReadOverrideForTesting(.nonZeroExit) {
+                                await ProviderRefreshContext.$current.withValue(.startup) {
+                                    await ProviderInteractionContext.$current.withValue(.background) {
+                                        await strategy.isAvailable(context)
+                                    }
                                 }
                             }
                         }

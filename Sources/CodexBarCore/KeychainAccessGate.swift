@@ -62,4 +62,8 @@ public enum KeychainAccessGate {
             try await operation()
         }
     }
+
+    static var currentOverrideForTesting: Bool? {
+        self.taskOverrideValue ?? self.overrideValue
+    }
 }
