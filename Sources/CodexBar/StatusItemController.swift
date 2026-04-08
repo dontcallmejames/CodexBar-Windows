@@ -575,6 +575,10 @@ final class StatusItemController: NSObject, NSMenuDelegate, StatusItemControllin
     }
 
     deinit {
+        let animationDriver = self.animationDriver
+        Task { @MainActor in
+            animationDriver?.stop()
+        }
         self.blinkTask?.cancel()
         self.loginTask?.cancel()
         NotificationCenter.default.removeObserver(self)
