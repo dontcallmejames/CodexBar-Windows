@@ -3,6 +3,7 @@ import Foundation
 import Testing
 @testable import CodexBar
 
+@Suite(.serialized)
 struct HistoricalUsagePaceTests {
     @Test
     func `history store reconstructs deterministic monotone curve`() async throws {
