@@ -13,6 +13,13 @@ public enum KeychainAccessGate {
         get {
             if let taskOverrideValue { return taskOverrideValue }
             if let overrideValue { return overrideValue }
+            #if DEBUG
+            if Self.isRunningUnderTests,
+               ProcessInfo.processInfo.environment["CODEXBAR_ALLOW_TEST_KEYCHAIN_ACCESS"] != "1"
+            {
+                return true
+            }
+            #endif
             if UserDefaults.standard.bool(forKey: Self.flagKey) { return true }
             if let shared = UserDefaults(suiteName: Self.appGroupID),
                shared.bool(forKey: Self.flagKey)
@@ -28,6 +35,15 @@ public enum KeychainAccessGate {
             #endif
         }
     }
+
+    #if DEBUG
+    private nonisolated(unsafe) static var isRunningUnderTests: Bool {
+        let processName = ProcessInfo.processInfo.processName
+        return processName == "swiftpm-testing-helper"
+            || processName.hasSuffix("PackageTests")
+            || ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+    }
+    #endif
 
     static func withTaskOverrideForTesting<T>(
         _ disabled: Bool?,

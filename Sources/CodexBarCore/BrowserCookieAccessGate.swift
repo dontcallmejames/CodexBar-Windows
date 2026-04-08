@@ -18,7 +18,7 @@ public enum BrowserCookieAccessGate {
     public static func shouldAttempt(_ browser: Browser, now: Date = Date()) -> Bool {
         guard browser.usesKeychainForCookieDecryption else { return true }
         guard !KeychainAccessGate.isDisabled else { return false }
-        return self.lock.withLock { state in
+        let shouldCheckKeychain = self.lock.withLock { state in
             self.loadIfNeeded(&state)
             if let blockedUntil = state.deniedUntilByBrowser[browser.rawValue] {
                 if blockedUntil > now {
@@ -30,7 +30,14 @@ public enum BrowserCookieAccessGate {
                 state.deniedUntilByBrowser.removeValue(forKey: browser.rawValue)
                 self.persist(state)
             }
-            if self.chromiumKeychainRequiresInteraction() {
+            return true
+        }
+        guard shouldCheckKeychain else { return false }
+
+        let requiresInteraction = self.chromiumKeychainRequiresInteraction()
+        return self.lock.withLock { state in
+            self.loadIfNeeded(&state)
+            if requiresInteraction {
                 state.deniedUntilByBrowser[browser.rawValue] = now.addingTimeInterval(self.cooldownInterval)
                 self.persist(state)
                 self.log.info(
