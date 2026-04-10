@@ -21,6 +21,9 @@
 - z.ai: fix menu bar selection when both weekly and 5-hour quotas are present (#662).
 - Codex: add an OpenAI web battery-saver toggle, keep manual refresh available when battery saver is on, and hide OpenAI web submenus when web extras are disabled.
 
+### Development & Tooling
+- Build script: make CodexBar-owned ad-hoc keychain cleanup opt-in with `--clear-adhoc-keychain`, and extend the explicit reset path to clear both `com.steipete.CodexBar` and `com.steipete.codexbar.cache`. Thanks @magnaprog!
+
 ## 0.20 — 2026-04-07
 
 ### Highlights
