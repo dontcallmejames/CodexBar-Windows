@@ -101,7 +101,6 @@ struct CodexProviderImplementation: ProviderImplementation {
                 id: "codex-openai-web-battery-saver",
                 title: "Battery Saver",
                 subtitle: [
-                    "Recommended.",
                     "Limits background chatgpt.com refreshes to reduce battery and network usage.",
                     "Dashboard extras may stay stale until you refresh them manually.",
                 ].joined(separator: " "),

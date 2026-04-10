@@ -168,7 +168,6 @@ struct ProviderSettingsDescriptorTests {
 
         let batterySaverToggle = try #require(toggles.first(where: { $0.id == "codex-openai-web-battery-saver" }))
         #expect(batterySaverToggle.binding.wrappedValue == false)
-        #expect(batterySaverToggle.subtitle.contains("Recommended."))
         #expect(batterySaverToggle.isVisible?() == false)
 
         settings.openAIWebAccessEnabled = true
