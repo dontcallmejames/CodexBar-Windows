@@ -16,6 +16,7 @@
 - z.ai: preserve both weekly and 5-hour token quotas, keep the existing 2-limit behavior unchanged, and render the 5-hour quota as a tertiary row in provider snapshots and CLI/menu cards (#662). Credit to @takumi3488 for the original fix and investigation.
 - Cursor: fix the usage fetch path so failed or cancelled requests no longer crash, and add Linux build and regression test coverage fixes (#663).
 - Antigravity: scope insecure localhost trust handling to `127.0.0.1` / `localhost`, keep localhost requests cancellable, and restore local quota/account probing on builds that previously failed TLS challenge handling (#693, fixes #692). Thanks @anirudhvee!
+- OpenCode: enable weekly pace visualization for the app and CLI so weekly bars show reserve percentage, expected-usage markers, and "Lasts until reset" details like Codex and Claude (#639). Thanks @Zachary!
 - Cost: tighten the local Codex cost scanner around fork inheritance, cold-cache discovery, incremental parsing, and sessions-root changes so replayed sessions no longer overcount or slip usage across day boundaries (#698). Thanks @xx205!
 - Claude: preserve normal CLI fallback precedence across well-known install paths so Finder-launched apps prefer `~/.claude/bin/claude`, then Homebrew, before the bundled `cmux.app` binary when shell-based resolution is unavailable.
 - Codex: support Microsoft Edge in browser-cookie import for the Codex provider while keeping the contributor branch untouched in the superseding integration path (#694). Thanks @Astro-Han!
