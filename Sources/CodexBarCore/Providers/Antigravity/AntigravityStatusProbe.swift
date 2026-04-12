@@ -630,7 +630,9 @@ public struct AntigravityStatusProbe: Sendable {
         let config = URLSessionConfiguration.ephemeral
         config.timeoutIntervalForRequest = context.timeout
         config.timeoutIntervalForResource = context.timeout
+        #if !os(Linux)
         config.waitsForConnectivity = false
+        #endif
 
         let delegate = LocalhostSessionDelegate()
         let session = URLSession(configuration: config, delegate: delegate, delegateQueue: nil)
@@ -654,14 +656,16 @@ enum LocalhostTrustPolicy {
         authenticationMethod: String,
         hasServerTrust: Bool) -> Bool
     {
+        #if !os(Linux)
         guard authenticationMethod == NSURLAuthenticationMethodServerTrust else { return false }
+        #endif
         let normalizedHost = host.lowercased()
         guard normalizedHost == "127.0.0.1" || normalizedHost == "localhost" else { return false }
         return hasServerTrust
     }
 }
 
-private final class LocalhostSessionDelegate: NSObject, URLSessionDelegate, URLSessionTaskDelegate {
+private final class LocalhostSessionDelegate: NSObject {
     func data(for request: URLRequest, session: URLSession) async throws -> (Data, URLResponse) {
         let state = LocalhostSessionTaskState()
         return try await withTaskCancellationHandler {
@@ -684,30 +688,36 @@ private final class LocalhostSessionDelegate: NSObject, URLSessionDelegate, URLS
             state.cancel()
         }
     }
+}
 
+extension LocalhostSessionDelegate: URLSessionDelegate {
     func urlSession(
         _ session: URLSession,
         didReceive challenge: URLAuthenticationChallenge,
-        completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void)
+        completionHandler: @escaping @Sendable (URLSession.AuthChallengeDisposition, URLCredential?) -> Void)
     {
-        self.handle(challenge, completionHandler: completionHandler)
+        let result = self.challengeResult(challenge)
+        completionHandler(result.disposition, result.credential)
     }
+}
 
+extension LocalhostSessionDelegate: URLSessionTaskDelegate {
     func urlSession(
         _ session: URLSession,
         task: URLSessionTask,
         didReceive challenge: URLAuthenticationChallenge,
-        completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void)
+        completionHandler: @escaping @Sendable (URLSession.AuthChallengeDisposition, URLCredential?) -> Void)
     {
-        self.handle(challenge, completionHandler: completionHandler)
+        let result = self.challengeResult(challenge)
+        completionHandler(result.disposition, result.credential)
     }
 
-    private func handle(
-        _ challenge: URLAuthenticationChallenge,
-        completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void)
+    private func challengeResult(_ challenge: URLAuthenticationChallenge) -> (
+        disposition: URLSession.AuthChallengeDisposition,
+        credential: URLCredential?)
     {
-        #if canImport(FoundationNetworking)
-        completionHandler(.performDefaultHandling, nil)
+        #if os(Linux)
+        return (.performDefaultHandling, nil)
         #else
         let protectionSpace = challenge.protectionSpace
         let trust = protectionSpace.serverTrust
@@ -717,10 +727,9 @@ private final class LocalhostSessionDelegate: NSObject, URLSessionDelegate, URLS
             hasServerTrust: trust != nil),
             let trust
         else {
-            completionHandler(.performDefaultHandling, nil)
-            return
+            return (.performDefaultHandling, nil)
         }
-        completionHandler(.useCredential, URLCredential(trust: trust))
+        return (.useCredential, URLCredential(trust: trust))
         #endif
     }
 }
