@@ -346,15 +346,7 @@ final class UsageStore {
 
     /// Providers that should actually participate in background refresh/status/token work.
     func enabledProvidersForBackgroundWork() -> [UsageProvider] {
-        let availableProviders = Set(self.enabledProviders())
-        return self.enabledProvidersForDisplay().filter { provider in
-            if availableProviders.contains(provider) {
-                return true
-            }
-            return self.snapshots[provider] != nil
-                || !(self.accountSnapshots[provider] ?? []).isEmpty
-                || self.tokenSnapshots[provider] != nil
-        }
+        self.enabledProviders()
     }
 
     var statusChecksEnabled: Bool {
@@ -465,6 +457,7 @@ final class UsageStore {
         let displayEnabledProviders = self.enabledProvidersForDisplay()
         let enabledProviderSet = Set(displayEnabledProviders)
         let refreshProviders = self.enabledProvidersForBackgroundWork()
+        let availableRefreshProviders = Set(self.enabledProviders())
         let refreshStartedAt = Date()
 
         await ProviderRefreshContext.$current.withValue(refreshPhase) {
@@ -475,11 +468,16 @@ final class UsageStore {
             }
 
             self.clearDisabledProviderState(enabledProviders: enabledProviderSet)
+            self.clearUnavailableProviderState(
+                displayEnabledProviders: enabledProviderSet,
+                availableProviders: availableRefreshProviders)
 
             await withTaskGroup(of: Void.self) { group in
                 for provider in refreshProviders {
                     group.addTask { await self.refreshProvider(provider) }
-                    group.addTask { await self.refreshStatus(provider) }
+                    if availableRefreshProviders.contains(provider) {
+                        group.addTask { await self.refreshStatus(provider) }
+                    }
                 }
                 group.addTask { await self.refreshCreditsIfNeeded(minimumSnapshotUpdatedAt: refreshStartedAt) }
             }
