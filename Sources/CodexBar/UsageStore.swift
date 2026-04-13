@@ -346,7 +346,15 @@ final class UsageStore {
 
     /// Providers that should actually participate in background refresh/status/token work.
     func enabledProvidersForBackgroundWork() -> [UsageProvider] {
-        self.enabledProviders()
+        let availableProviders = Set(self.enabledProviders())
+        return self.enabledProvidersForDisplay().filter { provider in
+            if availableProviders.contains(provider) {
+                return true
+            }
+            return self.snapshots[provider] != nil
+                || !(self.accountSnapshots[provider] ?? []).isEmpty
+                || self.tokenSnapshots[provider] != nil
+        }
     }
 
     var statusChecksEnabled: Bool {

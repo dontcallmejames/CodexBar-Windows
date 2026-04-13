@@ -229,6 +229,43 @@ struct UsageStoreCoverageTests {
     }
 
     @Test
+    func unavailableProviderWithCachedSnapshotStaysEligibleForBackgroundCleanup() async throws {
+        let settings = Self.makeSettingsStore(suite: "UsageStoreCoverageTests-background-cleanup")
+        settings.refreshFrequency = .manual
+        settings.statusChecksEnabled = false
+
+        let metadata = ProviderRegistry.shared.metadata
+        for provider in UsageProvider.allCases {
+            try settings.setProviderEnabled(
+                provider: provider,
+                metadata: #require(metadata[provider]),
+                enabled: false)
+        }
+        try settings.setProviderEnabled(
+            provider: .synthetic,
+            metadata: #require(metadata[.synthetic]),
+            enabled: true)
+
+        let store = Self.makeUsageStore(settings: settings)
+        let cachedSnapshot = UsageSnapshot(
+            primary: RateWindow(usedPercent: 25, windowMinutes: nil, resetsAt: nil, resetDescription: nil),
+            secondary: nil,
+            updatedAt: Date())
+        store._setSnapshotForTesting(cachedSnapshot, provider: .synthetic)
+
+        #expect(store.enabledProvidersForDisplay() == [.synthetic])
+        #expect(store.enabledProviders().isEmpty)
+        #expect(store.enabledProvidersForBackgroundWork() == [.synthetic])
+
+        await store.refresh()
+        #expect(store.snapshot(for: .synthetic) != nil)
+
+        await store.refresh()
+        #expect(store.snapshot(for: .synthetic) == nil)
+        #expect(store.error(for: .synthetic)?.isEmpty == false)
+    }
+
+    @Test
     func statusIndicatorsAndFailureGate() {
         #expect(!ProviderStatusIndicator.none.hasIssue)
         #expect(ProviderStatusIndicator.maintenance.hasIssue)
