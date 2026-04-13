@@ -99,7 +99,6 @@ extension UsageStore {
             authorityInput: authority.input,
             attachedAccountEmail: attachedAccountEmail,
             allowCodexUsageBackfill: allowCodexUsageBackfill)
-        OpenAIDashboardFetcher.evictCachedWebView(accountEmail: targetEmail)
     }
 
     func applyOpenAIDashboardFailure(

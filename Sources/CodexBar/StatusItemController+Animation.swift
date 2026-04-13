@@ -313,6 +313,7 @@ extension StatusItemController {
             let signature = [
                 "mode=brandPercent",
                 "provider=\(primaryProvider.rawValue)",
+                "style=\(String(describing: style))",
                 "primary=\(debugDouble(primary))",
                 "weekly=\(debugDouble(weekly))",
                 "credits=\(debugDouble(credits))",
@@ -335,6 +336,7 @@ extension StatusItemController {
             let signature = [
                 "mode=openRouterFallback",
                 "provider=\(primaryProvider.rawValue)",
+                "style=\(String(describing: style))",
                 "primary=\(debugDouble(primary))",
                 "weekly=\(debugDouble(weekly))",
                 "credits=\(debugDouble(credits))",
@@ -357,6 +359,7 @@ extension StatusItemController {
             let signature = [
                 "mode=morph",
                 "provider=\(primaryProvider.rawValue)",
+                "style=\(String(describing: style))",
                 "morph=\(debugDouble(morphProgress))",
                 "status=\(statusIndicator.rawValue)",
                 "anim=\(needsAnimation ? "1" : "0")",
@@ -370,6 +373,7 @@ extension StatusItemController {
             let signature = [
                 "mode=icon",
                 "provider=\(primaryProvider.rawValue)",
+                "style=\(String(describing: style))",
                 "primary=\(debugDouble(primary))",
                 "weekly=\(debugDouble(weekly))",
                 "credits=\(debugDouble(credits))",
