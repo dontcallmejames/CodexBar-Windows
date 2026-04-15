@@ -324,6 +324,20 @@ private struct RPCCreditsSnapshot: Decodable, Encodable {
     let balance: String?
 }
 
+private struct RPCRateLimitsErrorBody: Decodable {
+    let email: String?
+    let planType: String?
+    let rateLimit: CodexUsageResponse.RateLimitDetails?
+    let credits: CodexUsageResponse.CreditDetails?
+
+    enum CodingKeys: String, CodingKey {
+        case email
+        case planType = "plan_type"
+        case rateLimit = "rate_limit"
+        case credits
+    }
+}
+
 private enum RPCWireError: Error, LocalizedError {
     case startFailed(String)
     case requestFailed(String)
@@ -575,7 +589,6 @@ public struct UsageFetcher: Sendable {
             // for the same pipe.
             let limits = try await rpc.fetchRateLimits().rateLimits
             let account = try? await rpc.fetchAccount()
-
             let identity = ProviderIdentitySnapshot(
                 providerID: .codex,
                 accountEmail: account?.account.flatMap { details in
@@ -594,6 +607,9 @@ public struct UsageFetcher: Sendable {
             }
             return state.toUsageSnapshot()
         } catch {
+            if let snapshot = Self.recoverUsageFromRPCError(error) {
+                return snapshot
+            }
             throw error
         }
     }
@@ -641,6 +657,9 @@ public struct UsageFetcher: Sendable {
             let remaining = Self.parseCredits(credits.balance)
             return CreditsSnapshot(remaining: remaining, events: [], updatedAt: Date())
         } catch {
+            if let credits = Self.recoverCreditsFromRPCError(error) {
+                return credits
+            }
             throw error
         }
     }
@@ -727,6 +746,16 @@ public struct UsageFetcher: Sendable {
             resetDescription: resetDescription)
     }
 
+    private static func makeWindow(from response: CodexUsageResponse.WindowSnapshot?) -> RateWindow? {
+        guard let response else { return nil }
+        let resetsAtDate = Date(timeIntervalSince1970: TimeInterval(response.resetAt))
+        return RateWindow(
+            usedPercent: Double(response.usedPercent),
+            windowMinutes: response.limitWindowSeconds / 60,
+            resetsAt: resetsAtDate,
+            resetDescription: UsageFormatter.resetDescription(from: resetsAtDate))
+    }
+
     private static func makeTTYWindow(
         percentLeft: Int?,
         windowMinutes: Int,
@@ -744,6 +773,82 @@ public struct UsageFetcher: Sendable {
     private static func parseCredits(_ balance: String?) -> Double {
         guard let balance, let val = Double(balance) else { return 0 }
         return val
+    }
+
+    private static func recoverUsageFromRPCError(_ error: Error) -> UsageSnapshot? {
+        guard let body = self.decodeRateLimitsErrorBody(from: error) else { return nil }
+        let identity = ProviderIdentitySnapshot(
+            providerID: .codex,
+            accountEmail: self.normalizedCodexAccountField(body.email),
+            accountOrganization: nil,
+            loginMethod: self.normalizedCodexAccountField(body.planType))
+        guard let state = CodexReconciledState.fromCLI(
+            primary: self.makeWindow(from: body.rateLimit?.primaryWindow),
+            secondary: self.makeWindow(from: body.rateLimit?.secondaryWindow),
+            identity: identity)
+        else {
+            return nil
+        }
+        if body.rateLimit?.hasWindowDecodeFailure == true,
+           state.session == nil
+        {
+            return nil
+        }
+        return state.toUsageSnapshot()
+    }
+
+    private static func recoverCreditsFromRPCError(_ error: Error) -> CreditsSnapshot? {
+        guard let credits = self.decodeRateLimitsErrorBody(from: error)?.credits else { return nil }
+        guard let remaining = credits.balance else { return nil }
+        return CreditsSnapshot(remaining: remaining, events: [], updatedAt: Date())
+    }
+
+    private static func decodeRateLimitsErrorBody(from error: Error) -> RPCRateLimitsErrorBody? {
+        guard case let RPCWireError.requestFailed(message) = error else { return nil }
+        guard let json = self.extractJSONObject(after: "body=", in: message) else { return nil }
+        guard let data = json.data(using: .utf8) else { return nil }
+        return try? JSONDecoder().decode(RPCRateLimitsErrorBody.self, from: data)
+    }
+
+    private static func extractJSONObject(after marker: String, in text: String) -> String? {
+        guard let markerRange = text.range(of: marker) else { return nil }
+        let suffix = text[markerRange.upperBound...]
+        guard let start = suffix.firstIndex(of: "{") else { return nil }
+
+        var depth = 0
+        var inString = false
+        var isEscaped = false
+
+        for index in suffix[start...].indices {
+            let character = suffix[index]
+
+            if inString {
+                if isEscaped {
+                    isEscaped = false
+                } else if character == "\\" {
+                    isEscaped = true
+                } else if character == "\"" {
+                    inString = false
+                }
+                continue
+            }
+
+            switch character {
+            case "\"":
+                inString = true
+            case "{":
+                depth += 1
+            case "}":
+                depth -= 1
+                if depth == 0 {
+                    return String(suffix[start...index])
+                }
+            default:
+                break
+            }
+        }
+
+        return nil
     }
 
     private static func normalizedCodexAccountField(_ value: String?) -> String? {
@@ -803,6 +908,14 @@ extension UsageFetcher {
             throw UsageError.noRateLimitsFound
         }
         return state.toUsageSnapshot()
+    }
+
+    public static func _recoverCodexRPCUsageFromErrorForTesting(_ message: String) -> UsageSnapshot? {
+        self.recoverUsageFromRPCError(RPCWireError.requestFailed(message))
+    }
+
+    public static func _recoverCodexRPCCreditsFromErrorForTesting(_ message: String) -> CreditsSnapshot? {
+        self.recoverCreditsFromRPCError(RPCWireError.requestFailed(message))
     }
 
     private static func makeTestingWindow(

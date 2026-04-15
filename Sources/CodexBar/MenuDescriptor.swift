@@ -477,7 +477,7 @@ struct MenuDescriptor {
 
 private enum AccountFormatter {
     static func plan(_ text: String) -> String {
-        let cleaned = UsageFormatter.cleanPlanName(text)
+        let cleaned = CodexPlanFormatting.displayName(text) ?? UsageFormatter.cleanPlanName(text)
         return cleaned.isEmpty ? text : cleaned
     }
 
