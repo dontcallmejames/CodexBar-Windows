@@ -153,7 +153,12 @@ enum CLIRenderer {
                 lines.append(self.labelValueLine("Activity", value: detail, useColor: context.useColor))
             }
         } else if let plan = snapshot.loginMethod(for: provider), !plan.isEmpty {
-            lines.append(self.labelValueLine("Plan", value: plan.capitalized, useColor: context.useColor))
+            let displayPlan = if provider == .codex {
+                CodexPlanFormatting.displayName(plan) ?? plan
+            } else {
+                plan.capitalized
+            }
+            lines.append(self.labelValueLine("Plan", value: displayPlan, useColor: context.useColor))
         }
 
         for note in context.notes {
