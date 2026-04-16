@@ -3,6 +3,7 @@
 ## 0.21 — Unreleased
 
 ### Highlights
+- Abacus AI: add a new provider for ChatLLM and RouteLLM credit tracking with browser-cookie import, manual-cookie support, and monthly pace rendering. Thanks @ChrisGVE!
 - Cursor: fix a crash in the usage fetch path and add regression coverage (#663). Thanks @anirudhvee for the report and validation!
 - z.ai: preserve weekly and 5-hour token quotas together, surface the 5-hour lane correctly across the menu/menu bar, and add regression coverage (#662). Thanks to @takumi3488 for the original fix and investigation.
 - Codex: recognize the new Pro $100 plan in OAuth, OpenAI web, menu, and CLI rendering, and preserve CLI fallback when partial OAuth payloads lose the 5-hour session lane (#691, #709). Thanks @ImLukeF!
@@ -14,6 +15,7 @@
 - Codex: make OpenAI web extras opt-in for fresh installs, preserve working legacy setups on upgrade, add an OpenAI web battery-saver toggle, and keep account-scoped dashboard state aligned during refreshes and account switches (#529). Thanks @cbrane!
 
 ### Providers & Usage
+- Abacus AI: add provider support for ChatLLM and RouteLLM monthly compute-credit tracking with cookie import, manual cookie headers, timeout/browser-detection threading, optional billing fallback, and hardened cached-session retry behavior. Thanks @ChrisGVE!
 - z.ai: preserve both weekly and 5-hour token quotas, keep the existing 2-limit behavior unchanged, and render the 5-hour quota as a tertiary row in provider snapshots and CLI/menu cards (#662). Credit to @takumi3488 for the original fix and investigation.
 - Cursor: fix the usage fetch path so failed or cancelled requests no longer crash, and add Linux build and regression test coverage fixes (#663).
 - Antigravity: scope insecure localhost trust handling to `127.0.0.1` / `localhost`, keep localhost requests cancellable, and restore local quota/account probing on builds that previously failed TLS challenge handling (#693, fixes #692). Thanks @anirudhvee!
