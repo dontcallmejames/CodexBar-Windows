@@ -599,6 +599,15 @@ extension StatusItemController {
         {
             return highest.provider
         }
+        if self.shouldMergeIcons, self.settings.mergedMenuLastSelectedWasOverview {
+            let enabledProviders = self.store.enabledProvidersForDisplay()
+            let overviewProviders = self.settings.resolvedMergedOverviewProviders(
+                activeProviders: enabledProviders,
+                maxVisibleProviders: SettingsStore.mergedOverviewProviderLimit)
+            if let provider = overviewProviders.first(where: { self.store.isEnabled($0) }) {
+                return provider
+            }
+        }
         if self.shouldMergeIcons,
            let selected = self.selectedMenuProvider,
            self.store.isEnabled(selected)
