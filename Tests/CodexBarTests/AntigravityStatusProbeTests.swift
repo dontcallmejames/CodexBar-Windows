@@ -84,6 +84,70 @@ struct AntigravityStatusProbeTests {
     }
 
     @Test
+    func `prefers user tier name over generic plan info`() throws {
+        let json = """
+        {
+          "code": 0,
+          "userStatus": {
+            "email": "ultra@example.com",
+            "userTier": {
+              "id": "google_ai_ultra",
+              "name": "Google AI Ultra",
+              "description": "Ultra tier"
+            },
+            "planStatus": {
+              "planInfo": {
+                "planName": "Pro"
+              }
+            },
+            "cascadeModelConfigData": {
+              "clientModelConfigs": []
+            }
+          }
+        }
+        """
+
+        let data = Data(json.utf8)
+        let snapshot = try AntigravityStatusProbe.parseUserStatusResponse(data)
+
+        #expect(snapshot.accountEmail == "ultra@example.com")
+        #expect(snapshot.accountPlan == "Google AI Ultra")
+        #expect(snapshot.modelQuotas.isEmpty)
+    }
+
+    @Test
+    func `falls back to plan info when user tier name is blank`() throws {
+        let json = """
+        {
+          "code": 0,
+          "userStatus": {
+            "email": "fallback@example.com",
+            "userTier": {
+              "id": "google_ai_ultra",
+              "name": "   ",
+              "description": "Ultra tier"
+            },
+            "planStatus": {
+              "planInfo": {
+                "planName": "Pro"
+              }
+            },
+            "cascadeModelConfigData": {
+              "clientModelConfigs": []
+            }
+          }
+        }
+        """
+
+        let data = Data(json.utf8)
+        let snapshot = try AntigravityStatusProbe.parseUserStatusResponse(data)
+
+        #expect(snapshot.accountEmail == "fallback@example.com")
+        #expect(snapshot.accountPlan == "Pro")
+        #expect(snapshot.modelQuotas.isEmpty)
+    }
+
+    @Test
     func `claude bar can use thinking variants`() throws {
         let snapshot = AntigravityStatusSnapshot(
             modelQuotas: [
