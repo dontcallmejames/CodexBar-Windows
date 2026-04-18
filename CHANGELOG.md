@@ -34,6 +34,7 @@
 - Menu bar: fix missing icons on affected macOS 26 systems by replacing RenderBox-triggering material/offscreen SwiftUI effects in the provider sidebar and highlighted progress bar (#677). Thanks @andrzejchm!
 - z.ai: fix menu bar selection when both weekly and 5-hour quotas are present (#662).
 - Menu bar: avoid redundant merged-icon redraws and make hosted chart submenus load lazily without losing provider context (#708).
+- Merged menu: when Overview is selected, keep the merged menu bar icon aligned with the first Overview provider in configured order, even while that provider is still loading (#724). Thanks @anirudhvee!
 - Codex: add an OpenAI web battery-saver toggle, keep manual refresh available when battery saver is on, and hide OpenAI web submenus when web extras are disabled.
 
 ### Development & Tooling
