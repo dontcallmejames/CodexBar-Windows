@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.22 — Unreleased
+## 0.22 — 2026-04-21
 
 ### Highlights
 - Codex: restore OpenAI web dashboard fetching on the new analytics route and tighten hidden WebView reuse/expiry.
