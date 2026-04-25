@@ -10,6 +10,7 @@
 - Usage: add an opt-in confetti celebration when weekly limits reset after active use (#785). Thanks @zats!
 
 ### Fixes
+- Codex: ignore invalid zero-minute subscription history so the utilization submenu no longer shows duplicate Session tabs.
 - Codex: clean up cached CLI status probes during app shutdown so `codex -s read-only` workers are not orphaned after restart.
 - Menu: keep merged-menu cards, switcher rows, wrapped status text, and hosted chart submenus aligned with the real AppKit menu width so menus no longer grow oversized or show narrower chart submenus after width changes. Thanks @ngutman!
 - Widgets: package App Intents metadata for the widget extension and use configuration defaults so configurable widgets load correctly in WidgetKit (#783). Thanks @ngutman and @vincentyangch!
