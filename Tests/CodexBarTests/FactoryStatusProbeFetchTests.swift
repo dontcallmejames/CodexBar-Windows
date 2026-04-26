@@ -6,6 +6,9 @@ import Testing
 struct FactoryStatusProbeFetchTests {
     @Test
     func `keeps stored Factory cookies available when cached header is not logged in`() async throws {
+        KeychainCacheStore.setTestStoreForTesting(true)
+        defer { KeychainCacheStore.setTestStoreForTesting(false) }
+
         let registered = URLProtocol.registerClass(FactoryStubURLProtocol.self)
         defer {
             if registered {
@@ -102,6 +105,9 @@ struct FactoryStatusProbeFetchTests {
 
     @Test
     func `preserves stored Factory refresh token when stored cookies are not logged in`() async throws {
+        KeychainCacheStore.setTestStoreForTesting(true)
+        defer { KeychainCacheStore.setTestStoreForTesting(false) }
+
         let registered = URLProtocol.registerClass(FactoryStubURLProtocol.self)
         defer {
             if registered {

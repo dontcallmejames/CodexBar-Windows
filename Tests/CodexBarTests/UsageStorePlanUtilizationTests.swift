@@ -1133,7 +1133,7 @@ func findSeries(
 }
 
 private final class WeeklyLimitResetEventRecorder: @unchecked Sendable {
-    struct Event: Sendable {
+    struct Event {
         let provider: UsageProvider
         let accountLabel: String?
         let usedPercent: Double
