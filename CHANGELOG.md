@@ -1,5 +1,7 @@
 # Changelog
 
+## 0.24 — Unreleased
+
 ## 0.23 — 2026-04-26
 
 ### Highlights
