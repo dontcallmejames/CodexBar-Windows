@@ -2,6 +2,9 @@
 
 ## 0.24 — Unreleased
 
+### Fixes
+- Codex: keep same-workspace managed accounts distinct by matching workspace identity with email, so different OpenAI users in one workspace no longer overwrite each other (#796). Thanks @leezhuuuuu!
+
 ## 0.23 — 2026-04-26
 
 ### Highlights
