@@ -2,6 +2,9 @@
 
 ## 0.24 — Unreleased
 
+### Providers & Usage
+- Claude: add a peak-hours menu-card indicator with countdowns and a provider setting to hide it (#611). Thanks @hello-amed!
+
 ### Fixes
 - Codex: keep same-workspace managed accounts distinct by matching workspace identity with email, so different OpenAI users in one workspace no longer overwrite each other (#796). Thanks @leezhuuuuu!
 
