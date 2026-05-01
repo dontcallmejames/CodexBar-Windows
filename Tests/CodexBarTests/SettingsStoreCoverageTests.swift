@@ -82,6 +82,66 @@ struct SettingsStoreCoverageTests {
     }
 
     @Test
+    func `token account update preserves identity and selection`() throws {
+        let settings = Self.makeSettingsStore()
+
+        settings.addTokenAccount(provider: .copilot, label: "Primary", token: "token-1")
+        settings.addTokenAccount(provider: .copilot, label: "Secondary", token: "token-2")
+        settings.setActiveTokenAccountIndex(0, for: .copilot)
+
+        let original = try #require(settings.selectedTokenAccount(for: .copilot))
+        settings.updateTokenAccount(
+            provider: .copilot,
+            accountID: original.id,
+            label: "Primary (Pro)",
+            token: "token-1b")
+
+        let updated = try #require(settings.selectedTokenAccount(for: .copilot))
+        #expect(updated.id == original.id)
+        #expect(updated.label == "Primary (Pro)")
+        #expect(updated.token == "token-1b")
+        #expect(settings.tokenAccounts(for: .copilot).count == 2)
+    }
+
+    @Test
+    func `copilot token accounts clear legacy api key fallback`() throws {
+        let settings = Self.makeSettingsStore()
+        settings.copilotAPIToken = "legacy-token"
+
+        settings.addTokenAccount(provider: .copilot, label: "Primary", token: "token-1")
+
+        #expect(settings.copilotAPIToken.isEmpty)
+        #expect(settings.copilotSettingsSnapshot(tokenOverride: nil).apiToken == "token-1")
+
+        settings.copilotAPIToken = "legacy-token"
+        let account = try #require(settings.selectedTokenAccount(for: .copilot))
+        settings.removeTokenAccount(provider: .copilot, accountID: account.id)
+
+        #expect(settings.tokenAccounts(for: .copilot).isEmpty)
+        #expect(settings.copilotAPIToken.isEmpty)
+        #expect(settings.copilotSettingsSnapshot(tokenOverride: nil).apiToken == nil)
+    }
+
+    @Test
+    func `removing another token account preserves active selection`() throws {
+        let settings = Self.makeSettingsStore()
+
+        settings.addTokenAccount(provider: .copilot, label: "A", token: "token-a")
+        settings.addTokenAccount(provider: .copilot, label: "B", token: "token-b")
+        settings.addTokenAccount(provider: .copilot, label: "C", token: "token-c")
+        settings.setActiveTokenAccountIndex(1, for: .copilot)
+
+        let activeBefore = try #require(settings.selectedTokenAccount(for: .copilot))
+        let accountToRemove = try #require(settings.tokenAccounts(for: .copilot).first)
+        settings.removeTokenAccount(provider: .copilot, accountID: accountToRemove.id)
+
+        let activeAfter = try #require(settings.selectedTokenAccount(for: .copilot))
+        #expect(activeAfter.id == activeBefore.id)
+        #expect(activeAfter.label == "B")
+        #expect(settings.tokenAccounts(for: .copilot).map(\.label) == ["B", "C"])
+    }
+
+    @Test
     func `claude snapshot uses OAuth routing for OAuth token accounts`() {
         let settings = Self.makeSettingsStore()
         settings.addTokenAccount(provider: .claude, label: "OAuth", token: "Bearer sk-ant-oat-account-token")

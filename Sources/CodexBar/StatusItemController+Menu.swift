@@ -728,14 +728,19 @@ extension StatusItemController {
             onSelect: { [weak self, weak menu] index in
                 guard let self, let menu else { return }
                 self.settings.setActiveTokenAccountIndex(index, for: display.provider)
-                Task { @MainActor in
-                    await ProviderInteractionContext.$current.withValue(.userInitiated) {
-                        await self.store.refresh()
-                    }
-                }
+                // Immediately rebuild to show the new selection, then refresh data
+                // and rebuild again once fresh data arrives.
                 self.populateMenu(menu, provider: display.provider)
                 self.markMenuFresh(menu)
                 self.applyIcon(phase: nil)
+                Task { @MainActor [weak self, weak menu] in
+                    guard let self else { return }
+                    await ProviderInteractionContext.$current.withValue(.userInitiated) {
+                        await self.store.refresh()
+                    }
+                    guard let menu else { return }
+                    self.rebuildOpenMenuIfStillVisible(menu, provider: display.provider)
+                }
             })
         let item = NSMenuItem()
         item.view = view
@@ -817,7 +822,9 @@ extension StatusItemController {
         let accounts = self.settings.tokenAccounts(for: provider)
         guard accounts.count > 1 else { return nil }
         let activeIndex = self.settings.tokenAccountsData(for: provider)?.clampedActiveIndex() ?? 0
-        let showAll = self.settings.showAllTokenAccountsInMenu
+        let canShowAllCopilotAccounts = provider == .copilot &&
+            accounts.count <= UsageStore.tokenAccountMenuSnapshotLimit
+        let showAll = canShowAllCopilotAccounts || self.settings.showAllTokenAccountsInMenu
         let snapshots = showAll ? (self.store.accountSnapshots[provider] ?? []) : []
         return TokenAccountMenuDisplay(
             provider: provider,
@@ -1356,11 +1363,19 @@ extension StatusItemController {
         let target = provider ?? self.store.enabledProvidersForDisplay().first ?? .codex
         let metadata = self.store.metadata(for: target)
 
-        let snapshot = snapshotOverride ?? self.store.snapshot(for: target)
         let surface: CodexConsumerProjection.Surface = if snapshotOverride != nil || errorOverride != nil {
             .overrideCard
         } else {
             .liveCard
+        }
+        // Override cards belong to a specific account/context (e.g. a per-account
+        // refresh result). Never fall back to the provider-level live snapshot here —
+        // that data belongs to a *different* account and would render misleading
+        // duplicate cards when an account refresh failed or was cancelled.
+        let snapshot: UsageSnapshot? = if surface == .overrideCard {
+            snapshotOverride
+        } else {
+            snapshotOverride ?? self.store.snapshot(for: target)
         }
         let now = Date()
         let codexProjection = self.store.codexConsumerProjectionIfNeeded(
