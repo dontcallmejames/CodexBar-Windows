@@ -120,15 +120,22 @@ final class StatusMenuTokenAccountSwitcherTests: XCTestCase {
         controller.menuWillOpen(menu)
         let switcher = try XCTUnwrap(menu.items.compactMap { $0.view as? TokenAccountSwitcherView }.first)
 
+        var selectionRefreshStarted = false
+        UsageStore.refreshProviderFetchWillStartForTesting = { provider in
+            if provider == .claude {
+                selectionRefreshStarted = true
+            }
+        }
+        defer { UsageStore.refreshProviderFetchWillStartForTesting = nil }
+
         switcher._test_select(index: 1)
 
         for _ in 0..<100 {
-            if await blocker.startedCallCount() >= 2 { break }
+            if selectionRefreshStarted { break }
             try await Task.sleep(for: .milliseconds(50))
         }
 
-        let startedCallCount = await blocker.startedCallCount()
-        XCTAssertGreaterThanOrEqual(startedCallCount, 2)
+        XCTAssertTrue(selectionRefreshStarted)
         XCTAssertEqual(settings.tokenAccountsData(for: .claude)?.clampedActiveIndex(), 1)
 
         await blocker.resumeAll(with: .success(self.snapshot(percent: 17)))
@@ -164,11 +171,15 @@ private struct StatusMenuTokenAccountFetchStrategy: ProviderFetchStrategy {
 private actor BlockingTokenAccountFetchStrategy {
     private var waiters: [CheckedContinuation<Result<UsageSnapshot, Error>, Never>] = []
     private var startedWaiters: [(count: Int, continuation: CheckedContinuation<Void, Never>)] = []
+    private var resolvedResult: Result<UsageSnapshot, Error>?
     private var startedCount = 0
 
     func awaitResult() async throws -> UsageSnapshot {
         self.startedCount += 1
         self.resumeStartedWaiters()
+        if let resolvedResult {
+            return try resolvedResult.get()
+        }
         let result = await withCheckedContinuation { continuation in
             self.waiters.append(continuation)
         }
@@ -187,6 +198,7 @@ private actor BlockingTokenAccountFetchStrategy {
     }
 
     func resumeAll(with result: Result<UsageSnapshot, Error>) {
+        self.resolvedResult = result
         self.waiters.forEach { $0.resume(returning: result) }
         self.waiters.removeAll()
     }
