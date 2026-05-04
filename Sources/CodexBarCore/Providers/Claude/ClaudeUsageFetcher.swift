@@ -241,8 +241,13 @@ public struct ClaudeUsageFetcher: ClaudeUsageFetching, Sendable {
                 let promptPolicy = ClaudeUsageFetcher.currentClaudeOAuthInteractivePromptPolicy()
 
                 #if DEBUG
-                let hasCache = ClaudeUsageFetcher.hasCachedCredentialsOverride
-                    ?? ClaudeOAuthCredentialsStore.hasCachedCredentials(environment: self.fetcher.environment)
+                let hasCache = if let hasCachedCredentialsOverride = ClaudeUsageFetcher.hasCachedCredentialsOverride {
+                    hasCachedCredentialsOverride
+                } else if ClaudeUsageFetcher.loadOAuthCredentialsOverride != nil {
+                    false
+                } else {
+                    ClaudeOAuthCredentialsStore.hasCachedCredentials(environment: self.fetcher.environment)
+                }
                 #else
                 let hasCache = ClaudeOAuthCredentialsStore.hasCachedCredentials(environment: self.fetcher.environment)
                 #endif
