@@ -8,13 +8,13 @@ read_when:
 
 # Configuration
 
-CodexBar reads a single JSON config file for CLI and app settings.
-Secrets (API keys, cookies, tokens) live here; Keychain is not used.
+CodexBar reads a single JSON config file for CLI and app provider settings.
+API keys, manual cookie headers, source selection, ordering, and token accounts live here. Keychain is still used for runtime cookie caches, browser Safe Storage access, and provider OAuth/device-flow credentials where those flows require it.
 
 ## Location
 - `~/.codexbar/config.json`
 - The directory is created if missing.
-- Permissions are forced to `0600` on macOS and Linux.
+- Permissions are set to `0600` whenever CodexBar writes the file on macOS and Linux.
 
 ## Root shape
 ```json
@@ -44,14 +44,14 @@ All provider fields are optional unless noted.
 - `source`: preferred source mode.
   - `auto|web|cli|oauth|api`
   - `auto` uses provider-specific fallback order (see `docs/providers.md`).
-  - `api` uses provider API key flow (when supported).
-- `apiKey`: raw API token for providers that support direct API usage.
+  - `api` uses the provider's API-backed mode; only some providers consume the `apiKey` field.
+- `apiKey`: raw API token for providers that support config-backed direct API usage.
 - `cookieSource`: cookie selection policy.
   - `auto` (browser import), `manual` (use `cookieHeader`), `off` (disable cookies)
 - `cookieHeader`: raw cookie header value (e.g. `key=value; other=...`).
 - `region`: provider-specific region (e.g. `zai`, `minimax`).
 - `workspaceID`: provider-specific workspace ID (e.g. `opencode`).
-- `tokenAccounts`: multi-account tokens for a provider.
+- `tokenAccounts`: multi-account tokens for providers in `TokenAccountSupportCatalog`.
 
 ### tokenAccounts
 ```json
@@ -72,7 +72,7 @@ All provider fields are optional unless noted.
 
 ## Provider IDs
 Current IDs (see `Sources/CodexBarCore/Providers/Providers.swift`):
-`codex`, `claude`, `cursor`, `opencode`, `factory`, `gemini`, `antigravity`, `copilot`, `zai`, `minimax`, `kimi`, `kilo`, `kiro`, `vertexai`, `augment`, `jetbrains`, `kimik2`, `amp`, `ollama`, `synthetic`, `warp`, `openrouter`.
+`codex`, `claude`, `cursor`, `opencode`, `opencodego`, `alibaba`, `factory`, `gemini`, `antigravity`, `copilot`, `zai`, `minimax`, `kimi`, `kilo`, `kiro`, `vertexai`, `augment`, `jetbrains`, `kimik2`, `amp`, `ollama`, `synthetic`, `warp`, `openrouter`, `perplexity`, `abacus`, `mistral`, `deepseek`, `codebuff`.
 
 ## Ordering
 The order of `providers` controls display/order in the app and CLI. Reorder the array to change ordering.

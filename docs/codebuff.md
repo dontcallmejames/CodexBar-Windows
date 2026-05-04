@@ -1,3 +1,11 @@
+---
+summary: "Codebuff provider data sources: API token, CLI credentials file, credit balance, and weekly rate limits."
+read_when:
+  - Debugging Codebuff credential resolution or usage parsing
+  - Updating Codebuff credit balance or weekly rate-limit display
+  - Adjusting Codebuff provider UI/menu behavior
+---
+
 # Codebuff
 
 CodexBar surfaces [Codebuff](https://www.codebuff.com) credit balance and
@@ -11,9 +19,9 @@ weekly rate limits next to your other AI providers.
   billing period end, and the weekly rate-limit window (`weeklyUsed` /
   `weeklyLimit`) when CodexBar is using the CLI credentials-file session token.
 
-Both endpoints use a Bearer token. CodexBar never stores Codebuff credentials
-outside the existing macOS Keychain / `~/.codexbar/config.json` that the other
-providers use.
+Both endpoints use a Bearer token. Codebuff credentials come from the
+environment, the normal CodexBar config file, or the official CLI credentials
+file; the Codebuff provider does not write a separate Keychain credential.
 
 ## Authentication
 
@@ -26,8 +34,8 @@ CodexBar resolves the Codebuff API token in this order:
    tokens fetch credit balance only.
 3. `~/.config/manicode/credentials.json` — the file the official `codebuff`
    CLI (formerly `manicode`) writes after `codebuff login`. CodexBar reads
-   the `authToken` field and uses that session token for both credit balance
-   and subscription metadata.
+   `default.authToken`, falling back to top-level `authToken`, and uses that
+   session token for both credit balance and subscription metadata.
 
 If none of those is available, Codebuff shows the “missing token” error.
 
@@ -49,7 +57,7 @@ and whether auto top-up is enabled.
 
   ```sh
   curl -s -X POST -H "Authorization: Bearer $CODEBUFF_API_KEY" \
-    -H 'Content-Type: application/json' -d '{}' \
+    -H 'Content-Type: application/json' -d '{"fingerprintId":"codexbar-usage"}' \
     https://www.codebuff.com/api/v1/usage
   ```
 
