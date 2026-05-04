@@ -2,10 +2,6 @@ import CodexBarCore
 import Foundation
 
 extension UsageStore {
-    #if DEBUG
-    static var refreshProviderFetchWillStartForTesting: ((UsageProvider) -> Void)?
-    #endif
-
     func prepareRefreshState(for provider: UsageProvider? = nil) {
         guard provider == nil || provider == .codex else { return }
         _ = self.settings.persistResolvedCodexActiveSourceCorrectionIfNeeded()
@@ -53,10 +49,6 @@ extension UsageStore {
                 self.accountSnapshots.removeValue(forKey: provider)
             }
         }
-
-        #if DEBUG
-        Self.refreshProviderFetchWillStartForTesting?(provider)
-        #endif
 
         let fetchContext = spec.makeFetchContext()
         let descriptor = spec.descriptor
