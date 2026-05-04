@@ -102,6 +102,42 @@ struct StatusMenuTests {
     }
 
     @Test
+    func `claude subscription dashboard action opens usage page`() {
+        self.disableMenuCardsForTesting()
+        let settings = self.makeSettings()
+        settings.statusChecksEnabled = false
+        settings.refreshFrequency = .manual
+
+        let fetcher = UsageFetcher()
+        let store = UsageStore(fetcher: fetcher, browserDetection: BrowserDetection(cacheTTL: 0), settings: settings)
+        store._setSnapshotForTesting(
+            UsageSnapshot(
+                primary: RateWindow(
+                    usedPercent: 12,
+                    windowMinutes: 300,
+                    resetsAt: nil,
+                    resetDescription: nil),
+                secondary: nil,
+                tertiary: nil,
+                updatedAt: Date(),
+                identity: ProviderIdentitySnapshot(
+                    providerID: .claude,
+                    accountEmail: nil,
+                    accountOrganization: nil,
+                    loginMethod: "Claude Pro")),
+            provider: .claude)
+        let controller = StatusItemController(
+            store: store,
+            settings: settings,
+            account: fetcher.loadAccountInfo(),
+            updater: DisabledUpdaterController(),
+            preferencesSelection: PreferencesSelection(),
+            statusBar: self.makeStatusBarForTesting())
+
+        #expect(controller.dashboardURL(for: .claude)?.absoluteString == "https://claude.ai/settings/usage")
+    }
+
+    @Test
     func `remembers provider when menu opens`() {
         self.disableMenuCardsForTesting()
         let settings = self.makeSettings()

@@ -57,7 +57,8 @@ Usage source picker:
   - `seven_day_sonnet` / `seven_day_opus` → model-specific weekly window.
   - `extra_usage` → Extra usage cost (monthly spend/limit).
 - Successful OAuth login enables Claude and selects OAuth as the usage source.
-- Plan inference: `rate_limit_tier` from credentials maps to Max/Pro/Team/Enterprise.
+- Plan inference: `subscriptionType` is preferred when present; `rate_limit_tier` falls back to
+  Max/Pro/Team/Enterprise.
 
 ## Web API (cookies)
 - Preferences → Providers → Claude → Cookie source (Automatic or Manual).
