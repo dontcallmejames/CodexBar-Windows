@@ -36,6 +36,21 @@ struct SettingsStoreCoverageTests {
     }
 
     @Test
+    func `disabling selected provider clears menu selection`() throws {
+        let settings = Self.makeSettingsStore()
+        let metadata = ProviderRegistry.shared.metadata
+
+        try settings.setProviderEnabled(provider: .codex, metadata: #require(metadata[.codex]), enabled: true)
+        try settings.setProviderEnabled(provider: .claude, metadata: #require(metadata[.claude]), enabled: true)
+        settings.selectedMenuProvider = .claude
+
+        try settings.setProviderEnabled(provider: .claude, metadata: #require(metadata[.claude]), enabled: false)
+
+        #expect(settings.selectedMenuProvider == nil)
+        #expect(settings.enabledProvidersOrdered(metadataByProvider: metadata) == [.codex])
+    }
+
+    @Test
     func `menu bar metric preferences and display modes`() {
         let settings = Self.makeSettingsStore()
 
