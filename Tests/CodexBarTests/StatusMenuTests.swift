@@ -102,6 +102,28 @@ struct StatusMenuTests {
     }
 
     @Test
+    func `opencode go dashboard action follows configured workspace`() {
+        self.disableMenuCardsForTesting()
+        let settings = self.makeSettings()
+        settings.statusChecksEnabled = false
+        settings.refreshFrequency = .manual
+        settings.opencodegoWorkspaceID = "https://opencode.ai/workspace/wrk_abc123/go"
+
+        let fetcher = UsageFetcher()
+        let store = UsageStore(fetcher: fetcher, browserDetection: BrowserDetection(cacheTTL: 0), settings: settings)
+        let controller = StatusItemController(
+            store: store,
+            settings: settings,
+            account: fetcher.loadAccountInfo(),
+            updater: DisabledUpdaterController(),
+            preferencesSelection: PreferencesSelection(),
+            statusBar: self.makeStatusBarForTesting())
+
+        #expect(controller.dashboardURL(for: .opencodego)?
+            .absoluteString == "https://opencode.ai/workspace/wrk_abc123/go")
+    }
+
+    @Test
     func `claude subscription dashboard action opens usage page`() {
         self.disableMenuCardsForTesting()
         let settings = self.makeSettings()
