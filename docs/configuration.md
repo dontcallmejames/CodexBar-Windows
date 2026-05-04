@@ -53,6 +53,45 @@ All provider fields are optional unless noted.
 - `workspaceID`: provider-specific workspace ID (e.g. `opencode`).
 - `tokenAccounts`: multi-account tokens for providers in `TokenAccountSupportCatalog`.
 
+## Manual cookies
+Use manual cookies when automatic browser import is unavailable, disabled, or too noisy for your setup.
+The app and CLI both read the same `~/.codexbar/config.json`, so a manual cookie saved in the UI is also used by
+`codexbar`, and a cookie written by tooling is shown in the app after reload.
+
+`cookieHeader` expects the HTTP `Cookie:` request header value for the provider origin, not a raw Netscape cookie
+export. In browser DevTools, open the Network tab, select a request for the provider site, and copy the request
+header named `Cookie`. You can paste either the full `Cookie: name=value; other=value` string or just
+`name=value; other=value`.
+
+If you have a Netscape export, convert each non-comment row to `name=value` and join values with `; `. Do not paste
+the raw `# Netscape HTTP Cookie File` text into `cookieHeader`.
+
+Example placeholder config:
+
+```json
+{
+  "version": 1,
+  "providers": [
+    {
+      "id": "example-provider",
+      "enabled": true,
+      "cookieSource": "manual",
+      "cookieHeader": "session=<REDACTED>; other=<REDACTED>"
+    }
+  ]
+}
+```
+
+Validate after editing:
+
+```bash
+codexbar config validate
+codexbar usage --provider example-provider --verbose
+```
+
+Manual cookies are secrets. Keep `~/.codexbar/config.json` private, leave its permissions at `0600`, never commit it,
+and never paste real cookie values or readable DevTools screenshots into public issues.
+
 ### tokenAccounts
 ```json
 {
