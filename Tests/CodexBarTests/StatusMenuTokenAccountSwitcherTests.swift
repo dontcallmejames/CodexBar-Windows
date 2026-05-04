@@ -120,26 +120,15 @@ final class StatusMenuTokenAccountSwitcherTests: XCTestCase {
         controller.menuWillOpen(menu)
         let switcher = try XCTUnwrap(menu.items.compactMap { $0.view as? TokenAccountSwitcherView }.first)
 
-        var selectionRefreshStarted = false
-        UsageStore.refreshProviderFetchWillStartForTesting = { provider in
-            if provider == .claude {
-                selectionRefreshStarted = true
-            }
-        }
-        defer { UsageStore.refreshProviderFetchWillStartForTesting = nil }
-
-        switcher._test_select(index: 1)
-
-        for _ in 0..<100 {
-            if selectionRefreshStarted { break }
-            try await Task.sleep(for: .milliseconds(50))
-        }
-
-        XCTAssertTrue(selectionRefreshStarted)
+        let selectionTask = try XCTUnwrap(switcher._test_select(index: 1))
+        await blocker.waitUntilStarted(count: 2)
         XCTAssertEqual(settings.tokenAccountsData(for: .claude)?.clampedActiveIndex(), 1)
 
         await blocker.resumeAll(with: .success(self.snapshot(percent: 17)))
+        await selectionTask.value
         await refreshTask.value
+        let startedCallCount = await blocker.startedCallCount()
+        XCTAssertGreaterThanOrEqual(startedCallCount, 2)
     }
 }
 
