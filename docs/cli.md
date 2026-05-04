@@ -44,6 +44,8 @@ See `docs/configuration.md` for the schema.
   - `--refresh` ignores cached scans.
 - `--provider <id|both|all>` (default: enabled providers in config; falls back to defaults when missing).
   - Provider IDs live in the config file (see `docs/configuration.md`).
+  - With three or more providers enabled, the default stays scoped to enabled providers; use `--provider all` to query
+    every registered provider.
   - `--account <label>` / `--account-index <n>` / `--all-accounts` (token accounts from config; requires a single provider).
   - `--no-credits` (hide Codex credits in text output).
   - `--pretty` (pretty-print JSON).

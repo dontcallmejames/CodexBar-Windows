@@ -109,7 +109,8 @@ Usage source picker:
   - Supported pi sessions:
     - `~/.pi/agent/sessions/**/*.jsonl`
 - Scanner:
-  - Native Codex logs parse `event_msg` token_count entries and `turn_context` model markers.
+  - Native Codex logs parse `event_msg` token_count entries and `turn_context` model markers; when both are present,
+    `turn_context` is authoritative for the model bucket.
   - pi sessions count assistant-message usage rows and attribute `openai-codex` assistant usage to Codex.
   - pi assistant usage is bucketed by assistant-turn timestamp, so mixed-model pi sessions can contribute to multiple
     days/models correctly.
