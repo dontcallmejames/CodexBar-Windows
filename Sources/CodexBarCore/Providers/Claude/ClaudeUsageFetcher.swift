@@ -836,7 +836,12 @@ extension ClaudeUsageFetcher {
                 resetDescription: resetDescription)
         }
 
-        guard let primary = makeWindow(usage.fiveHour, windowMinutes: 5 * 60) else {
+        guard let primary = makeWindow(usage.fiveHour, windowMinutes: 5 * 60)
+            ?? makeWindow(usage.sevenDay, windowMinutes: 7 * 24 * 60)
+            ?? makeWindow(usage.sevenDayOAuthApps, windowMinutes: 7 * 24 * 60)
+            ?? makeWindow(usage.sevenDaySonnet, windowMinutes: 7 * 24 * 60)
+            ?? makeWindow(usage.sevenDayOpus, windowMinutes: 7 * 24 * 60)
+        else {
             throw ClaudeUsageError.parseFailed("missing session data")
         }
 

@@ -610,13 +610,18 @@ final class UsageStore {
         provider: UsageProvider,
         snapshot: UsageSnapshot) -> (window: RateWindow, source: SessionQuotaWindowSource)?
     {
-        if let primary = snapshot.primary {
+        if let primary = snapshot.primary, Self.isSessionWindow(primary) {
             return (primary, .primary)
         }
         if provider == .copilot, let secondary = snapshot.secondary {
             return (secondary, .copilotSecondaryFallback)
         }
         return nil
+    }
+
+    private static func isSessionWindow(_ window: RateWindow) -> Bool {
+        guard let minutes = window.windowMinutes else { return true }
+        return minutes <= 6 * 60
     }
 
     func handleSessionQuotaTransition(provider: UsageProvider, snapshot: UsageSnapshot) {

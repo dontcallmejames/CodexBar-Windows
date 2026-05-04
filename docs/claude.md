@@ -52,9 +52,10 @@ Usage source picker:
   - `anthropic-beta: oauth-2025-04-20`
 - Mapping:
   - `five_hour` → session window.
-  - `seven_day` → weekly window.
+  - `seven_day` → weekly window; also becomes the primary fallback when `five_hour` is absent or has no utilization.
   - `seven_day_sonnet` / `seven_day_opus` → model-specific weekly window.
   - `extra_usage` → Extra usage cost (monthly spend/limit).
+- Successful OAuth login enables Claude and selects OAuth as the usage source.
 - Plan inference: `rate_limit_tier` from credentials maps to Max/Pro/Team/Enterprise.
 
 ## Web API (cookies)
