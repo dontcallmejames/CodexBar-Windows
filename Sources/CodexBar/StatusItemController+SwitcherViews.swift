@@ -894,6 +894,17 @@ final class TokenAccountSwitcherView: NSView {
         self.updateButtonStyles()
         self.onSelect(index)
     }
+
+    #if DEBUG
+    func _test_select(index: Int) {
+        guard let button = self.buttons.first(where: { $0.tag == index }) else { return }
+        self.handleSelect(button)
+    }
+
+    func _test_buttonTitles() -> [String] {
+        self.buttons.map(\.title)
+    }
+    #endif
 }
 
 final class CodexAccountSwitcherView: NSView {
