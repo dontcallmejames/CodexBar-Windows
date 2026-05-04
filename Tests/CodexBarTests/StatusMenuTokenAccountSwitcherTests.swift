@@ -107,6 +107,7 @@ final class StatusMenuTokenAccountSwitcherTests: XCTestCase {
             updater: DisabledUpdaterController(),
             preferencesSelection: PreferencesSelection(),
             statusBar: self.makeStatusBarForTesting())
+        defer { withExtendedLifetime(controller) {} }
 
         let refreshTask = Task { @MainActor in
             await store.refresh()
@@ -115,6 +116,7 @@ final class StatusMenuTokenAccountSwitcherTests: XCTestCase {
         XCTAssertTrue(store.isRefreshing)
 
         let menu = controller.makeMenu()
+        defer { withExtendedLifetime(menu) {} }
         controller.menuWillOpen(menu)
         let switcher = try XCTUnwrap(menu.items.compactMap { $0.view as? TokenAccountSwitcherView }.first)
 
