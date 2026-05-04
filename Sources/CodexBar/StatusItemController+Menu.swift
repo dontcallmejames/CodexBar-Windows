@@ -736,10 +736,10 @@ extension StatusItemController {
                 Task { @MainActor [weak self, weak menu] in
                     guard let self else { return }
                     await ProviderInteractionContext.$current.withValue(.userInitiated) {
-                        await self.store.refresh()
+                        await self.store.refreshProvider(display.provider)
                     }
                     guard let menu else { return }
-                    self.rebuildOpenMenuIfStillVisible(menu, provider: display.provider)
+                    self.refreshOpenMenuIfStillVisible(menu, provider: display.provider)
                 }
             })
         let item = NSMenuItem()
