@@ -214,6 +214,14 @@ public enum BinaryLocator {
 }
 
 public enum ShellCommandLocator {
+    static func test_runShellCommand(
+        shell: String,
+        arguments: [String],
+        timeout: TimeInterval) -> Data?
+    {
+        self.runShellCommand(shell: shell, arguments: arguments, timeout: timeout)
+    }
+
     public static func commandV(
         _ tool: String,
         _ shell: String?,
@@ -295,11 +303,12 @@ public enum ShellCommandLocator {
         }
     }
 
+    // swiftlint:disable cyclomatic_complexity
     /// Runs a shell command, draining both stdout and stderr concurrently so that
     /// verbose shell init scripts (oh-my-zsh, nvm, pyenv, etc.) cannot deadlock on
     /// a full pipe buffer.  The child is launched via `posix_spawn` with
     /// `POSIX_SPAWN_SETPGROUP` so it becomes its own process-group leader *before*
-    /// `exec` — this guarantees that subsequent `kill(-pgid, …)` calls reach any
+    /// `exec`, which guarantees that subsequent `kill(-pgid, ...)` calls reach any
     /// background helpers spawned by shell init, on both the timeout-kill path and
     /// after normal completion.
     fileprivate static func runShellCommand(
@@ -326,7 +335,7 @@ public enum ShellCommandLocator {
         // differs between platforms because the typedef is an opaque pointer on
         // Darwin and a struct on Glibc.
         #if canImport(Darwin)
-        var fileActions: posix_spawn_file_actions_t? = nil
+        var fileActions: posix_spawn_file_actions_t?
         #else
         var fileActions = posix_spawn_file_actions_t()
         #endif
@@ -347,7 +356,7 @@ public enum ShellCommandLocator {
         // Build attributes: set the child's process group to itself in the child,
         // before exec, eliminating the race that an after-launch setpgid(2) has.
         #if canImport(Darwin)
-        var attr: posix_spawnattr_t? = nil
+        var attr: posix_spawnattr_t?
         #else
         var attr = posix_spawnattr_t()
         #endif
@@ -363,9 +372,17 @@ public enum ShellCommandLocator {
         // Build argv (argv[0] is conventionally the executable path).
         var cArgs: [UnsafeMutablePointer<CChar>?] = []
         cArgs.append(strdup(shell))
-        for arg in arguments { cArgs.append(strdup(arg)) }
+        for arg in arguments {
+            cArgs.append(strdup(arg))
+        }
         cArgs.append(nil)
-        defer { for p in cArgs { if let p { free(p) } } }
+        defer {
+            for p in cArgs {
+                if let p {
+                    free(p)
+                }
+            }
+        }
 
         // Inherit the parent environment.  Build a NULL-terminated `KEY=VALUE`
         // array since `extern char **environ` isn't directly visible from Swift.
@@ -374,7 +391,13 @@ public enum ShellCommandLocator {
             cEnv.append(strdup("\(key)=\(value)"))
         }
         cEnv.append(nil)
-        defer { for p in cEnv { if let p { free(p) } } }
+        defer {
+            for p in cEnv {
+                if let p {
+                    free(p)
+                }
+            }
+        }
 
         var pid: pid_t = 0
         let spawnResult = shell.withCString { execPath in
@@ -429,7 +452,9 @@ public enum ShellCommandLocator {
         let waitPid = pid
         DispatchQueue.global(qos: .userInitiated).async {
             var status: Int32 = 0
-            while waitpid(waitPid, &status, 0) == -1 && errno == EINTR { /* retry */ }
+            while waitpid(waitPid, &status, 0) == -1, errno == EINTR {
+                // retry
+            }
             exitSemaphore.signal()
         }
 
@@ -457,7 +482,10 @@ public enum ShellCommandLocator {
 
         // Wait for both pipes to deliver EOF so no buffered bytes are lost.
         // Bounded so a stuck handler can't hang the caller indefinitely.
-        if drainGroup.wait(timeout: .now() + 1.0) != .success {
+        if drainGroup.wait(timeout: .now() + 0.4) != .success {
+            kill(-pgid, SIGKILL)
+        }
+        if drainGroup.wait(timeout: .now() + 0.6) != .success {
             stdoutHandle.readabilityHandler = nil
             stderrHandle.readabilityHandler = nil
             if stdoutDone.fire() { drainGroup.leave() }
@@ -465,6 +493,8 @@ public enum ShellCommandLocator {
         }
         return stdoutCollector.drain()
     }
+
+    // swiftlint:enable cyclomatic_complexity
 
     private static func runShellCapture(_ shell: String?, _ timeout: TimeInterval, _ command: String) -> String? {
         let shellPath = (shell?.isEmpty == false) ? shell! : "/bin/zsh"
@@ -618,8 +648,9 @@ enum LoginShellPathCapturer {
             shell: shellPath,
             arguments: args,
             timeout: timeout),
-              let raw = String(data: data, encoding: .utf8),
-              !raw.isEmpty else { return nil }
+            let raw = String(data: data, encoding: .utf8),
+            !raw.isEmpty
+        else { return nil }
 
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         let extracted = if let start = trimmed.range(of: marker),
