@@ -53,7 +53,7 @@
             <div>
               <h2>Stay ahead of resets.</h2>
               <p>
-                CodexBar keeps session + weekly limits (and credits) in the menu bar, so you know when you're safe to ship.
+                CodexBar keeps coding-provider usage, credits, costs, and reset windows in the menu bar, so you know when you're safe to ship.
               </p>
             </div>
           </div>
@@ -88,16 +88,16 @@
             }
           </script>
           <ul class="bullets" aria-label="What it does">
-            <li>One status item per provider (Codex, Claude, Cursor, Gemini, Antigravity, Droid, Copilot, z.ai, Kilo).</li>
-            <li>Session + weekly bars with reset times and optional credits.</li>
-            <li>Web-backed limits via browser cookies (Codex, Claude, Cursor, Droid).</li>
-            <li>Two-bar icon: session on top, weekly on bottom, dimmed on errors.</li>
+            <li>One status item per provider, with Merge Icons mode when you want a single menu bar item.</li>
+            <li>Provider-specific windows with reset times, credits, and local cost history where available.</li>
+            <li>Supports CLI, OAuth, API-key, browser-cookie, and local-file data sources depending on the provider.</li>
+            <li>Dynamic menu bar icons with provider-specific usage bars, branding, and error states.</li>
             <li>Minimal UI, no Dock icon.</li>
           </ul>
         </div>
         <figure class="shot hero-shot" data-animate="3">
-          <img src="./codexbar.png" alt="CodexBar menu bar popover showing session and weekly usage." />
-          <figcaption>Menu card shows session + weekly usage, resets, and credits when available.</figcaption>
+          <img src="./codexbar.png" alt="CodexBar menu bar popover showing provider usage and reset windows." />
+          <figcaption>Menu cards show provider usage windows, resets, credits, and cost details when available.</figcaption>
         </figure>
       </section>
 
@@ -111,15 +111,14 @@
         <div class="card">
           <h3>Providers</h3>
           <p>
-            Codex · Claude Code · Cursor · Gemini · Antigravity · Droid · Copilot · z.ai · Kilo<br />
+            Codex, Claude, Cursor, Gemini, Copilot, z.ai, OpenCode, Alibaba, MiniMax, Kilo, DeepSeek, Codebuff, and more.<br />
             Open to new providers — see the <a href="https://github.com/steipete/CodexBar/blob/main/docs/provider.md">provider guide</a>.
           </p>
         </div>
         <div class="card">
           <h3>Privacy</h3>
           <p>
-            Reuses existing browser cookies (Safari/Chrome/Firefox) for dashboard access — no passwords stored. When cookies
-            are missing, CodexBar falls back to local CLI output. Audit notes in
+            Reuses existing provider sessions, OAuth/device flows, API keys, local files, and browser cookies where supported — no passwords stored. Audit notes in
             <a href="https://github.com/steipete/CodexBar/issues/12">issue #12</a>.
           </p>
         </div>
@@ -129,13 +128,13 @@
         <div class="card">
           <h3>Usage tracking</h3>
           <p>
-            Session + weekly meters with reset countdowns, plus optional credits and code review limits.
+            Provider-specific usage windows with reset countdowns, plus optional credits, costs, and code review limits.
           </p>
         </div>
         <div class="card">
           <h3>Status + widgets</h3>
           <p>
-            Provider status polling with incident badges, plus a WidgetKit snapshot that mirrors the menu card.
+            Provider status polling with incident badges, plus WidgetKit widgets backed by shared usage snapshots.
           </p>
         </div>
         <div class="card">
@@ -150,8 +149,7 @@
         <div class="card">
           <h3>macOS permissions</h3>
           <p>
-            Full Disk Access only for Safari cookies, Keychain access for tokens, and Files &amp; Folders prompts when
-            provider CLIs access project directories.
+            Full Disk Access only for Safari cookies/local storage, Keychain access for cookie decryption/cached sessions/OAuth flows, and Files &amp; Folders prompts when provider helpers access project directories.
           </p>
         </div>
       </section>

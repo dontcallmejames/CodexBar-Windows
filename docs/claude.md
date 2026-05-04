@@ -42,8 +42,9 @@ Usage source picker:
 
 ## OAuth API (preferred)
 - Credentials:
-  - Keychain service: `Claude Code-credentials` (primary on macOS).
+  - CodexBar OAuth cache when available.
   - File fallback: `~/.claude/.credentials.json`.
+  - Claude CLI Keychain bootstrap/repair fallback: `Claude Code-credentials`.
 - Requires `user:profile` scope (CLI tokens with only `user:inference` cannot call usage).
 - Endpoint:
   - `GET https://api.anthropic.com/api/oauth/usage`

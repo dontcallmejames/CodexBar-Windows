@@ -17,8 +17,8 @@ The OAuth API is the default app source when credentials are available; web acce
 ### App default selection (debug menu disabled)
 1) OAuth API (auth.json credentials).
 2) CLI RPC, with CLI PTY fallback when needed.
-3) If OpenAI cookies are enabled (Automatic or Manual), dashboard extras load in parallel and the source label becomes
-   `primary + openai-web`.
+3) If OpenAI web extras are enabled and a matching OpenAI web session is available (Automatic or Manual cookies),
+   dashboard extras load as a separate follow-up refresh and the source label becomes `primary + openai-web`.
 
 Usage source picker:
 - Preferences → Providers → Codex → Usage source (Auto/OAuth/CLI).
