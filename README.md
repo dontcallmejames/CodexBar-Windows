@@ -17,12 +17,14 @@ Download: <https://github.com/steipete/CodexBar/releases>
 brew install --cask steipete/tap/codexbar
 ```
 
-### Linux (CLI only)
+### CLI Tarballs (macOS/Linux)
+Homebrew formula (Linux today):
 ```bash
 brew install steipete/tap/codexbar
 ```
-Or download `CodexBarCLI-v<tag>-linux-<arch>.tar.gz` from GitHub Releases.
-Linux CLI tarballs are published for `x86_64` and `aarch64`.
+Or download release tarballs from GitHub Releases:
+- macOS: `CodexBarCLI-v<tag>-macos-arm64.tar.gz`, `CodexBarCLI-v<tag>-macos-x86_64.tar.gz`
+- Linux: `CodexBarCLI-v<tag>-linux-aarch64.tar.gz`, `CodexBarCLI-v<tag>-linux-x86_64.tar.gz`
 
 ### First run
 - Open Settings → Providers and enable what you use.
@@ -74,7 +76,7 @@ show an incident indicator.
 - Merge Icons mode to combine providers into one status item + switcher.
 - Display controls for provider icons, labels, bars, reset-time style, and highest-usage auto-selection.
 - Refresh cadence presets (manual, 1m, 2m, 5m, 15m).
-- Bundled CLI (`codexbar`) for scripts and CI (including `codexbar cost --provider codex`, `claude`, or `both` for local cost usage); Linux CLI builds available.
+- Bundled CLI (`codexbar`) for scripts and CI (including `codexbar cost --provider codex`, `claude`, or `both` for local cost usage); macOS and Linux CLI builds available.
 - WidgetKit widgets for supported providers.
 - Optional session quota notifications and weekly-reset confetti.
 - Privacy-first: on-device parsing by default; browser cookies are opt-in and reused (no passwords stored).
