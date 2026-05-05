@@ -14,7 +14,10 @@ falls back across the provider's supported web requests when needed.
 ## Data sources
 
 1) **Coding Plan API token**
-   - Set in Preferences → Providers → MiniMax (stored in `~/.codexbar/config.json`) or `MINIMAX_API_KEY`.
+   - Set in Preferences → Providers → MiniMax (stored in `~/.codexbar/config.json`), `MINIMAX_CODING_API_KEY`,
+     or `MINIMAX_API_KEY`.
+   - When both environment variables are present, `MINIMAX_CODING_API_KEY` wins so a standard `sk-api-*` key does
+     not mask a coding-plan `sk-cp-*` key.
    - Auto mode can fall back to the web/cookie path when API-token credentials are rejected or the global endpoint
      returns 404.
 
