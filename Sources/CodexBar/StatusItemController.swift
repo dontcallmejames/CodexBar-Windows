@@ -306,7 +306,7 @@ final class StatusItemController: NSObject, NSMenuDelegate, StatusItemControllin
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 self.observeStoreChanges()
-                self.invalidateMenus()
+                self.invalidateMenus(refreshOpenMenus: !self.store.isRefreshing)
             }
         }
     }
@@ -395,11 +395,18 @@ final class StatusItemController: NSObject, NSMenuDelegate, StatusItemControllin
         }
     }
 
-    private func invalidateMenus() {
+    private func invalidateMenus(refreshOpenMenus: Bool = false) {
         self.menuContentVersion &+= 1
-        // Don't refresh menus while they're open - wait until they close and reopen
-        // This prevents expensive rebuilds while user is navigating the menu
-        guard self.openMenus.isEmpty else { return }
+        if !self.openMenus.isEmpty {
+            guard refreshOpenMenus else { return }
+            self.refreshOpenMenusIfNeeded()
+            Task { @MainActor in
+                // AppKit can ignore menu mutations while tracking; retry on the next run loop.
+                await Task.yield()
+                self.refreshOpenMenusIfNeeded()
+            }
+            return
+        }
         self.refreshOpenMenusIfNeeded()
         Task { @MainActor in
             // AppKit can ignore menu mutations while tracking; retry on the next run loop.
