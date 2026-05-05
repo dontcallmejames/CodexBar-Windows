@@ -484,7 +484,7 @@ struct AlibabaCodingPlanUsageParsingTests {
     }
 
     @Test
-    func `console need login payload maps to api error for API key mode`() {
+    func `console need login payload maps to unavailable API key mode`() {
         let json = """
         {
           "code": "ConsoleNeedLogin",
@@ -494,19 +494,10 @@ struct AlibabaCodingPlanUsageParsingTests {
         }
         """
 
-        do {
-            _ = try AlibabaCodingPlanUsageFetcher.parseUsageSnapshot(
+        #expect(throws: AlibabaCodingPlanUsageError.apiKeyUnavailableInRegion) {
+            try AlibabaCodingPlanUsageFetcher.parseUsageSnapshot(
                 from: Data(json.utf8),
                 authMode: .apiKey)
-            Issue.record("Expected API-mode ConsoleNeedLogin payload to throw")
-        } catch let error as AlibabaCodingPlanUsageError {
-            guard case let .apiError(message) = error else {
-                Issue.record("Expected apiError, got \(error)")
-                return
-            }
-            #expect(message.contains("requires a console session"))
-        } catch {
-            Issue.record("Expected AlibabaCodingPlanUsageError, got \(error)")
         }
     }
 }
