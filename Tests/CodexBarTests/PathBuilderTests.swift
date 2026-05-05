@@ -372,11 +372,15 @@ struct PathBuilderTests {
     }
 
     @Test
-    func `prefers shell PATH over well-known paths`() {
+    func `prefers well-known paths over interactive shell lookup`() {
         let shellPath = "/custom/bin/claude"
         let cmuxPath = "/Applications/cmux.app/Contents/Resources/bin/claude"
         let fm = MockFileManager(executables: [shellPath, cmuxPath])
-        let commandV: (String, String?, TimeInterval, FileManager) -> String? = { _, _, _, _ in shellPath }
+        var shellLookupCalled = false
+        let commandV: (String, String?, TimeInterval, FileManager) -> String? = { _, _, _, _ in
+            shellLookupCalled = true
+            return shellPath
+        }
 
         let resolved = BinaryLocator.resolveClaudeBinary(
             env: ["SHELL": "/bin/zsh"],
@@ -384,7 +388,8 @@ struct PathBuilderTests {
             commandV: commandV,
             fileManager: fm,
             home: "/Users/test")
-        #expect(resolved == shellPath)
+        #expect(!shellLookupCalled)
+        #expect(resolved == cmuxPath)
     }
 
     @Test

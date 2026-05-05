@@ -172,25 +172,24 @@ public enum BinaryLocator {
             return pathHit
         }
 
-        // 4) Interactive login shell lookup (captures nvm/fnm/mise paths from .zshrc/.bashrc)
+        // 4) Well-known installation paths (e.g. Homebrew, cmux.app bundle, ~/.claude/bin).
+        // Prefer these before shell probing to avoid running interactive shell init for common installs.
+        for candidate in wellKnownPaths where fileManager.isExecutableFile(atPath: candidate) {
+            return candidate
+        }
+
+        // 5) Interactive login shell lookup (captures nvm/fnm/mise paths from .zshrc/.bashrc)
         if let shellHit = commandV(name, env["SHELL"], 2.0, fileManager),
            fileManager.isExecutableFile(atPath: shellHit)
         {
             return shellHit
         }
 
-        // 4b) Alias fallback (login shell); only attempt after all standard lookups fail.
+        // 5b) Alias fallback (login shell); only attempt after all standard lookups fail.
         if let aliasHit = aliasResolver(name, env["SHELL"], 2.0, fileManager, home),
            fileManager.isExecutableFile(atPath: aliasHit)
         {
             return aliasHit
-        }
-
-        // 5) Well-known installation paths (e.g. cmux.app bundle, ~/.claude/bin)
-        // macOS apps launched from Finder may not inherit the user's shell PATH,
-        // so check common install locations that the shell-based lookups above may miss.
-        for candidate in wellKnownPaths where fileManager.isExecutableFile(atPath: candidate) {
-            return candidate
         }
 
         // 6) Minimal fallback
