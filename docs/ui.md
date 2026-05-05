@@ -20,6 +20,8 @@ read_when:
 - Bar windows are provider/style-specific primary and secondary windows.
 - Fill represents percent remaining by default; “Show usage as used” flips to percent used.
 - Renderer/critter icons dim when last refresh failed and can render incident indicators; brand display mode uses provider branding plus title text.
+- Loading animation runs at a bounded frame rate and has a hard continuous-duration ceiling so provider hangs cannot keep
+  the menu bar redrawing forever.
 - Display → Menu bar: menu bar can show provider branding icons with a percent label instead of critter bars.
 
 ## Menu card
