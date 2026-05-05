@@ -13,6 +13,7 @@
 
 ### Fixes
 - Menu: refresh open usage cards after live data changes so the “Updated” timestamp advances after manual or cadence refreshes (#715). Thanks @cooper-matt!
+- Usage: preserve known reset countdowns when a refresh returns current usage without reset metadata (#427). Thanks @Whoaa512!
 - Menu: make the global open-menu shortcut behave as a true toggle when the menu is already open, avoiding queued reopens after repeated key presses (#218).
 - Codex: time out hung `codex app-server` RPC reads and cap loading animation runtime so stalled refreshes no longer keep the menu bar redrawing indefinitely (#842, #844). Thanks @hyspacex!
 - CLI discovery: prefer known install paths before interactive shell probing so common Claude installs no longer run shell init hooks during binary detection (#775).
