@@ -411,7 +411,7 @@ final class StatusItemController: NSObject, NSMenuDelegate, StatusItemControllin
         }
     }
 
-    private func invalidateMenus(refreshOpenMenus: Bool = false) {
+    func invalidateMenus(refreshOpenMenus: Bool = false) {
         #if DEBUG
         guard !self.isReleasedForTesting else { return }
         #endif

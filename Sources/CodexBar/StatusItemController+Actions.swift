@@ -8,6 +8,9 @@ extension StatusItemController {
         Task {
             await ProviderInteractionContext.$current.withValue(.userInitiated) {
                 await self.store.refresh(forceTokenUsage: forceTokenUsage)
+                self.store.scheduleStorageFootprintRefreshForOverview(force: true)
+                self.invalidateMenus()
+                self.refreshOpenMenusIfNeeded()
             }
         }
     }
