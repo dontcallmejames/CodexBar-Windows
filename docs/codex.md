@@ -1,22 +1,22 @@
 ---
-summary: "Codex provider data sources: OpenAI web dashboard, Codex CLI RPC/PTY, credits, and local cost usage."
+summary: "Codex provider data sources: OpenAI web dashboard, Codex CLI RPC, credits, and local cost usage."
 read_when:
   - Debugging Codex usage/credits parsing
   - Updating OpenAI dashboard scraping or cookie import
-  - Changing Codex CLI RPC/PTY behavior
+  - Changing Codex CLI RPC or diagnostic PTY behavior
   - Reviewing local cost usage scanning
 ---
 
 # Codex provider
 
-Codex has four usage data paths (OAuth API, web dashboard, CLI RPC, CLI PTY) plus a local cost-usage scanner.
+Codex has three automatic usage data paths (OAuth API, web dashboard, CLI RPC) plus a manual CLI PTY diagnostic parser and a local cost-usage scanner.
 The OAuth API is the default app source when credentials are available; web access is optional for dashboard extras.
 
 ## Data sources + fallback order
 
 ### App default selection (debug menu disabled)
 1) OAuth API (auth.json credentials).
-2) CLI RPC, with CLI PTY fallback when needed.
+2) CLI RPC through `codex app-server`.
 3) If OpenAI web extras are enabled and a matching OpenAI web session is available (Automatic or Manual cookies),
    dashboard extras load as a separate follow-up refresh and the source label becomes `primary + openai-web`.
 
@@ -25,7 +25,7 @@ Usage source picker:
 
 ### CLI default selection (`--source auto`)
 1) OpenAI web dashboard (when available).
-2) Codex CLI RPC, with CLI PTY fallback when needed.
+2) Codex CLI RPC through `codex app-server`.
 
 ### OAuth API (preferred for the app)
 - Reads OAuth tokens from `~/.codex/auth.json` (or `$CODEX_HOME/auth.json`).
@@ -67,7 +67,7 @@ Usage source picker:
 - Errors surfaced:
   - Login required or Cloudflare interstitial.
 
-### Codex CLI RPC (default CLI fallback)
+### Codex CLI RPC (automatic CLI source)
 - Launches local RPC server: `codex -s read-only -a untrusted app-server`.
 - JSON-RPC over stdin/stdout:
   - `initialize` (client name/version)
@@ -77,16 +77,15 @@ Usage source picker:
   - Usage windows (primary + secondary) with reset timestamps.
   - Credits snapshot (balance, hasCredits, unlimited).
   - Account identity (email + plan type) when available.
+- App-server errors are terminal for the CLI strategy, except when Codex includes a recoverable `wham/usage` JSON body in the error text.
 
-### Codex CLI PTY fallback (`/status`)
-- Runs `codex` in a PTY via `TTYCommandRunner`.
-- Default behavior: exit after each probe; Debug → "Keep CLI sessions alive" keeps it running between probes.
-- Sends `/status`, parses the rendered screen:
+### Codex CLI PTY diagnostics (`/status`)
+- Manual/debug parser only; automatic background refresh and `CodexBarCLI usage --source cli` do not launch bare Codex TUI.
+- Kept for explicit diagnostics/parser coverage because bare `codex` TUI can start interactive auth and open browser tabs.
+- Parses rendered `/status` output:
   - `Credits:` line
   - `5h limit` line → percent + reset text
   - `Weekly limit` line → percent + reset text
-- Retry once with a larger terminal size on parse failure (short retry window).
-- Do not retry on timeout; timed-out probes fail fast and wait for the next refresh cycle.
 - Detects update prompts and surfaces a "CLI update needed" error.
 
 ## Account identity resolution (for web matching)
@@ -98,7 +97,7 @@ Usage source picker:
 ## Credits
 - Web dashboard fills credits only when OAuth/CLI do not provide them.
 - CLI RPC: `account/rateLimits/read` → credits balance.
-- CLI PTY fallback: parse `Credits:` from `/status`.
+- CLI PTY diagnostics can still parse `Credits:` from saved/manual `/status` output.
 
 ## Cost usage (local log scan)
 - Source files:
@@ -121,7 +120,7 @@ Usage source picker:
 
 ## Key files
 - Web: `Sources/CodexBarCore/OpenAIWeb/*`
-- CLI RPC + PTY: `Sources/CodexBarCore/UsageFetcher.swift`,
+- CLI RPC + diagnostic PTY parser: `Sources/CodexBarCore/UsageFetcher.swift`,
   `Sources/CodexBarCore/Providers/Codex/CodexStatusProbe.swift`
 - Cost usage: `Sources/CodexBarCore/CostUsageFetcher.swift`,
   `Sources/CodexBarCore/PiSessionCostScanner.swift`,

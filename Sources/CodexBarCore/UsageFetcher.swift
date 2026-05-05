@@ -277,6 +277,16 @@ public struct AccountInfo: Equatable, Sendable {
     }
 }
 
+public struct CodexCLIAccountSnapshot: Sendable {
+    public let usage: UsageSnapshot?
+    public let credits: CreditsSnapshot?
+
+    public init(usage: UsageSnapshot?, credits: CreditsSnapshot?) {
+        self.usage = usage
+        self.credits = credits
+    }
+}
+
 public enum UsageError: LocalizedError, Sendable {
     case noSessions
     case noRateLimitsFound
@@ -594,36 +604,22 @@ private final class CodexRPCClient: @unchecked Sendable {
 // MARK: - Public fetcher used by the app
 
 public struct UsageFetcher: Sendable {
-    typealias CodexStatusFetcher = @Sendable ([String: String], Bool) async throws -> CodexStatusSnapshot
-
     private let environment: [String: String]
-    private let codexStatusFetcher: CodexStatusFetcher
 
     public init(environment: [String: String] = ProcessInfo.processInfo.environment) {
-        self.init(environment: environment) { environment, keepCLISessionsAlive in
-            try await CodexStatusProbe(
-                keepCLISessionsAlive: keepCLISessionsAlive,
-                environment: environment)
-                .fetch()
-        }
-    }
-
-    init(
-        environment: [String: String],
-        codexStatusFetcher: @escaping CodexStatusFetcher)
-    {
         self.environment = environment
-        self.codexStatusFetcher = codexStatusFetcher
         LoginShellPathCache.shared.captureOnce()
     }
 
     public func loadLatestUsage(keepCLISessionsAlive: Bool = false) async throws -> UsageSnapshot {
-        try await self.withFallback(
-            primary: self.loadRPCUsage,
-            secondary: { try await self.loadTTYUsage(keepCLISessionsAlive: keepCLISessionsAlive) })
+        _ = keepCLISessionsAlive
+        guard let usage = try await self.loadLatestCLIAccountSnapshot().usage else {
+            throw UsageError.noRateLimitsFound
+        }
+        return usage
     }
 
-    private func loadRPCUsage() async throws -> UsageSnapshot {
+    public func loadLatestCLIAccountSnapshot() async throws -> CodexCLIAccountSnapshot {
         let rpc = try CodexRPCClient(environment: self.environment)
         defer { rpc.shutdown() }
         do {
@@ -642,93 +638,36 @@ public struct UsageFetcher: Sendable {
                 loginMethod: account?.account.flatMap { details in
                     if case let .chatgpt(_, plan) = details { plan } else { nil }
                 })
-            guard let state = CodexReconciledState.fromCLI(
+            let usage = CodexReconciledState.fromCLI(
                 primary: Self.makeWindow(from: limits.primary),
                 secondary: Self.makeWindow(from: limits.secondary),
-                identity: identity)
-            else {
+                identity: identity)?
+                .toUsageSnapshot()
+            let credits = Self.makeCredits(from: limits.credits)
+            guard usage != nil || credits != nil else {
                 throw UsageError.noRateLimitsFound
             }
-            return state.toUsageSnapshot()
+            return CodexCLIAccountSnapshot(
+                usage: usage,
+                credits: credits)
         } catch {
-            if let snapshot = Self.recoverUsageFromRPCError(error) {
-                return snapshot
+            let usage = Self.recoverUsageFromRPCError(error)
+            let credits = Self.recoverCreditsFromRPCError(error)
+            if usage != nil || credits != nil {
+                return CodexCLIAccountSnapshot(
+                    usage: usage,
+                    credits: credits)
             }
-            throw error
-        }
-    }
-
-    private func loadTTYUsage(keepCLISessionsAlive: Bool) async throws -> UsageSnapshot {
-        do {
-            let status = try await self.codexStatusFetcher(self.environment, keepCLISessionsAlive)
-            guard let state = CodexReconciledState.fromCLI(
-                primary: Self.makeTTYWindow(
-                    percentLeft: status.fiveHourPercentLeft,
-                    windowMinutes: 300,
-                    resetsAt: status.fiveHourResetsAt,
-                    resetDescription: status.fiveHourResetDescription),
-                secondary: Self.makeTTYWindow(
-                    percentLeft: status.weeklyPercentLeft,
-                    windowMinutes: 10080,
-                    resetsAt: status.weeklyResetsAt,
-                    resetDescription: status.weeklyResetDescription),
-                identity: nil)
-            else {
-                throw UsageError.noRateLimitsFound
-            }
-            return state.toUsageSnapshot()
-        } catch {
             throw error
         }
     }
 
     public func loadLatestCredits(keepCLISessionsAlive: Bool = false) async throws -> CreditsSnapshot {
-        try await self.withFallback(
-            primary: self.loadRPCCredits,
-            secondary: { try await self.loadTTYCredits(keepCLISessionsAlive: keepCLISessionsAlive) })
-    }
-
-    private func loadRPCCredits() async throws -> CreditsSnapshot {
-        let rpc = try CodexRPCClient(environment: self.environment)
-        defer { rpc.shutdown() }
-        do {
-            try await rpc.initialize(clientName: "codexbar", clientVersion: "0.5.4")
-            let limits = try await rpc.fetchRateLimits().rateLimits
-            guard let credits = limits.credits else { throw UsageError.noRateLimitsFound }
-            let remaining = Self.parseCredits(credits.balance)
-            return CreditsSnapshot(remaining: remaining, events: [], updatedAt: Date())
-        } catch {
-            if let credits = Self.recoverCreditsFromRPCError(error) {
-                return credits
-            }
-            throw error
+        _ = keepCLISessionsAlive
+        guard let credits = try await self.loadLatestCLIAccountSnapshot().credits else {
+            throw UsageError.noRateLimitsFound
         }
-    }
-
-    private func loadTTYCredits(keepCLISessionsAlive: Bool) async throws -> CreditsSnapshot {
-        do {
-            let status = try await self.codexStatusFetcher(self.environment, keepCLISessionsAlive)
-            guard let credits = status.credits else { throw UsageError.noRateLimitsFound }
-            return CreditsSnapshot(remaining: credits, events: [], updatedAt: Date())
-        } catch {
-            throw error
-        }
-    }
-
-    private func withFallback<T>(
-        primary: @escaping () async throws -> T,
-        secondary: @escaping () async throws -> T) async throws -> T
-    {
-        do {
-            return try await primary()
-        } catch let primaryError {
-            do {
-                return try await secondary()
-            } catch {
-                // Preserve the original failure so callers see the primary path error.
-                throw primaryError
-            }
-        }
+        return credits
     }
 
     public func debugRawRateLimits() async -> String {
@@ -811,6 +750,11 @@ public struct UsageFetcher: Sendable {
     private static func parseCredits(_ balance: String?) -> Double {
         guard let balance, let val = Double(balance) else { return 0 }
         return val
+    }
+
+    private static func makeCredits(from rpc: RPCCreditsSnapshot?) -> CreditsSnapshot? {
+        guard let rpc else { return nil }
+        return CreditsSnapshot(remaining: self.parseCredits(rpc.balance), events: [], updatedAt: Date())
     }
 
     private static func recoverUsageFromRPCError(_ error: Error) -> UsageSnapshot? {
