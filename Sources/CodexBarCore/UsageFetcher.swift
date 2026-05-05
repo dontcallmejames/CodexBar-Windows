@@ -376,10 +376,11 @@ private struct RPCRateLimitsErrorBody: Decodable {
     }
 }
 
-private enum RPCWireError: Error, LocalizedError {
+enum RPCWireError: Error, LocalizedError {
     case startFailed(String)
     case requestFailed(String)
     case malformed(String)
+    case timeout(method: String)
 
     var errorDescription: String? {
         switch self {
@@ -389,6 +390,8 @@ private enum RPCWireError: Error, LocalizedError {
             "Codex connection failed: \(message)"
         case let .malformed(message):
             "Codex returned invalid data: \(message)"
+        case let .timeout(method):
+            "Codex RPC timed out waiting for `\(method)` reply."
         }
     }
 }
@@ -403,6 +406,8 @@ private final class CodexRPCClient: @unchecked Sendable {
     private let stdoutLineStream: AsyncStream<Data>
     private let stdoutLineContinuation: AsyncStream<Data>.Continuation
     private var nextID = 1
+    private let initializeTimeoutSeconds: TimeInterval
+    private let requestTimeoutSeconds: TimeInterval
 
     private final class LineBuffer: @unchecked Sendable {
         private let lock = NSLock()
@@ -434,8 +439,12 @@ private final class CodexRPCClient: @unchecked Sendable {
     init(
         executable: String = "codex",
         arguments: [String] = ["-s", "read-only", "-a", "untrusted", "app-server"],
-        environment: [String: String] = ProcessInfo.processInfo.environment) throws
+        environment: [String: String] = ProcessInfo.processInfo.environment,
+        initializeTimeoutSeconds: TimeInterval = 8.0,
+        requestTimeoutSeconds: TimeInterval = 3.0) throws
     {
+        self.initializeTimeoutSeconds = initializeTimeoutSeconds
+        self.requestTimeoutSeconds = requestTimeoutSeconds
         var stdoutContinuation: AsyncStream<Data>.Continuation!
         self.stdoutLineStream = AsyncStream<Data> { continuation in
             stdoutContinuation = continuation
@@ -507,7 +516,8 @@ private final class CodexRPCClient: @unchecked Sendable {
     func initialize(clientName: String, clientVersion: String) async throws {
         _ = try await self.request(
             method: "initialize",
-            params: ["clientInfo": ["name": clientName, "version": clientVersion]])
+            params: ["clientInfo": ["name": clientName, "version": clientVersion]],
+            timeout: self.initializeTimeoutSeconds)
         try self.sendNotification(method: "initialized")
     }
 
@@ -530,26 +540,72 @@ private final class CodexRPCClient: @unchecked Sendable {
 
     // MARK: - JSON-RPC helpers
 
-    private func request(method: String, params: [String: Any]? = nil) async throws -> [String: Any] {
+    private struct SendableJSONMessage: @unchecked Sendable {
+        let value: [String: Any]
+    }
+
+    private func request(
+        method: String,
+        params: [String: Any]? = nil,
+        timeout: TimeInterval? = nil) async throws -> [String: Any]
+    {
         let id = self.nextID
         self.nextID += 1
         try self.sendRequest(id: id, method: method, params: params)
 
-        while true {
-            let message = try await self.readNextMessage()
+        let resolvedTimeout = timeout ?? self.requestTimeoutSeconds
+        let wrapped = try await self.withTimeout(seconds: resolvedTimeout, method: method) {
+            while true {
+                let message = try await self.readNextMessage()
 
-            if message["id"] == nil, let methodName = message["method"] as? String {
-                Self.debugWriteStderr("[codex notify] \(methodName)\n")
-                continue
+                if message["id"] == nil, let methodName = message["method"] as? String {
+                    Self.debugWriteStderr("[codex notify] \(methodName)\n")
+                    continue
+                }
+
+                guard let messageID = self.jsonID(message["id"]), messageID == id else { continue }
+
+                if let error = message["error"] as? [String: Any], let messageText = error["message"] as? String {
+                    throw RPCWireError.requestFailed(messageText)
+                }
+
+                return SendableJSONMessage(value: message)
             }
+        }
+        return wrapped.value
+    }
 
-            guard let messageID = self.jsonID(message["id"]), messageID == id else { continue }
-
-            if let error = message["error"] as? [String: Any], let messageText = error["message"] as? String {
-                throw RPCWireError.requestFailed(messageText)
+    private func withTimeout<T: Sendable>(
+        seconds: TimeInterval,
+        method: String,
+        body: @escaping @Sendable () async throws -> T) async throws -> T
+    {
+        try await withThrowingTaskGroup(of: T.self) { group in
+            group.addTask {
+                try await body()
             }
+            group.addTask { [weak self] in
+                try await Task.sleep(for: .seconds(seconds))
+                self?.terminateProcessForTimeout(method: method)
+                throw RPCWireError.timeout(method: method)
+            }
+            do {
+                guard let result = try await group.next() else {
+                    throw RPCWireError.timeout(method: method)
+                }
+                group.cancelAll()
+                return result
+            } catch {
+                group.cancelAll()
+                throw error
+            }
+        }
+    }
 
-            return message
+    private func terminateProcessForTimeout(method: String) {
+        if self.process.isRunning {
+            Self.log.warning("Codex RPC timed out on `\(method)`; terminating process")
+            self.process.terminate()
         }
     }
 
@@ -605,9 +661,24 @@ private final class CodexRPCClient: @unchecked Sendable {
 
 public struct UsageFetcher: Sendable {
     private let environment: [String: String]
+    private let initializeTimeoutSeconds: TimeInterval
+    private let requestTimeoutSeconds: TimeInterval
 
     public init(environment: [String: String] = ProcessInfo.processInfo.environment) {
         self.environment = environment
+        self.initializeTimeoutSeconds = 8.0
+        self.requestTimeoutSeconds = 3.0
+        LoginShellPathCache.shared.captureOnce()
+    }
+
+    init(
+        environment: [String: String],
+        initializeTimeoutSeconds: TimeInterval,
+        requestTimeoutSeconds: TimeInterval)
+    {
+        self.environment = environment
+        self.initializeTimeoutSeconds = initializeTimeoutSeconds
+        self.requestTimeoutSeconds = requestTimeoutSeconds
         LoginShellPathCache.shared.captureOnce()
     }
 
@@ -620,7 +691,10 @@ public struct UsageFetcher: Sendable {
     }
 
     public func loadLatestCLIAccountSnapshot() async throws -> CodexCLIAccountSnapshot {
-        let rpc = try CodexRPCClient(environment: self.environment)
+        let rpc = try CodexRPCClient(
+            environment: self.environment,
+            initializeTimeoutSeconds: self.initializeTimeoutSeconds,
+            requestTimeoutSeconds: self.requestTimeoutSeconds)
         defer { rpc.shutdown() }
         do {
             try await rpc.initialize(clientName: "codexbar", clientVersion: "0.5.4")
@@ -672,7 +746,10 @@ public struct UsageFetcher: Sendable {
 
     public func debugRawRateLimits() async -> String {
         do {
-            let rpc = try CodexRPCClient(environment: self.environment)
+            let rpc = try CodexRPCClient(
+                environment: self.environment,
+                initializeTimeoutSeconds: self.initializeTimeoutSeconds,
+                requestTimeoutSeconds: self.requestTimeoutSeconds)
             defer { rpc.shutdown() }
             try await rpc.initialize(clientName: "codexbar", clientVersion: "0.5.4")
             let limits = try await rpc.fetchRateLimits()

@@ -6,6 +6,9 @@ extension StatusItemController {
     private static let loadingPercentEpsilon = 0.0001
     private static let blinkActiveTickInterval: Duration = .milliseconds(75)
     private static let blinkIdleFallbackInterval: Duration = .seconds(1)
+    static let loadingAnimationFPS: Double = 30.0
+    static let loadingAnimationPhaseIncrement: Double = 2.7 / StatusItemController.loadingAnimationFPS
+    private static let loadingAnimationMaxContinuousDuration: TimeInterval = 30.0
 
     func needsMenuBarIconAnimation() -> Bool {
         if self.shouldMergeIcons {
@@ -691,29 +694,41 @@ extension StatusItemController {
                     self.animationPattern = .knightRider
                 }
                 self.animationPhase = 0
+                self.animationStartedAt = Date()
                 let driver = DisplayLinkDriver(onTick: { [weak self] in
                     self?.updateAnimationFrame()
                 })
                 self.animationDriver = driver
-                driver.start(fps: 60)
+                driver.start(fps: Self.loadingAnimationFPS)
             } else if let forced = self.settings.debugLoadingPattern, forced != self.animationPattern {
                 self.animationPattern = forced
                 self.animationPhase = 0
             }
         } else {
-            self.animationDriver?.stop()
-            self.animationDriver = nil
-            self.animationPhase = 0
-            if self.shouldMergeIcons {
-                self.applyIcon(phase: nil)
-            } else {
-                UsageProvider.allCases.forEach { self.applyIcon(for: $0, phase: nil) }
-            }
+            self.stopLoadingAnimation()
+        }
+    }
+
+    private func stopLoadingAnimation() {
+        self.animationDriver?.stop()
+        self.animationDriver = nil
+        self.animationPhase = 0
+        self.animationStartedAt = nil
+        if self.shouldMergeIcons {
+            self.applyIcon(phase: nil)
+        } else {
+            UsageProvider.allCases.forEach { self.applyIcon(for: $0, phase: nil) }
         }
     }
 
     private func updateAnimationFrame() {
-        self.animationPhase += 0.045 // half-speed animation
+        if let startedAt = self.animationStartedAt,
+           Date().timeIntervalSince(startedAt) > Self.loadingAnimationMaxContinuousDuration
+        {
+            self.stopLoadingAnimation()
+            return
+        }
+        self.animationPhase += Self.loadingAnimationPhaseIncrement
         if self.shouldMergeIcons {
             self.applyIcon(phase: self.animationPhase)
         } else {
