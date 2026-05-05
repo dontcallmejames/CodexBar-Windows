@@ -541,7 +541,7 @@ extension StatusItemController {
     }
 
     private func setButtonTitle(_ title: String?, for button: NSStatusBarButton) {
-        let value = title ?? ""
+        let value = Self.buttonTitle(title, hasImage: button.image != nil)
         if button.title != value {
             button.title = value
         }
@@ -551,7 +551,24 @@ extension StatusItemController {
         }
     }
 
+    nonisolated static func buttonTitle(_ title: String?, hasImage: Bool) -> String {
+        guard let title, !title.isEmpty else { return "" }
+        return hasImage ? " \(title)" : title
+    }
+
     func menuBarDisplayText(for provider: UsageProvider, snapshot: UsageSnapshot?) -> String? {
+        if provider == .openrouter,
+           self.settings.menuBarMetricPreference(for: provider, snapshot: snapshot) == .automatic,
+           let balance = snapshot?.openRouterUsage?.balance
+        {
+            return UsageFormatter.usdString(balance)
+        }
+        if provider == .deepseek,
+           let balance = Self.deepSeekBalanceDisplayText(snapshot: snapshot)
+        {
+            return balance
+        }
+
         let percentWindow = self.menuBarPercentWindow(for: provider, snapshot: snapshot)
         let mode = self.settings.menuBarDisplayMode
         let now = Date()
@@ -591,6 +608,19 @@ extension StatusItemController {
         }
 
         return displayText
+    }
+
+    nonisolated static func deepSeekBalanceDisplayText(snapshot: UsageSnapshot?) -> String? {
+        guard let rawValue = snapshot?.primary?.resetDescription?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+            !rawValue.isEmpty,
+            rawValue.hasPrefix("$") || rawValue.hasPrefix("¥")
+        else {
+            return nil
+        }
+
+        let balance = rawValue.split(separator: " ", maxSplits: 1).first
+        return balance.map(String.init)
     }
 
     private func menuBarPercentWindow(for provider: UsageProvider, snapshot: UsageSnapshot?) -> RateWindow? {
