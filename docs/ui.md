@@ -14,6 +14,7 @@ read_when:
   positions.
 - When Overview has selected providers, the switcher includes an Overview tab that renders up to 3 provider rows.
 - Overview row order follows provider order; selecting a row jumps to that provider detail card.
+- The global open-menu keyboard shortcut toggles the currently tracked menu closed before opening a new one.
 
 ## Icon rendering
 - 18×18 template image.
