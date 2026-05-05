@@ -2,6 +2,29 @@ import Foundation
 import Testing
 @testable import CodexBarCore
 
+struct MiniMaxAPISettingsReaderTests {
+    @Test
+    func `api token prefers coding plan specific environment key`() {
+        let token = MiniMaxAPISettingsReader.apiToken(environment: [
+            "MINIMAX_API_KEY": "sk-api-standard",
+            "MINIMAX_CODING_API_KEY": "sk-cp-coding-plan",
+        ])
+
+        #expect(token == "sk-cp-coding-plan")
+        #expect(MiniMaxAPISettingsReader.apiKeyKind(token: token) == .codingPlan)
+    }
+
+    @Test
+    func `api token falls back to generic environment key`() {
+        let token = MiniMaxAPISettingsReader.apiToken(environment: [
+            "MINIMAX_API_KEY": "\"sk-api-standard\"",
+        ])
+
+        #expect(token == "sk-api-standard")
+        #expect(MiniMaxAPISettingsReader.apiKeyKind(token: token) == .standard)
+    }
+}
+
 struct MiniMaxCookieHeaderTests {
     @Test
     func `normalizes raw cookie header`() {

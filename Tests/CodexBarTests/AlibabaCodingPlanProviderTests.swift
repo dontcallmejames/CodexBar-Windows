@@ -10,6 +10,28 @@ struct AlibabaCodingPlanSettingsReaderTests {
     }
 
     @Test
+    func `api token reads qwen alias from environment`() {
+        let token = AlibabaCodingPlanSettingsReader.apiToken(environment: ["ALIBABA_QWEN_API_KEY": "qwen123"])
+        #expect(token == "qwen123")
+    }
+
+    @Test
+    func `api token reads dashscope alias from environment`() {
+        let token = AlibabaCodingPlanSettingsReader.apiToken(environment: ["DASHSCOPE_API_KEY": "dashscope123"])
+        #expect(token == "dashscope123")
+    }
+
+    @Test
+    func `api token prefers coding plan key over aliases`() {
+        let token = AlibabaCodingPlanSettingsReader.apiToken(environment: [
+            "ALIBABA_CODING_PLAN_API_KEY": "coding-plan",
+            "ALIBABA_QWEN_API_KEY": "qwen",
+            "DASHSCOPE_API_KEY": "dashscope",
+        ])
+        #expect(token == "coding-plan")
+    }
+
+    @Test
     func `api token strips quotes`() {
         let token = AlibabaCodingPlanSettingsReader
             .apiToken(environment: ["ALIBABA_CODING_PLAN_API_KEY": "\"token-xyz\""])
