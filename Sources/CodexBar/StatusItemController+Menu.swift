@@ -105,6 +105,10 @@ extension StatusItemController {
     }
 
     func menuDidClose(_ menu: NSMenu) {
+        self.forgetClosedMenu(menu)
+    }
+
+    func forgetClosedMenu(_ menu: NSMenu) {
         let key = ObjectIdentifier(menu)
 
         self.openMenus.removeValue(forKey: key)
