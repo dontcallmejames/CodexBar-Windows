@@ -139,7 +139,7 @@ public struct OpenAIDashboardFetcher {
             hasReturnableData: hasReturnableData)
     }
 
-    struct DashboardAPIData: Sendable {
+    struct DashboardAPIData {
         let primaryLimit: RateWindow?
         let secondaryLimit: RateWindow?
         let creditsRemaining: Double?
