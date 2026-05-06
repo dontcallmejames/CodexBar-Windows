@@ -117,6 +117,7 @@ Wondering if CodexBar scans your disk? It doesn’t crawl your filesystem; it re
 - Sparkle updates: [docs/sparkle.md](docs/sparkle.md)
 - Packaging: [docs/packaging.md](docs/packaging.md)
 - Development: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)
+- Windows port: [docs/windows.md](docs/windows.md)
 - Release checklist: [docs/RELEASING.md](docs/RELEASING.md)
 - Changelog: [CHANGELOG.md](CHANGELOG.md)
 
