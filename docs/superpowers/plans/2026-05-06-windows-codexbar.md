@@ -1188,7 +1188,7 @@ git commit -m "Add Claude OAuth provider foundation"
 - Test: `src/windows/CodexBar.Tests/RefreshSchedulerTests.cs`
 - Test: `src/windows/CodexBar.Tests/PopoverViewModelTests.cs`
 
-- [ ] **Step 1: Write failing scheduler tests**
+- [x] **Step 1: Write failing scheduler tests**
 
 Create `src/windows/CodexBar.Tests/RefreshSchedulerTests.cs`:
 
@@ -1253,7 +1253,7 @@ dotnet test src\windows\CodexBar.Tests\CodexBar.Tests.csproj --filter RefreshSch
 
 Expected: FAIL because refresh classes do not exist.
 
-- [ ] **Step 2: Implement refresh store and scheduler**
+- [x] **Step 2: Implement refresh store and scheduler**
 
 Create `src/windows/CodexBar.Core/Refresh/SnapshotStore.cs`:
 
@@ -1333,7 +1333,7 @@ public sealed class RefreshScheduler
 }
 ```
 
-- [ ] **Step 3: Add view models**
+- [x] **Step 3: Add view models**
 
 Create `src/windows/CodexBar.WinApp/ViewModels/ProviderTabViewModel.cs`:
 
@@ -1434,7 +1434,7 @@ public sealed class DockedOverviewViewModel
 }
 ```
 
-- [ ] **Step 4: Write and run popover view-model tests**
+- [x] **Step 4: Write and run popover view-model tests**
 
 Create `src/windows/CodexBar.Tests/PopoverViewModelTests.cs`:
 
@@ -1474,7 +1474,7 @@ dotnet test src\windows\CodexBar.Tests\CodexBar.Tests.csproj --filter "RefreshSc
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```powershell
 git add src\windows
