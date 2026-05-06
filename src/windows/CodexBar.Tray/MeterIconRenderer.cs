@@ -32,9 +32,12 @@ public static class MeterIconRenderer
         foreach (var bar in bars)
         {
             graphics.FillRoundedRectangle(backBrush, bar, 2);
-            var fillHeight = Math.Max(1, (int)Math.Round(bar.Height * percent));
-            var fillRect = new Rectangle(bar.X, bar.Bottom - fillHeight, bar.Width, fillHeight);
-            graphics.FillRoundedRectangle(fillBrush, fillRect, 2);
+            if (percent > 0)
+            {
+                var fillHeight = Math.Max(1, (int)Math.Round(bar.Height * percent));
+                var fillRect = new Rectangle(bar.X, bar.Bottom - fillHeight, bar.Width, fillHeight);
+                graphics.FillRoundedRectangle(fillBrush, fillRect, 2);
+            }
         }
 
         var handle = bitmap.GetHicon();

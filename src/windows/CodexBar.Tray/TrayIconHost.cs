@@ -8,15 +8,17 @@ public sealed class TrayIconHost : IDisposable
     private const int NotifyIconTextLimit = 63;
 
     private readonly NotifyIcon notifyIcon;
+    private readonly ContextMenuStrip contextMenu;
     private Icon? currentIcon;
 
     public TrayIconHost(Action onLeftClick, Action onSettingsClick, Action onQuitClick)
     {
+        contextMenu = BuildMenu(onSettingsClick, onQuitClick);
         notifyIcon = new NotifyIcon
         {
             Text = "CodexBar",
-            Visible = true,
-            ContextMenuStrip = BuildMenu(onSettingsClick, onQuitClick)
+            Visible = false,
+            ContextMenuStrip = contextMenu
         };
 
         notifyIcon.MouseClick += (_, args) =>
@@ -34,12 +36,14 @@ public sealed class TrayIconHost : IDisposable
         currentIcon = MeterIconRenderer.Render(model);
         notifyIcon.Icon = currentIcon;
         notifyIcon.Text = TruncateTooltip(model.Tooltip);
+        notifyIcon.Visible = true;
     }
 
     public void Dispose()
     {
         notifyIcon.Visible = false;
         notifyIcon.Dispose();
+        contextMenu.Dispose();
         currentIcon?.Dispose();
     }
 
