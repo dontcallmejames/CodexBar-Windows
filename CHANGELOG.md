@@ -1,5 +1,7 @@
 # Changelog
 
+## 0.25 — Unreleased
+
 ## 0.24 — 2026-05-06
 
 ### Providers & Usage
