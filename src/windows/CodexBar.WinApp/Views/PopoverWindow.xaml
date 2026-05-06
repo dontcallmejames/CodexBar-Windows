@@ -85,10 +85,22 @@
               Margin="0,14,0,0"
               Padding="0,12,0,0">
         <StackPanel>
-          <Button Content="Usage Dashboard" HorizontalContentAlignment="Left" Margin="0,2" />
-          <Button Content="Settings..." HorizontalContentAlignment="Left" Margin="0,2" />
-          <Button Content="About CodexBar" HorizontalContentAlignment="Left" Margin="0,2" />
-          <Button Content="Quit" HorizontalContentAlignment="Left" Margin="0,2" />
+          <Button Content="Usage Dashboard"
+                  Command="{Binding UsageDashboardCommand}"
+                  HorizontalContentAlignment="Left"
+                  Margin="0,2" />
+          <Button Content="Settings..."
+                  Command="{Binding SettingsCommand}"
+                  HorizontalContentAlignment="Left"
+                  Margin="0,2" />
+          <Button Content="About CodexBar"
+                  Command="{Binding AboutCommand}"
+                  HorizontalContentAlignment="Left"
+                  Margin="0,2" />
+          <Button Content="Quit"
+                  Command="{Binding QuitCommand}"
+                  HorizontalContentAlignment="Left"
+                  Margin="0,2" />
         </StackPanel>
       </Border>
     </StackPanel>

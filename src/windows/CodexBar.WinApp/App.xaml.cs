@@ -36,17 +36,36 @@ public partial class App : System.Windows.Application
             return;
         }
 
-        var viewModel = new PopoverViewModel(store.All(), UsageProvider.Codex, showUsageAsUsed: true);
+        var viewModel = new PopoverViewModel(
+            store.All(),
+            UsageProvider.Codex,
+            showUsageAsUsed: true,
+            openDashboard: ShowUsageDashboard,
+            openSettings: ShowSettings,
+            showAbout: ShowAbout,
+            quit: Shutdown);
         popover = new PopoverWindow(viewModel);
         popover.Closed += (_, _) => popover = null;
         popover.Show();
         popover.Activate();
     }
 
+    private static void ShowUsageDashboard()
+    {
+        const string message = "Usage dashboard actions will open provider dashboards after Task 8 wires live providers.";
+        System.Windows.MessageBox.Show(message, "CodexBar");
+    }
+
     private static void ShowSettings()
     {
         const string message = "Open settings from the tray menu after Task 9 adds the settings window.";
         System.Windows.MessageBox.Show(message, "CodexBar");
+    }
+
+    private static void ShowAbout()
+    {
+        const string message = "CodexBar for Windows";
+        System.Windows.MessageBox.Show(message, "About CodexBar");
     }
 
     private void SeedPreviewData()
