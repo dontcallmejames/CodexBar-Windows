@@ -239,7 +239,7 @@ git commit -m "Scaffold Windows CodexBar solution"
 - Test: `src/windows/CodexBar.Tests/WindowsAppPathsTests.cs`
 - Test: `src/windows/CodexBar.Tests/JsonSettingsStoreTests.cs`
 
-- [ ] **Step 1: Write failing path tests**
+- [x] **Step 1: Write failing path tests**
 
 Create `src/windows/CodexBar.Tests/WindowsAppPathsTests.cs`:
 
@@ -283,7 +283,7 @@ dotnet test src\windows\CodexBar.Tests\CodexBar.Tests.csproj --filter WindowsApp
 
 Expected: FAIL because `WindowsAppPaths` does not exist.
 
-- [ ] **Step 2: Add model and path implementation**
+- [x] **Step 2: Add model and path implementation**
 
 Create `src/windows/CodexBar.Core/Models/UsageProvider.cs`:
 
@@ -404,7 +404,7 @@ public sealed class WindowsAppPaths : IAppPaths
 }
 ```
 
-- [ ] **Step 3: Write failing settings tests**
+- [x] **Step 3: Write failing settings tests**
 
 Create `src/windows/CodexBar.Tests/JsonSettingsStoreTests.cs`:
 
@@ -453,7 +453,7 @@ dotnet test src\windows\CodexBar.Tests\CodexBar.Tests.csproj --filter JsonSettin
 
 Expected: FAIL because settings types do not exist.
 
-- [ ] **Step 4: Add settings implementation**
+- [x] **Step 4: Add settings implementation**
 
 Create `src/windows/CodexBar.Core/Settings/AppSettings.cs`:
 
@@ -530,7 +530,7 @@ public sealed class JsonSettingsStore
 }
 ```
 
-- [ ] **Step 5: Run tests**
+- [x] **Step 5: Run tests**
 
 Run:
 
@@ -540,7 +540,7 @@ dotnet test src\windows\CodexBar.Tests\CodexBar.Tests.csproj --filter "WindowsAp
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```powershell
 git add src\windows
