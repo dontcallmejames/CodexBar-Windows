@@ -11,6 +11,11 @@ public sealed record ClaudeUsageResponse(
     [property: JsonPropertyName("extra_usage")] ClaudeExtraUsage? ExtraUsage,
     [property: JsonPropertyName("account")] ClaudeAccount? Account);
 
+public sealed record ClaudeTokenRefreshResponse(
+    [property: JsonPropertyName("access_token")] string? AccessToken,
+    [property: JsonPropertyName("refresh_token")] string? RefreshToken,
+    [property: JsonPropertyName("expires_in")] int? ExpiresIn);
+
 public sealed record ClaudeUsageWindow(
     [property: JsonPropertyName("utilization")] double? Utilization,
     [property: JsonPropertyName("used_percent")] double? UsedPercent,

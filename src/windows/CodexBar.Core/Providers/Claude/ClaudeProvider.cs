@@ -9,8 +9,10 @@ namespace CodexBar.Core.Providers.Claude;
 public sealed class ClaudeProvider : IUsageProvider
 {
     private static readonly Uri OAuthUsageUri = new("https://api.anthropic.com/api/oauth/usage");
+    private static readonly Uri OAuthTokenRefreshUri = new("https://platform.claude.com/v1/oauth/token");
     private static readonly Uri OrganizationsUri = new("https://claude.ai/api/organizations");
     private static readonly Uri AccountUri = new("https://claude.ai/api/account");
+    private const string OAuthClientId = "9d1c250a-e61b-44d9-88ed-5944d1962f5e";
 
     private readonly HttpClient httpClient;
     private readonly IAppPaths paths;
@@ -32,7 +34,18 @@ public sealed class ClaudeProvider : IUsageProvider
             var credentials = await ClaudeOAuthCredentials.ReadAsync(paths.ClaudeCredentialsJson, cancellationToken);
             if (!string.IsNullOrWhiteSpace(credentials.AccessToken) && HasUserProfileScope(credentials))
             {
-                return await RefreshOAuthAsync(credentials, cancellationToken);
+                try
+                {
+                    return await RefreshOAuthAsync(credentials, cancellationToken);
+                }
+                catch (HttpRequestException error) when (
+                    error.StatusCode == System.Net.HttpStatusCode.Unauthorized &&
+                    !string.IsNullOrWhiteSpace(credentials.RefreshToken))
+                {
+                    var refreshed = await RefreshAccessTokenAsync(credentials, cancellationToken);
+                    await ClaudeOAuthCredentials.WriteAsync(paths.ClaudeCredentialsJson, refreshed, cancellationToken);
+                    return await RefreshOAuthAsync(refreshed, cancellationToken);
+                }
             }
         }
 
@@ -58,10 +71,77 @@ public sealed class ClaudeProvider : IUsageProvider
         request.Headers.TryAddWithoutValidation("User-Agent", "CodexBar-Windows");
 
         using var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        ThrowIfRateLimited(response);
         response.EnsureSuccessStatusCode();
 
         var usage = await ReadUsageAsync(response, cancellationToken);
         return ClaudeUsageMapper.Map(usage, DateTimeOffset.Now, "oauth", credentials);
+    }
+
+    private async Task<ClaudeOAuthCredentials> RefreshAccessTokenAsync(
+        ClaudeOAuthCredentials credentials,
+        CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, OAuthTokenRefreshUri);
+        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        request.Headers.TryAddWithoutValidation("User-Agent", "CodexBar-Windows");
+        request.Content = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["grant_type"] = "refresh_token",
+            ["refresh_token"] = credentials.RefreshToken!,
+            ["client_id"] = OAuthClientId
+        });
+
+        using var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        ThrowIfRateLimited(response);
+        response.EnsureSuccessStatusCode();
+
+        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+        var tokenResponse = await JsonSerializer.DeserializeAsync<ClaudeTokenRefreshResponse>(
+            stream,
+            ClaudeUsageMapper.JsonOptions,
+            cancellationToken);
+        if (string.IsNullOrWhiteSpace(tokenResponse?.AccessToken))
+        {
+            throw new InvalidOperationException("Claude OAuth refresh response did not include an access token.");
+        }
+
+        return credentials with
+        {
+            AccessToken = tokenResponse.AccessToken,
+            RefreshToken = string.IsNullOrWhiteSpace(tokenResponse.RefreshToken)
+                ? credentials.RefreshToken
+                : tokenResponse.RefreshToken,
+            ExpiresAt = DateTimeOffset.Now.AddSeconds(tokenResponse.ExpiresIn ?? 3600)
+        };
+    }
+
+    private static void ThrowIfRateLimited(HttpResponseMessage response)
+    {
+        if (response.StatusCode != System.Net.HttpStatusCode.TooManyRequests)
+        {
+            return;
+        }
+
+        var retryText = response.Headers.RetryAfter?.Delta is { } delta
+            ? $" Retry in {FormatRetryAfter(delta)}."
+            : string.Empty;
+        throw new InvalidOperationException($"Claude usage API is rate limited.{retryText}");
+    }
+
+    private static string FormatRetryAfter(TimeSpan delta)
+    {
+        if (delta.TotalMinutes < 1)
+        {
+            return $"{Math.Max(1, (int)Math.Ceiling(delta.TotalSeconds))}s";
+        }
+
+        if (delta.TotalHours < 1)
+        {
+            return $"{(int)Math.Ceiling(delta.TotalMinutes)}m";
+        }
+
+        return $"{(int)Math.Ceiling(delta.TotalHours)}h";
     }
 
     private async Task<UsageSnapshot> RefreshWebAsync(string cookieHeader, CancellationToken cancellationToken)
