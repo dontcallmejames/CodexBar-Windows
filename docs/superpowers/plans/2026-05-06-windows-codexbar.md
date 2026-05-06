@@ -2363,7 +2363,7 @@ git commit -m "Add Windows settings and overview toggle"
 - Modify: `README.md`
 - Create: `docs/windows.md`
 
-- [ ] **Step 1: Add Windows development docs**
+- [x] **Step 1: Add Windows development docs**
 
 Create `docs/windows.md`:
 
@@ -2401,7 +2401,7 @@ dotnet run --project src\windows\CodexBar.WinApp\CodexBar.WinApp.csproj
 The app starts in the notification area. Click the CodexBar tray icon to open the popover.
 ```
 
-- [ ] **Step 2: Link Windows docs from README**
+- [x] **Step 2: Link Windows docs from README**
 
 In `README.md`, under "Docs", add:
 
@@ -2409,7 +2409,7 @@ In `README.md`, under "Docs", add:
 - Windows port: [docs/windows.md](docs/windows.md)
 ```
 
-- [ ] **Step 3: Run full verification**
+- [x] **Step 3: Run full verification**
 
 Run:
 
@@ -2420,7 +2420,7 @@ dotnet build src\windows\CodexBar.Windows.sln -c Release
 
 Expected: both commands pass with no warnings.
 
-- [ ] **Step 4: Run manual UI smoke**
+- [x] **Step 4: Run manual UI smoke**
 
 Run:
 
@@ -2437,7 +2437,7 @@ Expected:
 - Settings saves `%APPDATA%\CodexBar\config.json`.
 - Docked overview appears only when enabled.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```powershell
 git add README.md docs\windows.md src\windows
