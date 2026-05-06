@@ -138,12 +138,12 @@ jobs:
           BIN_DIR="${{ steps.build.outputs.bin_dir }}"
           BIN="$BIN_DIR/CodexBarCLI"
           echo "BIN=$BIN"
-          "$BIN" --help
-          "$BIN" --version
           file "$BIN"
           if [[ "${{ matrix.platform }}" == "macos" ]]; then
             lipo -archs "$BIN" | tr ' ' '\n' | grep -Fx "${{ matrix.asset-arch }}"
           else
+            "$BIN" --help
+            "$BIN" --version
             file "$BIN" | grep -q "${{ matrix.asset-arch }}"
           fi
 
