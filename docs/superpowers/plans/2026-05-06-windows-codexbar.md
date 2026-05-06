@@ -1491,7 +1491,7 @@ git commit -m "Add Windows refresh and view models"
 - Create: `src/windows/CodexBar.Tray/TrayIconHost.cs`
 - Test: `src/windows/CodexBar.Tests/MeterIconRendererTests.cs`
 
-- [ ] **Step 1: Write failing tray renderer test**
+- [x] **Step 1: Write failing tray renderer test**
 
 Create `src/windows/CodexBar.Tests/MeterIconRendererTests.cs`:
 
@@ -1522,7 +1522,7 @@ dotnet test src\windows\CodexBar.Tests\CodexBar.Tests.csproj --filter MeterIconR
 
 Expected: FAIL because tray renderer does not exist.
 
-- [ ] **Step 2: Implement tray display and renderer**
+- [x] **Step 2: Implement tray display and renderer**
 
 Create `src/windows/CodexBar.Tray/TrayDisplayModel.cs`:
 
@@ -1584,7 +1584,7 @@ internal static class GraphicsExtensions
 }
 ```
 
-- [ ] **Step 3: Implement tray host**
+- [x] **Step 3: Implement tray host**
 
 Create `src/windows/CodexBar.Tray/TrayIconHost.cs`:
 
@@ -1641,7 +1641,7 @@ public sealed class TrayIconHost : IDisposable
 }
 ```
 
-- [ ] **Step 4: Run tray tests**
+- [x] **Step 4: Run tray tests**
 
 Run:
 
@@ -1651,7 +1651,7 @@ dotnet test src\windows\CodexBar.Tests\CodexBar.Tests.csproj --filter MeterIconR
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```powershell
 git add src\windows
