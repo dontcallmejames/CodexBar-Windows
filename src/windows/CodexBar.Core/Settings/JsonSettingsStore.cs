@@ -24,7 +24,8 @@ public sealed class JsonSettingsStore
         }
 
         await using var stream = File.OpenRead(path);
-        return await JsonSerializer.DeserializeAsync<AppSettings>(stream, Options, cancellationToken) ?? AppSettings.Default;
+        var settings = await JsonSerializer.DeserializeAsync<StoredAppSettings>(stream, Options, cancellationToken);
+        return settings?.ToAppSettings() ?? AppSettings.Default;
     }
 
     public async Task SaveAsync(AppSettings settings, CancellationToken cancellationToken)
@@ -35,7 +36,64 @@ public sealed class JsonSettingsStore
             Directory.CreateDirectory(directory);
         }
 
-        await using var stream = File.Create(path);
-        await JsonSerializer.SerializeAsync(stream, settings, Options, cancellationToken);
+        var tempFile = Path.Combine(
+            string.IsNullOrEmpty(directory) ? "." : directory,
+            $"{Path.GetFileName(path)}.{Guid.NewGuid():N}.tmp");
+
+        try
+        {
+            await using (var stream = new FileStream(tempFile, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+            {
+                await JsonSerializer.SerializeAsync(stream, settings, Options, cancellationToken);
+                await stream.FlushAsync(cancellationToken);
+            }
+
+            if (File.Exists(path))
+            {
+                File.Replace(tempFile, path, null);
+            }
+            else
+            {
+                File.Move(tempFile, path);
+            }
+        }
+        finally
+        {
+            if (File.Exists(tempFile))
+            {
+                File.Delete(tempFile);
+            }
+        }
+    }
+
+    private sealed record StoredAppSettings(
+        bool? CodexEnabled,
+        bool? ClaudeEnabled,
+        bool? MergeTrayIcon,
+        bool? ShowUsageAsUsed,
+        bool? DockOverviewNearTaskbar,
+        int? RefreshMinutes,
+        string? CodexSource,
+        string? ClaudeSource,
+        string? ClaudeManualCookieHeader)
+    {
+        public AppSettings ToAppSettings()
+        {
+            var defaults = AppSettings.Default;
+
+            return new AppSettings(
+                CodexEnabled ?? defaults.CodexEnabled,
+                ClaudeEnabled ?? defaults.ClaudeEnabled,
+                MergeTrayIcon ?? defaults.MergeTrayIcon,
+                ShowUsageAsUsed ?? defaults.ShowUsageAsUsed,
+                DockOverviewNearTaskbar ?? defaults.DockOverviewNearTaskbar,
+                RefreshMinutes is > 0 ? RefreshMinutes.Value : defaults.RefreshMinutes,
+                NormalizeSource(CodexSource, defaults.CodexSource),
+                NormalizeSource(ClaudeSource, defaults.ClaudeSource),
+                ClaudeManualCookieHeader);
+        }
+
+        private static string NormalizeSource(string? source, string fallback) =>
+            string.IsNullOrWhiteSpace(source) ? fallback : source;
     }
 }
