@@ -1980,7 +1980,7 @@ git commit -m "Add Windows tray popover UI"
 - Modify: `src/windows/CodexBar.Core/Providers/Codex/CodexProvider.cs`
 - Test: `src/windows/CodexBar.Tests/AppServicesTests.cs`
 
-- [ ] **Step 1: Add app service composition**
+- [x] **Step 1: Add app service composition**
 
 Create `src/windows/CodexBar.WinApp/AppServices.cs`:
 
@@ -2019,7 +2019,7 @@ public sealed class AppServices
 }
 ```
 
-- [ ] **Step 2: Replace preview-only app startup with real refresh**
+- [x] **Step 2: Replace preview-only app startup with real refresh**
 
 In `src/windows/CodexBar.WinApp/App.xaml.cs`, replace the preview `SnapshotStore` field with:
 
@@ -2083,7 +2083,7 @@ popover.Activate();
 
 Remove `SeedPreviewData()`.
 
-- [ ] **Step 3: Build and run**
+- [x] **Step 3: Build and run**
 
 Run:
 
@@ -2094,7 +2094,7 @@ dotnet run --project src\windows\CodexBar.WinApp\CodexBar.WinApp.csproj
 
 Expected: app starts, attempts Codex/Claude refresh, shows missing credential states if credentials are absent.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```powershell
 git add src\windows
