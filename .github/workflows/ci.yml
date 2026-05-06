@@ -42,7 +42,13 @@ jobs:
 
       - name: Swift Test
         timeout-minutes: 25
-        run: swift test
+        run: |
+          swift test --parallel \
+            --skip ClaudeOAuthCredentialsStoreSecurityCLITests \
+            --skip OpenAIDashboardNavigationDelegateTests \
+            --skip SubprocessRunnerTests
+          swift test --no-parallel \
+            --filter 'ClaudeOAuthCredentialsStoreSecurityCLITests|OpenAIDashboardNavigationDelegateTests|SubprocessRunnerTests'
 
   build-linux-cli:
     timeout-minutes: 20
