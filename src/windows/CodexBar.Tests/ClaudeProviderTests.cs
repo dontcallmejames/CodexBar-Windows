@@ -181,6 +181,67 @@ public sealed class ClaudeProviderTests
     }
 
     [TestMethod]
+    public async Task ManualCookieFillsMissingFieldsFromAccountAndOverage()
+    {
+        var credentialsPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), ".credentials.json");
+        using var handler = new QueueHandler(
+            new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("""
+                [
+                  { "uuid": "org-123", "name": "Claude Org" }
+                ]
+                """)
+            },
+            new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("""
+                {
+                  "five_hour": { "utilization": 4, "resets_at": "2030-01-01T00:00:00Z" },
+                  "account": { "email": "usage@example.com" },
+                  "extra_usage": { "is_enabled": true }
+                }
+                """)
+            },
+            new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("""
+                {
+                  "email_address": "account@example.com",
+                  "memberships": [
+                    {
+                      "organization": {
+                        "uuid": "org-123",
+                        "rate_limit_tier": "claude_team",
+                        "billing_type": "stripe"
+                      }
+                    }
+                  ]
+                }
+                """)
+            },
+            new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("""
+                {
+                  "is_enabled": true,
+                  "used_credits": 1234,
+                  "monthly_credit_limit": 5000,
+                  "currency": "USD"
+                }
+                """)
+            });
+        using var httpClient = new HttpClient(handler);
+        var provider = new ClaudeProvider(httpClient, new TestAppPaths(credentialsPath), "sessionKey=sk-ant-123");
+
+        var snapshot = await provider.RefreshAsync(CancellationToken.None);
+
+        Assert.AreEqual("usage@example.com", snapshot.AccountEmail);
+        Assert.AreEqual("Team", snapshot.Plan);
+        Assert.AreEqual(12.34m, snapshot.TodayCostUsd);
+    }
+
+    [TestMethod]
     public async Task OAuthWithoutUserProfileScopeFallsBackToManualCookie()
     {
         var credentialsPath = await WriteCredentialsFileAsync("""
