@@ -29,14 +29,14 @@ public sealed class DockedOverviewViewModel
 
         if (delta.TotalHours < 1)
         {
-            return $"in {(int)Math.Round(delta.TotalMinutes)}m";
+            return $"in {Math.Max(1, (int)Math.Floor(delta.TotalMinutes))}m";
         }
 
         if (delta.TotalDays < 1)
         {
-            return $"in {(int)Math.Round(delta.TotalHours)}h";
+            return $"in {(int)Math.Floor(delta.TotalHours)}h";
         }
 
-        return $"in {(int)Math.Round(delta.TotalDays)}d";
+        return $"in {(int)Math.Floor(delta.TotalDays)}d";
     }
 }
