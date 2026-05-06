@@ -2,6 +2,9 @@
 
 ## 0.25 — Unreleased
 
+### Fixes
+- Augment: report the real 1-minute keepalive check/min-refresh intervals in startup logs and docs (#434). Thanks @guglielmofonda!
+
 ## 0.24 — 2026-05-06
 
 ### Providers & Usage
