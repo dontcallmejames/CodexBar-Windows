@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="MSTest.TestAdapter" Version="3.10.2" />
+    <PackageReference Include="MSTest.TestFramework" Version="3.10.2" />
+    <ProjectReference Include="..\CodexBar.Core\CodexBar.Core.csproj" />
+    <ProjectReference Include="..\CodexBar.Tray\CodexBar.Tray.csproj" />
+    <ProjectReference Include="..\CodexBar.WinApp\CodexBar.WinApp.csproj" />
+  </ItemGroup>
+</Project>
