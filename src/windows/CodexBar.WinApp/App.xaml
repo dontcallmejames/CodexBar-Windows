@@ -3,9 +3,9 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              ShutdownMode="OnExplicitShutdown">
   <Application.Resources>
-    <SolidColorBrush x:Key="CodexBarPanelBrush" Color="#EEE8FF" />
+    <SolidColorBrush x:Key="CodexBarPanelBrush" Color="#F0FFFFFF" />
     <SolidColorBrush x:Key="CodexBarAccentBrush" Color="#2F7BF6" />
-    <SolidColorBrush x:Key="CodexBarTextBrush" Color="#1F2937" />
-    <SolidColorBrush x:Key="CodexBarMutedTextBrush" Color="#667085" />
+    <SolidColorBrush x:Key="CodexBarTextBrush" Color="#20202A" />
+    <SolidColorBrush x:Key="CodexBarMutedTextBrush" Color="#6B6678" />
   </Application.Resources>
 </Application>
