@@ -42,7 +42,7 @@ jobs:
 
       - name: Swift Test
         timeout-minutes: 25
-        run: swift test --parallel
+        run: swift test
 
   build-linux-cli:
     timeout-minutes: 20
