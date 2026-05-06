@@ -38,8 +38,8 @@ public static class ClaudeUsageMapper
                 ?? Clean(response.Account?.SubscriptionTypeCamel)
                 ?? Clean(credentials?.SubscriptionType)
                 ?? PlanFromTier(response.Account?.RateLimitTier ?? credentials?.RateLimitTier),
-            ExtraCreditsRemaining(response.ExtraUsage),
             null,
+            response.ExtraUsage?.UsedUsd,
             null,
             null,
             null,
@@ -88,27 +88,6 @@ public static class ClaudeUsageMapper
         DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var parsed)
             ? parsed.ToUniversalTime()
             : null;
-
-    private static decimal? ExtraCreditsRemaining(ClaudeExtraUsage? extra)
-    {
-        if (extra is null || extra.IsEnabled == false)
-        {
-            return null;
-        }
-
-        if (extra.LimitUsd is { } limitUsd && extra.UsedUsd is { } usedUsd)
-        {
-            return limitUsd - usedUsd;
-        }
-
-        var limitMinor = extra.MonthlyLimit ?? extra.MonthlyCreditLimit;
-        if (limitMinor is null || extra.UsedCredits is null)
-        {
-            return null;
-        }
-
-        return (limitMinor.Value - extra.UsedCredits.Value) / 100m;
-    }
 
     private static string? PlanFromTier(string? rateLimitTier)
     {

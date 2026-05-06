@@ -71,7 +71,8 @@ public sealed class ClaudeProviderTests
             {
                 Content = new StringContent("""
                 [
-                  { "uuid": "org-123", "name": "Claude Org" }
+                  { "uuid": "api-only-org", "name": "API Only Org", "capabilities": ["api"] },
+                  { "uuid": "chat-org", "name": "Chat Org", "capabilities": ["chat"] }
                 ]
                 """)
             },
@@ -91,7 +92,7 @@ public sealed class ClaudeProviderTests
 
         Assert.AreEqual(2, handler.Requests.Count);
         Assert.AreEqual(new Uri("https://claude.ai/api/organizations"), handler.Requests[0].RequestUri);
-        Assert.AreEqual(new Uri("https://claude.ai/api/organizations/org-123/usage"), handler.Requests[1].RequestUri);
+        Assert.AreEqual(new Uri("https://claude.ai/api/organizations/api-only-org/usage"), handler.Requests[1].RequestUri);
         foreach (var request in handler.Requests)
         {
             Assert.IsTrue(request.Headers.TryGetValues("Cookie", out var cookies));

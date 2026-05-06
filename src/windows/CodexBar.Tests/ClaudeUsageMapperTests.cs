@@ -17,8 +17,8 @@ public sealed class ClaudeUsageMapperTests
           "seven_day_sonnet": { "utilization": 7, "resets_at": "2030-01-08T00:00:00Z" },
           "extra_usage": {
             "is_enabled": true,
-            "used_credits": 1234,
-            "monthly_limit": 5000,
+            "used_usd": 12.34,
+            "limit_usd": 50.00,
             "currency": "USD"
           },
           "account": {
@@ -49,7 +49,7 @@ public sealed class ClaudeUsageMapperTests
         Assert.AreEqual(10_080, snapshot.Windows[2].WindowMinutes);
         Assert.AreEqual("claude@example.com", snapshot.AccountEmail);
         Assert.AreEqual("Max", snapshot.Plan);
-        Assert.AreEqual(37.66m, snapshot.CreditsRemaining);
+        Assert.AreEqual(12.34m, snapshot.TodayCostUsd);
         Assert.AreEqual("oauth", snapshot.SourceLabel);
         Assert.IsFalse(snapshot.IsStale);
     }
