@@ -560,7 +560,7 @@ git commit -m "Add Windows core models and settings"
 - Test: `src/windows/CodexBar.Tests/CodexOAuthUsageMapperTests.cs`
 - Test: `src/windows/CodexBar.Tests/CodexOAuthCredentialsTests.cs`
 
-- [ ] **Step 1: Write failing Codex mapper tests**
+- [x] **Step 1: Write failing Codex mapper tests**
 
 Create `src/windows/CodexBar.Tests/CodexOAuthUsageMapperTests.cs`:
 
@@ -609,7 +609,7 @@ dotnet test src\windows\CodexBar.Tests\CodexBar.Tests.csproj --filter CodexOAuth
 
 Expected: FAIL because Codex mapper types do not exist.
 
-- [ ] **Step 2: Add provider contract and Codex models**
+- [x] **Step 2: Add provider contract and Codex models**
 
 Create `src/windows/CodexBar.Core/Providers/IUsageProvider.cs`:
 
@@ -699,7 +699,7 @@ public static class CodexOAuthUsageMapper
 }
 ```
 
-- [ ] **Step 3: Run mapper tests**
+- [x] **Step 3: Run mapper tests**
 
 Run:
 
@@ -709,7 +709,7 @@ dotnet test src\windows\CodexBar.Tests\CodexBar.Tests.csproj --filter CodexOAuth
 
 Expected: PASS.
 
-- [ ] **Step 4: Write failing credential tests**
+- [x] **Step 4: Write failing credential tests**
 
 Create `src/windows/CodexBar.Tests/CodexOAuthCredentialsTests.cs`:
 
@@ -751,7 +751,7 @@ dotnet test src\windows\CodexBar.Tests\CodexBar.Tests.csproj --filter CodexOAuth
 
 Expected: FAIL because `CodexOAuthCredentials` does not exist.
 
-- [ ] **Step 5: Implement Codex credentials and provider**
+- [x] **Step 5: Implement Codex credentials and provider**
 
 Create `src/windows/CodexBar.Core/Providers/Codex/CodexOAuthCredentials.cs`:
 
@@ -833,7 +833,7 @@ public sealed class CodexProvider : IUsageProvider
 }
 ```
 
-- [ ] **Step 6: Run Codex tests**
+- [x] **Step 6: Run Codex tests**
 
 Run:
 
@@ -843,7 +843,7 @@ dotnet test src\windows\CodexBar.Tests\CodexBar.Tests.csproj --filter "CodexOAut
 
 Expected: PASS.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```powershell
 git add src\windows
