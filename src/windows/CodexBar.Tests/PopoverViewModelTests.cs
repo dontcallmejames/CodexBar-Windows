@@ -81,6 +81,53 @@ public sealed class PopoverViewModelTests
     }
 
     [TestMethod]
+    public void SelectProviderCommandUpdatesActiveProviderAndTabs()
+    {
+        var snapshots = new[]
+        {
+            new UsageSnapshot(
+                UsageProvider.Codex,
+                "Codex",
+                DateTimeOffset.Now,
+                new[] { new RateWindow("session", "Session", 20, null, null) },
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                "test",
+                null,
+                false),
+            new UsageSnapshot(
+                UsageProvider.Claude,
+                "Claude",
+                DateTimeOffset.Now,
+                new[] { new RateWindow("session", "Session", 30, null, null) },
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                "test",
+                null,
+                false)
+        };
+
+        var vm = new PopoverViewModel(snapshots, UsageProvider.Codex, showUsageAsUsed: true);
+
+        vm.SelectProviderCommand.Execute(UsageProvider.Claude);
+
+        Assert.AreEqual(UsageProvider.Claude, vm.ActiveProvider);
+        Assert.AreEqual("Claude", vm.ActiveSnapshot!.DisplayName);
+        Assert.IsFalse(vm.Tabs.Single(tab => tab.Provider == UsageProvider.Codex).IsActive);
+        Assert.IsTrue(vm.Tabs.Single(tab => tab.Provider == UsageProvider.Claude).IsActive);
+    }
+
+    [TestMethod]
     public void BuildsDockedRowsWithRelativeResetText()
     {
         var now = new DateTimeOffset(2030, 1, 1, 12, 0, 0, TimeSpan.Zero);

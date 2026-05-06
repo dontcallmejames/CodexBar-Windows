@@ -25,4 +25,19 @@ public sealed class WpfShellTests
         Assert.AreEqual(MediaColor.FromRgb(47, 123, 246), active.Color);
         Assert.AreEqual(MediaColor.FromArgb(45, 255, 255, 255), inactive.Color);
     }
+
+    [TestMethod]
+    public void CalculatesPopoverPositionNearBottomRightTray()
+    {
+        var position = CodexBar.WinApp.App.CalculatePopoverPosition(
+            width: 430,
+            height: 360,
+            workArea: new System.Windows.Rect(0, 0, 1920, 1040),
+            cursorPosition: new System.Drawing.Point(1900, 1030));
+
+        Assert.IsTrue(position.Left > 1400);
+        Assert.IsTrue(position.Top > 600);
+        Assert.IsTrue(position.Left <= 1474);
+        Assert.IsTrue(position.Top <= 664);
+    }
 }
