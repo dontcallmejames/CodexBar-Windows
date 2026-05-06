@@ -24,10 +24,25 @@
         </ItemsControl.ItemsPanel>
         <ItemsControl.ItemTemplate>
           <DataTemplate>
-            <Border Margin="3"
+            <Button Margin="3"
                     Padding="8"
-                    CornerRadius="8"
-                    Background="{Binding IsActive, Converter={x:Static views:BooleanToBrushConverter.Instance}}">
+                    BorderThickness="0"
+                    Cursor="Hand"
+                    HorizontalContentAlignment="Stretch"
+                    VerticalContentAlignment="Stretch"
+                    Background="{Binding IsActive, Converter={x:Static views:BooleanToBrushConverter.Instance}}"
+                    Command="{Binding DataContext.SelectProviderCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                    CommandParameter="{Binding Provider}">
+              <Button.Template>
+                <ControlTemplate TargetType="Button">
+                  <Border Background="{TemplateBinding Background}"
+                          CornerRadius="8"
+                          Padding="{TemplateBinding Padding}">
+                    <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                      VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                  </Border>
+                </ControlTemplate>
+              </Button.Template>
               <StackPanel>
                 <TextBlock Text="{Binding Title}"
                            FontWeight="SemiBold"
@@ -36,7 +51,7 @@
                            FontSize="11"
                            HorizontalAlignment="Center" />
               </StackPanel>
-            </Border>
+            </Button>
           </DataTemplate>
         </ItemsControl.ItemTemplate>
       </ItemsControl>
