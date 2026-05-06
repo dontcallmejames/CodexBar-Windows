@@ -105,6 +105,7 @@ jobs:
           swift --version
 
       - name: Build CodexBarCLI (release)
+        id: build
         shell: bash
         run: |
           set -euo pipefail
@@ -118,11 +119,6 @@ jobs:
           fi
           "${BUILD_ARGS[@]}"
 
-      - name: Smoke test CodexBarCLI
-        shell: bash
-        run: |
-          set -euo pipefail
-
           SHOW_BIN_ARGS=(swift build -c release --product CodexBarCLI --show-bin-path)
           if [[ -n "${{ matrix.build-arch }}" ]]; then
             SHOW_BIN_ARGS+=(--arch "${{ matrix.build-arch }}")
@@ -131,11 +127,25 @@ jobs:
             SHOW_BIN_ARGS+=(--static-swift-stdlib)
           fi
 
-          BIN_DIR="$("${SHOW_BIN_ARGS[@]}")"
+          echo "bin_dir=$("${SHOW_BIN_ARGS[@]}")" >> "$GITHUB_OUTPUT"
+
+      - name: Smoke test CodexBarCLI
+        timeout-minutes: 5
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          BIN_DIR="${{ steps.build.outputs.bin_dir }}"
           BIN="$BIN_DIR/CodexBarCLI"
-          "$BIN" --help >/dev/null
-          "$BIN" --version >/dev/null
-          file "$BIN" | grep -q "${{ matrix.asset-arch }}"
+          echo "BIN=$BIN"
+          "$BIN" --help
+          "$BIN" --version
+          file "$BIN"
+          if [[ "${{ matrix.platform }}" == "macos" ]]; then
+            lipo -archs "$BIN" | tr ' ' '\n' | grep -Fx "${{ matrix.asset-arch }}"
+          else
+            file "$BIN" | grep -q "${{ matrix.asset-arch }}"
+          fi
 
       - name: Package
         id: pkg
@@ -150,15 +160,7 @@ jobs:
           fi
           SAFE_REF_NAME="${REF_NAME//\//-}"
 
-          SHOW_BIN_ARGS=(swift build -c release --product CodexBarCLI --show-bin-path)
-          if [[ -n "${{ matrix.build-arch }}" ]]; then
-            SHOW_BIN_ARGS+=(--arch "${{ matrix.build-arch }}")
-          fi
-          if [[ "${{ matrix.static-swift-stdlib }}" == "true" ]]; then
-            SHOW_BIN_ARGS+=(--static-swift-stdlib)
-          fi
-
-          BIN_DIR="$("${SHOW_BIN_ARGS[@]}")"
+          BIN_DIR="${{ steps.build.outputs.bin_dir }}"
           OUT_DIR="$(mktemp -d)"
           install -m 0755 "$BIN_DIR/CodexBarCLI" "$OUT_DIR/CodexBarCLI"
           ln -s "CodexBarCLI" "$OUT_DIR/codexbar"
