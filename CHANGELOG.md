@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.24 — Unreleased
+## 0.24 — 2026-05-06
 
 ### Providers & Usage
 - Windsurf: add provider support with web-session usage fetching and local SQLite-cache fallback (#583). Thanks @Coooolfan!
