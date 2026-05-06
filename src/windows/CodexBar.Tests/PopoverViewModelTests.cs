@@ -9,6 +9,7 @@ public sealed class PopoverViewModelTests
     [TestMethod]
     public void BuildsTabsAndActiveSnapshot()
     {
+        var now = new DateTimeOffset(2030, 1, 1, 12, 0, 0, TimeSpan.Zero);
         var snapshots = new[]
         {
             new UsageSnapshot(
@@ -43,12 +44,56 @@ public sealed class PopoverViewModelTests
                 true)
         };
 
-        var vm = new PopoverViewModel(snapshots, UsageProvider.Claude, showUsageAsUsed: true);
+        var vm = new PopoverViewModel(snapshots, UsageProvider.Claude, showUsageAsUsed: true, now: now);
 
         Assert.AreEqual("Claude", vm.ActiveSnapshot!.DisplayName);
         Assert.AreEqual(2, vm.Tabs.Count);
         Assert.AreEqual("30%", vm.Tabs[1].PercentText);
+        Assert.AreEqual(30, vm.Tabs[1].ProgressPercent);
+        Assert.IsFalse(string.IsNullOrWhiteSpace(vm.Tabs[1].IconGeometry));
         Assert.IsTrue(vm.Tabs[1].IsStale);
+    }
+
+    [TestMethod]
+    public void BuildsOriginalMenuCardRows()
+    {
+        var now = new DateTimeOffset(2030, 1, 1, 12, 0, 0, TimeSpan.Zero);
+        var snapshots = new[]
+        {
+            new UsageSnapshot(
+                UsageProvider.Claude,
+                "Claude",
+                now,
+                new[]
+                {
+                    new RateWindow("session", "Session", 2, now.AddHours(3).AddMinutes(53), null),
+                    new RateWindow("weekly", "Weekly", 3, now.AddDays(3).AddHours(20), null),
+                    new RateWindow("sonnet", "Sonnet", 0, null, null)
+                },
+                null,
+                "Max",
+                null,
+                0.04m,
+                15000,
+                254.24m,
+                218000000,
+                "test",
+                null,
+                false)
+        };
+
+        var vm = new PopoverViewModel(snapshots, UsageProvider.Claude, showUsageAsUsed: true, now: now);
+
+        Assert.AreEqual("Updated just now", vm.UpdatedText);
+        Assert.AreEqual("Max", vm.PlanText);
+        Assert.AreEqual(3, vm.Metrics.Count);
+        Assert.AreEqual("2% used", vm.Metrics[0].PercentText);
+        Assert.AreEqual("Resets in 3h 53m", vm.Metrics[0].ResetText);
+        Assert.AreEqual("Today: $0.04 \u00b7 15K tokens", vm.CostTodayText);
+        Assert.AreEqual("Last 30 days: $254.24 \u00b7 218M tokens", vm.CostLast30DaysText);
+        CollectionAssert.AreEqual(
+            new[] { "Add Account...", "Usage Dashboard", "Status Page", "Settings...", "About CodexBar", "Quit" },
+            vm.FooterRows.Select(row => row.Title).ToArray());
     }
 
     [TestMethod]
@@ -83,13 +128,14 @@ public sealed class PopoverViewModelTests
     [TestMethod]
     public void SelectProviderCommandUpdatesActiveProviderAndTabs()
     {
+        var now = new DateTimeOffset(2030, 1, 1, 12, 0, 0, TimeSpan.Zero);
         var snapshots = new[]
         {
             new UsageSnapshot(
                 UsageProvider.Codex,
                 "Codex",
-                DateTimeOffset.Now,
-                new[] { new RateWindow("session", "Session", 20, null, null) },
+                now,
+                new[] { new RateWindow("session", "Session", 20, now.AddMinutes(45), null) },
                 null,
                 null,
                 null,
@@ -103,7 +149,7 @@ public sealed class PopoverViewModelTests
             new UsageSnapshot(
                 UsageProvider.Claude,
                 "Claude",
-                DateTimeOffset.Now,
+                now,
                 new[] { new RateWindow("session", "Session", 30, null, null) },
                 null,
                 null,

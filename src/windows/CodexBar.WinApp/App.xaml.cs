@@ -78,7 +78,9 @@ public partial class App : System.Windows.Application
             openDashboard: ShowUsageDashboard,
             openSettings: ShowSettings,
             showAbout: ShowAbout,
-            quit: Shutdown);
+            quit: Shutdown,
+            addAccount: ShowSettings,
+            openStatusPage: ShowStatusPage);
         popover = new PopoverWindow(viewModel);
         popover.Closed += (_, _) => popover = null;
         popover.Show();
@@ -116,6 +118,12 @@ public partial class App : System.Windows.Application
     private static void ShowUsageDashboard()
     {
         const string message = "Usage dashboard actions will open provider dashboards after Task 8 wires live providers.";
+        System.Windows.MessageBox.Show(message, "CodexBar");
+    }
+
+    private static void ShowStatusPage()
+    {
+        const string message = "Status page actions will open provider status pages after live provider wiring is complete.";
         System.Windows.MessageBox.Show(message, "CodexBar");
     }
 
@@ -225,7 +233,9 @@ public partial class App : System.Windows.Application
             openDashboard: ShowUsageDashboard,
             openSettings: ShowSettings,
             showAbout: ShowAbout,
-            quit: Shutdown);
+            quit: Shutdown,
+            addAccount: ShowSettings,
+            openStatusPage: ShowStatusPage);
     }
 
     public static TrayDisplayModel BuildTrayDisplay(IReadOnlyList<UsageSnapshot> snapshots)

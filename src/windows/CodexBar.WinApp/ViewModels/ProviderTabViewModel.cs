@@ -6,5 +6,8 @@ public sealed record ProviderTabViewModel(
     UsageProvider Provider,
     string Title,
     string PercentText,
+    double ProgressPercent,
+    string IconGeometry,
+    string ProgressColor,
     bool IsActive,
     bool IsStale);

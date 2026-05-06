@@ -23,7 +23,7 @@ public sealed class WpfShellTests
             CultureInfo.InvariantCulture);
 
         Assert.AreEqual(MediaColor.FromRgb(47, 123, 246), active.Color);
-        Assert.AreEqual(MediaColor.FromArgb(45, 255, 255, 255), inactive.Color);
+        Assert.AreEqual(MediaColor.FromArgb(0, 255, 255, 255), inactive.Color);
     }
 
     [TestMethod]
