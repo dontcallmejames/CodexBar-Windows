@@ -39,7 +39,7 @@ public static class ClaudeUsageMapper
                 ?? Clean(credentials?.SubscriptionType)
                 ?? PlanFromTier(response.Account?.RateLimitTier ?? credentials?.RateLimitTier),
             null,
-            response.ExtraUsage?.UsedUsd,
+            UsedCostUsd(response.ExtraUsage),
             null,
             null,
             null,
@@ -88,6 +88,16 @@ public static class ClaudeUsageMapper
         DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var parsed)
             ? parsed.ToUniversalTime()
             : null;
+
+    private static decimal? UsedCostUsd(ClaudeExtraUsage? extra)
+    {
+        if (extra is null || extra.IsEnabled == false)
+        {
+            return null;
+        }
+
+        return extra.UsedUsd ?? extra.UsedCredits / 100m;
+    }
 
     private static string? PlanFromTier(string? rateLimitTier)
     {
