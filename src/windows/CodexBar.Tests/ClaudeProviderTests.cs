@@ -81,18 +81,29 @@ public sealed class ClaudeProviderTests
                 Content = new StringContent("""
                 {
                   "five_hour": { "utilization": 4, "resets_at": "2030-01-01T00:00:00Z" },
-                  "account": { "email": "claude@example.com", "subscription_type": "Team" }
+                  "account": { "email": "claude@example.com", "subscription_type": "Team" },
+                  "extra_usage": { "used_usd": 12.34 }
                 }
                 """)
+            },
+            new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("{}")
+            },
+            new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("{}")
             });
         using var httpClient = new HttpClient(handler);
         var provider = new ClaudeProvider(httpClient, new TestAppPaths(credentialsPath), "sessionKey=sk-ant-123");
 
         var snapshot = await provider.RefreshAsync(CancellationToken.None);
 
-        Assert.AreEqual(2, handler.Requests.Count);
+        Assert.AreEqual(4, handler.Requests.Count);
         Assert.AreEqual(new Uri("https://claude.ai/api/organizations"), handler.Requests[0].RequestUri);
         Assert.AreEqual(new Uri("https://claude.ai/api/organizations/api-only-org/usage"), handler.Requests[1].RequestUri);
+        Assert.AreEqual(new Uri("https://claude.ai/api/account"), handler.Requests[2].RequestUri);
+        Assert.AreEqual(new Uri("https://claude.ai/api/organizations/api-only-org/overage_spend_limit"), handler.Requests[3].RequestUri);
         foreach (var request in handler.Requests)
         {
             Assert.IsTrue(request.Headers.TryGetValues("Cookie", out var cookies));
@@ -104,6 +115,119 @@ public sealed class ClaudeProviderTests
         Assert.AreEqual("web", snapshot.SourceLabel);
         Assert.AreEqual("claude@example.com", snapshot.AccountEmail);
         Assert.AreEqual("Team", snapshot.Plan);
+        Assert.AreEqual(12.34m, snapshot.TodayCostUsd);
+    }
+
+    [TestMethod]
+    public async Task ManualCookieMergesAccountAndOverageWhenUsageOmitsThem()
+    {
+        var credentialsPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), ".credentials.json");
+        using var handler = new QueueHandler(
+            new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("""
+                [
+                  { "uuid": "org-123", "name": "Claude Org" }
+                ]
+                """)
+            },
+            new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("""
+                {
+                  "five_hour": { "utilization": 4, "resets_at": "2030-01-01T00:00:00Z" }
+                }
+                """)
+            },
+            new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("""
+                {
+                  "email_address": "account@example.com",
+                  "memberships": [
+                    {
+                      "organization": {
+                        "uuid": "org-123",
+                        "rate_limit_tier": "claude_team",
+                        "billing_type": "stripe"
+                      }
+                    }
+                  ]
+                }
+                """)
+            },
+            new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("""
+                {
+                  "is_enabled": true,
+                  "used_credits": 1234,
+                  "monthly_credit_limit": 5000,
+                  "currency": "USD"
+                }
+                """)
+            });
+        using var httpClient = new HttpClient(handler);
+        var provider = new ClaudeProvider(httpClient, new TestAppPaths(credentialsPath), "sessionKey=sk-ant-123");
+
+        var snapshot = await provider.RefreshAsync(CancellationToken.None);
+
+        Assert.AreEqual(4, handler.Requests.Count);
+        Assert.AreEqual(new Uri("https://claude.ai/api/account"), handler.Requests[2].RequestUri);
+        Assert.AreEqual(new Uri("https://claude.ai/api/organizations/org-123/overage_spend_limit"), handler.Requests[3].RequestUri);
+        Assert.AreEqual("account@example.com", snapshot.AccountEmail);
+        Assert.AreEqual("Team", snapshot.Plan);
+        Assert.AreEqual(12.34m, snapshot.TodayCostUsd);
+    }
+
+    [TestMethod]
+    public async Task OAuthWithoutUserProfileScopeFallsBackToManualCookie()
+    {
+        var credentialsPath = await WriteCredentialsFileAsync("""
+        {
+          "claudeAiOauth": {
+            "accessToken": "access-123",
+            "refreshToken": "refresh-456",
+            "scopes": ["user:inference"]
+          }
+        }
+        """);
+        using var handler = new QueueHandler(
+            new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("""
+                [
+                  { "uuid": "org-123", "name": "Claude Org" }
+                ]
+                """)
+            },
+            new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("""
+                {
+                  "five_hour": { "utilization": 4, "resets_at": "2030-01-01T00:00:00Z" }
+                }
+                """)
+            },
+            new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("""
+                { "email_address": "fallback@example.com" }
+                """)
+            },
+            new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("{}")
+            });
+        using var httpClient = new HttpClient(handler);
+        var provider = new ClaudeProvider(httpClient, new TestAppPaths(credentialsPath), "sessionKey=sk-ant-123");
+
+        var snapshot = await provider.RefreshAsync(CancellationToken.None);
+
+        Assert.IsFalse(handler.Requests.Any(request => request.RequestUri?.Host == "api.anthropic.com"));
+        Assert.AreEqual(new Uri("https://claude.ai/api/organizations"), handler.Requests[0].RequestUri);
+        Assert.AreEqual("web", snapshot.SourceLabel);
+        Assert.AreEqual("fallback@example.com", snapshot.AccountEmail);
     }
 
     private static async Task<string> WriteCredentialsFileAsync(string json)
