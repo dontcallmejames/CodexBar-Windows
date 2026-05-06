@@ -862,7 +862,7 @@ git commit -m "Add Codex OAuth provider"
 - Test: `src/windows/CodexBar.Tests/ClaudeUsageMapperTests.cs`
 - Test: `src/windows/CodexBar.Tests/ClaudeOAuthCredentialsTests.cs`
 
-- [ ] **Step 1: Write failing Claude mapper tests**
+- [x] **Step 1: Write failing Claude mapper tests**
 
 Create `src/windows/CodexBar.Tests/ClaudeUsageMapperTests.cs`:
 
@@ -911,7 +911,7 @@ dotnet test src\windows\CodexBar.Tests\CodexBar.Tests.csproj --filter ClaudeUsag
 
 Expected: FAIL because Claude types do not exist.
 
-- [ ] **Step 2: Implement Claude usage models and mapper**
+- [x] **Step 2: Implement Claude usage models and mapper**
 
 Create `src/windows/CodexBar.Core/Providers/Claude/ClaudeUsageModels.cs`:
 
@@ -994,7 +994,7 @@ public static class ClaudeUsageMapper
 }
 ```
 
-- [ ] **Step 3: Write failing Claude credentials tests**
+- [x] **Step 3: Write failing Claude credentials tests**
 
 Create `src/windows/CodexBar.Tests/ClaudeOAuthCredentialsTests.cs`:
 
@@ -1038,7 +1038,7 @@ dotnet test src\windows\CodexBar.Tests\CodexBar.Tests.csproj --filter ClaudeOAut
 
 Expected: FAIL because `ClaudeOAuthCredentials` does not exist.
 
-- [ ] **Step 4: Implement Claude credentials and provider**
+- [x] **Step 4: Implement Claude credentials and provider**
 
 Create `src/windows/CodexBar.Core/Providers/Claude/ClaudeOAuthCredentials.cs`:
 
@@ -1158,7 +1158,7 @@ public sealed class ClaudeProvider : IUsageProvider
 }
 ```
 
-- [ ] **Step 5: Run Claude tests**
+- [x] **Step 5: Run Claude tests**
 
 Run:
 
@@ -1168,7 +1168,7 @@ dotnet test src\windows\CodexBar.Tests\CodexBar.Tests.csproj --filter "ClaudeUsa
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```powershell
 git add src\windows
