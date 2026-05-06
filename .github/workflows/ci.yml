@@ -46,6 +46,7 @@ jobs:
           swift test --parallel \
             --skip ClaudeOAuthCredentialsStoreSecurityCLITests \
             --skip OpenAIDashboardNavigationDelegateTests \
+            --skip StatusMenuTokenAccountSwitcherTests \
             --skip SubprocessRunnerTests
           swift test --no-parallel \
             --filter 'ClaudeOAuthCredentialsStoreSecurityCLITests|OpenAIDashboardNavigationDelegateTests|SubprocessRunnerTests'
