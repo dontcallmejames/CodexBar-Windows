@@ -145,12 +145,7 @@ public sealed class PopoverViewModel : INotifyPropertyChanged
             ProgressColor(snapshot.Provider),
             snapshot.Provider == ActiveProvider,
             snapshot.IsStale)).ToArray();
-        Metrics = selectedSnapshot?.Windows.Select(window => new PopoverMetricViewModel(
-            window.Title,
-            FormatPercentValue(window, ShowUsageAsUsed),
-            $"{FormatPercent(window, ShowUsageAsUsed)} {(ShowUsageAsUsed ? "used" : "left")}",
-            window.ResetsAt is null ? string.Empty : $"Resets {FormatRelative(window.ResetsAt.Value, now)}",
-            ProgressColor(ActiveProvider))).ToArray() ?? Array.Empty<PopoverMetricViewModel>();
+        Metrics = BuildMetrics(selectedSnapshot);
         UpdatedText = selectedSnapshot is null ? string.Empty : $"Updated {FormatUpdatedText(selectedSnapshot.UpdatedAt, now)}";
         PlanText = selectedSnapshot?.Plan ?? string.Empty;
         CostTodayText = FormatCostLine("Today", selectedSnapshot?.TodayCostUsd, selectedSnapshot?.TodayTokens);
@@ -170,6 +165,36 @@ public sealed class PopoverViewModel : INotifyPropertyChanged
 
         var value = showUsageAsUsed ? window.UsedPercent : window.PercentLeft;
         return $"{Math.Round(value):0}%";
+    }
+
+    private IReadOnlyList<PopoverMetricViewModel> BuildMetrics(UsageSnapshot? snapshot)
+    {
+        if (snapshot is null)
+        {
+            return Array.Empty<PopoverMetricViewModel>();
+        }
+
+        if (snapshot.Windows.Count == 0)
+        {
+            return new[]
+            {
+                new PopoverMetricViewModel(
+                    "No usage data",
+                    0,
+                    string.IsNullOrWhiteSpace(snapshot.ErrorMessage)
+                        ? "No usage windows are available for this provider."
+                        : snapshot.ErrorMessage,
+                    string.Empty,
+                    ProgressColor(snapshot.Provider))
+            };
+        }
+
+        return snapshot.Windows.Select(window => new PopoverMetricViewModel(
+            window.Title,
+            FormatPercentValue(window, ShowUsageAsUsed),
+            $"{FormatPercent(window, ShowUsageAsUsed)} {(ShowUsageAsUsed ? "used" : "left")}",
+            window.ResetsAt is null ? string.Empty : $"Resets {FormatRelative(window.ResetsAt.Value, now)}",
+            ProgressColor(snapshot.Provider))).ToArray();
     }
 
     private static double FormatPercentValue(RateWindow? window, bool showUsageAsUsed)

@@ -97,6 +97,25 @@ public sealed class PopoverViewModelTests
     }
 
     [TestMethod]
+    public void BuildsPlaceholderMetricWhenActiveSnapshotHasNoWindows()
+    {
+        var snapshots = new[]
+        {
+            UsageSnapshot.MissingCredentials(
+                UsageProvider.Claude,
+                "Claude",
+                "Claude OAuth token expired. Run claude login, then retry.")
+        };
+
+        var vm = new PopoverViewModel(snapshots, UsageProvider.Claude, showUsageAsUsed: true);
+
+        Assert.AreEqual(1, vm.Metrics.Count);
+        Assert.AreEqual("No usage data", vm.Metrics[0].Title);
+        Assert.AreEqual("Claude OAuth token expired. Run claude login, then retry.", vm.Metrics[0].PercentText);
+        Assert.AreEqual(0, vm.Metrics[0].ProgressPercent);
+    }
+
+    [TestMethod]
     public void SelectsFallbackTabWhenActiveProviderIsMissing()
     {
         var snapshots = new[]

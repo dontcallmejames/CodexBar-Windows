@@ -63,6 +63,88 @@ public sealed class ClaudeProviderTests
     }
 
     [TestMethod]
+    public async Task OAuthUnauthorizedRefreshesTokenAndRetriesUsage()
+    {
+        var credentialsPath = await WriteCredentialsFileAsync("""
+        {
+          "claudeAiOauth": {
+            "accessToken": "expired-access",
+            "refreshToken": "refresh-456",
+            "expiresAt": 1,
+            "scopes": ["user:profile"],
+            "subscriptionType": "Max",
+            "rateLimitTier": "default_claude_max_5x"
+          }
+        }
+        """);
+        using var handler = new QueueHandler(
+            new HttpResponseMessage(HttpStatusCode.Unauthorized),
+            new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("""
+                {
+                  "access_token": "fresh-access",
+                  "refresh_token": "fresh-refresh",
+                  "expires_in": 3600
+                }
+                """)
+            },
+            new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("""
+                {
+                  "five_hour": { "utilization": 7, "resets_at": "2030-01-01T00:00:00Z" }
+                }
+                """)
+            });
+        using var httpClient = new HttpClient(handler);
+        var provider = new ClaudeProvider(httpClient, new TestAppPaths(credentialsPath));
+
+        var snapshot = await provider.RefreshAsync(CancellationToken.None);
+
+        Assert.AreEqual(3, handler.Requests.Count);
+        Assert.AreEqual(new Uri("https://api.anthropic.com/api/oauth/usage"), handler.Requests[0].RequestUri);
+        Assert.AreEqual(new Uri("https://platform.claude.com/v1/oauth/token"), handler.Requests[1].RequestUri);
+        Assert.AreEqual("application/x-www-form-urlencoded", handler.Requests[1].Content!.Headers.ContentType!.MediaType);
+        var refreshBody = handler.RequestBodies[1];
+        StringAssert.Contains(refreshBody, "grant_type=refresh_token");
+        StringAssert.Contains(refreshBody, "refresh_token=refresh-456");
+        StringAssert.Contains(refreshBody, "client_id=9d1c250a-e61b-44d9-88ed-5944d1962f5e");
+        Assert.AreEqual("fresh-access", handler.Requests[2].Headers.Authorization!.Parameter);
+        Assert.AreEqual(7, snapshot.Windows.Single().UsedPercent);
+        Assert.AreEqual("Max", snapshot.Plan);
+
+        var updatedJson = await File.ReadAllTextAsync(credentialsPath);
+        StringAssert.Contains(updatedJson, "fresh-access");
+        StringAssert.Contains(updatedJson, "fresh-refresh");
+    }
+
+    [TestMethod]
+    public async Task OAuthRateLimitThrowsRetryMessage()
+    {
+        var credentialsPath = await WriteCredentialsFileAsync("""
+        {
+          "claudeAiOauth": {
+            "accessToken": "access-123",
+            "refreshToken": "refresh-456",
+            "scopes": ["user:profile"]
+          }
+        }
+        """);
+        var response = new HttpResponseMessage((HttpStatusCode)429);
+        response.Headers.TryAddWithoutValidation("Retry-After", "120");
+        using var handler = new QueueHandler(response);
+        using var httpClient = new HttpClient(handler);
+        var provider = new ClaudeProvider(httpClient, new TestAppPaths(credentialsPath));
+
+        var error = await Assert.ThrowsExactlyAsync<InvalidOperationException>(
+            () => provider.RefreshAsync(CancellationToken.None));
+
+        StringAssert.Contains(error.Message, "Claude usage API is rate limited");
+        StringAssert.Contains(error.Message, "2m");
+    }
+
+    [TestMethod]
     public async Task ManualCookieFetchesOrganizationsThenUsage()
     {
         var credentialsPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), ".credentials.json");
@@ -309,11 +391,15 @@ public sealed class ClaudeProviderTests
         }
 
         public List<HttpRequestMessage> Requests { get; } = [];
+        public List<string?> RequestBodies { get; } = [];
 
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             Requests.Add(request);
-            return Task.FromResult(responses.Dequeue());
+            RequestBodies.Add(request.Content is null
+                ? null
+                : await request.Content.ReadAsStringAsync(cancellationToken));
+            return responses.Dequeue();
         }
     }
 
