@@ -1671,7 +1671,7 @@ git commit -m "Add Windows tray icon host"
 - Create: `src/windows/CodexBar.WinApp/Views/DockedOverviewWindow.xaml.cs`
 - Create: `src/windows/CodexBar.WinApp/Assets/codexbar.ico`
 
-- [ ] **Step 1: Add WPF app resource shell**
+- [x] **Step 1: Add WPF app resource shell**
 
 Create `src/windows/CodexBar.WinApp/App.xaml`:
 
@@ -1688,7 +1688,7 @@ Create `src/windows/CodexBar.WinApp/App.xaml`:
 </Application>
 ```
 
-- [ ] **Step 2: Add popover view**
+- [x] **Step 2: Add popover view**
 
 Create `src/windows/CodexBar.WinApp/Views/PopoverWindow.xaml`:
 
@@ -1763,7 +1763,7 @@ Create `src/windows/CodexBar.WinApp/Views/PopoverWindow.xaml`:
 </Window>
 ```
 
-- [ ] **Step 3: Add code-behind and converter**
+- [x] **Step 3: Add code-behind and converter**
 
 Create `src/windows/CodexBar.WinApp/Views/PopoverWindow.xaml.cs`:
 
@@ -1797,7 +1797,7 @@ public sealed class BooleanToBrushConverter : IValueConverter
 }
 ```
 
-- [ ] **Step 4: Add docked overview window**
+- [x] **Step 4: Add docked overview window**
 
 Create `src/windows/CodexBar.WinApp/Views/DockedOverviewWindow.xaml`:
 
@@ -1858,7 +1858,7 @@ public partial class DockedOverviewWindow : Window
 }
 ```
 
-- [ ] **Step 5: Add app bootstrap**
+- [x] **Step 5: Add app bootstrap**
 
 Create `src/windows/CodexBar.WinApp/App.xaml.cs`:
 
@@ -1951,7 +1951,7 @@ public partial class App : Application
 }
 ```
 
-- [ ] **Step 6: Build and run smoke test**
+- [x] **Step 6: Build and run smoke test**
 
 Run:
 
@@ -1962,7 +1962,7 @@ dotnet run --project src\windows\CodexBar.WinApp\CodexBar.WinApp.csproj
 
 Expected: app starts without a taskbar main window, tray icon appears, clicking it opens the preview popover.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```powershell
 git add src\windows
