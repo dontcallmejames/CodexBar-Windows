@@ -2112,7 +2112,7 @@ git commit -m "Wire Windows app to provider refresh"
 - Modify: `src/windows/CodexBar.WinApp/App.xaml.cs`
 - Test: `src/windows/CodexBar.Tests/DockedOverviewViewModelTests.cs`
 
-- [ ] **Step 1: Add docked overview view-model test**
+- [x] **Step 1: Add docked overview view-model test**
 
 Create `src/windows/CodexBar.Tests/DockedOverviewViewModelTests.cs`:
 
@@ -2151,7 +2151,7 @@ dotnet test src\windows\CodexBar.Tests\CodexBar.Tests.csproj --filter DockedOver
 
 Expected: PASS if Task 5 was implemented as written.
 
-- [ ] **Step 2: Add settings window**
+- [x] **Step 2: Add settings window**
 
 Create `src/windows/CodexBar.WinApp/ViewModels/SettingsViewModel.cs`:
 
@@ -2267,7 +2267,7 @@ public partial class SettingsWindow : Window
 }
 ```
 
-- [ ] **Step 3: Wire settings and docked overview in `App.xaml.cs`**
+- [x] **Step 3: Wire settings and docked overview in `App.xaml.cs`**
 
 Add fields:
 
@@ -2337,7 +2337,7 @@ private void UpdateDockedOverview()
 }
 ```
 
-- [ ] **Step 4: Build and run**
+- [x] **Step 4: Build and run**
 
 Run:
 
@@ -2348,7 +2348,7 @@ dotnet run --project src\windows\CodexBar.WinApp\CodexBar.WinApp.csproj
 
 Expected: tray menu Settings opens a settings window; enabling docked overview persists to `%APPDATA%\CodexBar\config.json` after Save.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```powershell
 git add src\windows
