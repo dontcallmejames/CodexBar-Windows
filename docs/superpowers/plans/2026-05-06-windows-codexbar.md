@@ -49,7 +49,7 @@ Install the .NET 9 SDK before executing scaffold/build tasks.
 **Files:**
 - No repo files modified.
 
-- [ ] **Step 1: Install .NET 9 SDK**
+- [x] **Step 1: Install .NET 9 SDK**
 
 Run from an elevated or normal PowerShell terminal:
 
@@ -59,7 +59,7 @@ winget install --id Microsoft.DotNet.SDK.9 --source winget
 
 Expected: winget installs the SDK or reports it is already installed.
 
-- [ ] **Step 2: Verify SDK availability**
+- [x] **Step 2: Verify SDK availability**
 
 Run:
 
@@ -69,7 +69,7 @@ dotnet --list-sdks
 
 Expected output includes a `9.0.xxx` SDK line.
 
-- [ ] **Step 3: Verify Windows desktop runtime**
+- [x] **Step 3: Verify Windows desktop runtime**
 
 Run:
 
@@ -540,7 +540,7 @@ dotnet test src\windows\CodexBar.Tests\CodexBar.Tests.csproj --filter "WindowsAp
 
 Expected: PASS.
 
-- [x] **Step 6: Commit**
+- [ ] **Step 6: Commit**
 
 ```powershell
 git add src\windows
@@ -843,7 +843,7 @@ dotnet test src\windows\CodexBar.Tests\CodexBar.Tests.csproj --filter "CodexOAut
 
 Expected: PASS.
 
-- [x] **Step 7: Commit**
+- [ ] **Step 7: Commit**
 
 ```powershell
 git add src\windows
@@ -1168,7 +1168,7 @@ dotnet test src\windows\CodexBar.Tests\CodexBar.Tests.csproj --filter "ClaudeUsa
 
 Expected: PASS.
 
-- [x] **Step 6: Commit**
+- [ ] **Step 6: Commit**
 
 ```powershell
 git add src\windows
@@ -1474,7 +1474,7 @@ dotnet test src\windows\CodexBar.Tests\CodexBar.Tests.csproj --filter "RefreshSc
 
 Expected: PASS.
 
-- [x] **Step 5: Commit**
+- [ ] **Step 5: Commit**
 
 ```powershell
 git add src\windows
@@ -1651,7 +1651,7 @@ dotnet test src\windows\CodexBar.Tests\CodexBar.Tests.csproj --filter MeterIconR
 
 Expected: PASS.
 
-- [x] **Step 5: Commit**
+- [ ] **Step 5: Commit**
 
 ```powershell
 git add src\windows
@@ -1962,7 +1962,7 @@ dotnet run --project src\windows\CodexBar.WinApp\CodexBar.WinApp.csproj
 
 Expected: app starts without a taskbar main window, tray icon appears, clicking it opens the preview popover.
 
-- [x] **Step 7: Commit**
+- [ ] **Step 7: Commit**
 
 ```powershell
 git add src\windows
@@ -2094,7 +2094,7 @@ dotnet run --project src\windows\CodexBar.WinApp\CodexBar.WinApp.csproj
 
 Expected: app starts, attempts Codex/Claude refresh, shows missing credential states if credentials are absent.
 
-- [x] **Step 4: Commit**
+- [ ] **Step 4: Commit**
 
 ```powershell
 git add src\windows
@@ -2348,7 +2348,7 @@ dotnet run --project src\windows\CodexBar.WinApp\CodexBar.WinApp.csproj
 
 Expected: tray menu Settings opens a settings window; enabling docked overview persists to `%APPDATA%\CodexBar\config.json` after Save.
 
-- [x] **Step 5: Commit**
+- [ ] **Step 5: Commit**
 
 ```powershell
 git add src\windows
@@ -2437,7 +2437,7 @@ Expected:
 - Settings saves `%APPDATA%\CodexBar\config.json`.
 - Docked overview appears only when enabled.
 
-- [x] **Step 5: Commit**
+- [ ] **Step 5: Commit**
 
 ```powershell
 git add README.md docs\windows.md src\windows
