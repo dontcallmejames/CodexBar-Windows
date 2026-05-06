@@ -118,19 +118,7 @@ public sealed class ClaudeProvider : IUsageProvider
             return null;
         }
 
-        return organizations.FirstOrDefault(HasChatCapability)
-            ?? organizations.FirstOrDefault(organization => !IsApiOnly(organization))
-            ?? organizations[0];
-    }
-
-    private static bool HasChatCapability(ClaudeOrganization organization) =>
-        organization.Capabilities?.Any(capability => string.Equals(capability, "chat", StringComparison.OrdinalIgnoreCase)) == true;
-
-    private static bool IsApiOnly(ClaudeOrganization organization)
-    {
-        var capabilities = organization.Capabilities;
-        return capabilities is { Count: > 0 }
-            && capabilities.All(capability => string.Equals(capability, "api", StringComparison.OrdinalIgnoreCase));
+        return organizations[0];
     }
 
     private static void AddJsonHeaders(HttpRequestMessage request)
