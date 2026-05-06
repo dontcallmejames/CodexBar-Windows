@@ -1,5 +1,6 @@
 using CodexBar.Core.Models;
-using CodexBar.Core.Refresh;
+using CodexBar.Core.Paths;
+using CodexBar.Core.Settings;
 using CodexBar.Tray;
 using CodexBar.WinApp.ViewModels;
 using CodexBar.WinApp.Views;
@@ -8,22 +9,43 @@ namespace CodexBar.WinApp;
 
 public partial class App : System.Windows.Application
 {
-    private readonly SnapshotStore store = new();
+    private readonly CancellationTokenSource shutdown = new();
+    private AppServices? services;
     private TrayIconHost? tray;
     private PopoverWindow? popover;
+    private bool isShuttingDown;
 
-    protected override void OnStartup(System.Windows.StartupEventArgs e)
+    protected override async void OnStartup(System.Windows.StartupEventArgs e)
     {
         base.OnStartup(e);
 
-        SeedPreviewData();
+        var paths = new WindowsAppPaths();
+        var settings = await LoadSettingsOrDefaultAsync(paths, shutdown.Token);
+        services = new AppServices(paths, settings);
+
         tray = new TrayIconHost(ShowPopover, ShowSettings, Shutdown);
-        tray.Update(new TrayDisplayModel("CodexBar", 72, false));
+        tray.Update(new TrayDisplayModel("CodexBar", 0, true));
+
+        try
+        {
+            await services.Scheduler.RefreshAllAsync(shutdown.Token);
+            if (!isShuttingDown && !shutdown.IsCancellationRequested)
+            {
+                UpdateTrayFromSnapshots();
+            }
+        }
+        catch (OperationCanceledException) when (shutdown.IsCancellationRequested)
+        {
+        }
     }
 
     protected override void OnExit(System.Windows.ExitEventArgs e)
     {
+        isShuttingDown = true;
+        shutdown.Cancel();
         tray?.Dispose();
+        services?.Dispose();
+        shutdown.Dispose();
         base.OnExit(e);
     }
 
@@ -36,10 +58,15 @@ public partial class App : System.Windows.Application
             return;
         }
 
+        if (services is null)
+        {
+            return;
+        }
+
         var viewModel = new PopoverViewModel(
-            store.All(),
+            services.Store.All(),
             UsageProvider.Codex,
-            showUsageAsUsed: true,
+            services.Settings.ShowUsageAsUsed,
             openDashboard: ShowUsageDashboard,
             openSettings: ShowSettings,
             showAbout: ShowAbout,
@@ -68,47 +95,39 @@ public partial class App : System.Windows.Application
         System.Windows.MessageBox.Show(message, "About CodexBar");
     }
 
-    private void SeedPreviewData()
+    private void UpdateTrayFromSnapshots()
     {
-        var now = DateTimeOffset.Now;
-        store.Set(new UsageSnapshot(
-            UsageProvider.Codex,
-            "Codex",
-            now,
-            new[]
-            {
-                new RateWindow("session", "5-hour", 8, now.AddHours(2), 300),
-                new RateWindow("weekly", "Weekly", 22, now.AddDays(3), 10080)
-            },
-            "dev@example.com",
-            "Pro",
-            42,
-            0.04m,
-            15000,
-            254.24m,
-            218000000,
-            "preview",
-            null,
-            false));
+        if (services is null || tray is null)
+        {
+            return;
+        }
 
-        store.Set(new UsageSnapshot(
-            UsageProvider.Claude,
-            "Claude",
-            now,
-            new[]
-            {
-                new RateWindow("session", "Session", 2, now.AddHours(4), null),
-                new RateWindow("weekly", "Weekly", 3, now.AddDays(4), null)
-            },
-            "claude@example.com",
-            "Max",
-            null,
-            0.00m,
-            null,
-            12.50m,
-            900000,
-            "preview",
-            null,
-            false));
+        tray.Update(BuildTrayDisplay(services.Store.All()));
+    }
+
+    public static TrayDisplayModel BuildTrayDisplay(IReadOnlyList<UsageSnapshot> snapshots)
+    {
+        var primary = snapshots
+            .SelectMany(snapshot => snapshot.Windows)
+            .OrderByDescending(window => window.UsedPercent)
+            .FirstOrDefault();
+        var percent = primary?.UsedPercent ?? 0;
+        var stale = snapshots.Count == 0 || snapshots.Any(snapshot => snapshot.IsStale);
+        return new TrayDisplayModel("CodexBar", percent, stale);
+    }
+
+    public static async Task<AppSettings> LoadSettingsOrDefaultAsync(
+        WindowsAppPaths paths,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var settingsStore = new JsonSettingsStore(paths.SettingsFile);
+            return await settingsStore.LoadAsync(cancellationToken);
+        }
+        catch (Exception error) when (error is System.IO.IOException or UnauthorizedAccessException or System.Text.Json.JsonException)
+        {
+            return AppSettings.Default;
+        }
     }
 }
