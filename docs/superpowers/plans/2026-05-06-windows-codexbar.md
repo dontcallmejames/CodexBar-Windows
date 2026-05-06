@@ -49,7 +49,7 @@ Install the .NET 9 SDK before executing scaffold/build tasks.
 **Files:**
 - No repo files modified.
 
-- [ ] **Step 1: Install .NET 9 SDK**
+- [x] **Step 1: Install .NET 9 SDK**
 
 Run from an elevated or normal PowerShell terminal:
 
@@ -59,7 +59,7 @@ winget install --id Microsoft.DotNet.SDK.9 --source winget
 
 Expected: winget installs the SDK or reports it is already installed.
 
-- [ ] **Step 2: Verify SDK availability**
+- [x] **Step 2: Verify SDK availability**
 
 Run:
 
@@ -69,7 +69,7 @@ dotnet --list-sdks
 
 Expected output includes a `9.0.xxx` SDK line.
 
-- [ ] **Step 3: Verify Windows desktop runtime**
+- [x] **Step 3: Verify Windows desktop runtime**
 
 Run:
 
@@ -92,7 +92,7 @@ Expected output includes `Microsoft.WindowsDesktop.App 9.0.x`.
 - Create: `src/windows/CodexBar.Tests/CodexBar.Tests.csproj`
 - Create: `src/windows/CodexBar.Windows.sln`
 
-- [ ] **Step 1: Create the directory structure**
+- [x] **Step 1: Create the directory structure**
 
 Run:
 
@@ -102,7 +102,7 @@ New-Item -ItemType Directory -Force -Path src\windows\CodexBar.Core,src\windows\
 
 Expected: all four directories exist.
 
-- [ ] **Step 2: Create `src/windows/global.json`**
+- [x] **Step 2: Create `src/windows/global.json`**
 
 ```json
 {
@@ -113,7 +113,7 @@ Expected: all four directories exist.
 }
 ```
 
-- [ ] **Step 3: Create `src/windows/Directory.Build.props`**
+- [x] **Step 3: Create `src/windows/Directory.Build.props`**
 
 ```xml
 <Project>
@@ -127,7 +127,7 @@ Expected: all four directories exist.
 </Project>
 ```
 
-- [ ] **Step 4: Create project files**
+- [x] **Step 4: Create project files**
 
 `src/windows/CodexBar.Core/CodexBar.Core.csproj`:
 
@@ -190,7 +190,7 @@ Expected: all four directories exist.
 </Project>
 ```
 
-- [ ] **Step 5: Generate and populate solution file**
+- [x] **Step 5: Generate and populate solution file**
 
 Run:
 
@@ -206,7 +206,7 @@ Pop-Location
 
 Expected: solution contains all four projects.
 
-- [ ] **Step 6: Verify scaffold builds**
+- [x] **Step 6: Verify scaffold builds**
 
 Run:
 
@@ -216,7 +216,7 @@ dotnet build src\windows\CodexBar.Windows.sln
 
 Expected: build succeeds with four projects and no warnings.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```powershell
 git add src\windows
@@ -239,7 +239,7 @@ git commit -m "Scaffold Windows CodexBar solution"
 - Test: `src/windows/CodexBar.Tests/WindowsAppPathsTests.cs`
 - Test: `src/windows/CodexBar.Tests/JsonSettingsStoreTests.cs`
 
-- [ ] **Step 1: Write failing path tests**
+- [x] **Step 1: Write failing path tests**
 
 Create `src/windows/CodexBar.Tests/WindowsAppPathsTests.cs`:
 
@@ -283,7 +283,7 @@ dotnet test src\windows\CodexBar.Tests\CodexBar.Tests.csproj --filter WindowsApp
 
 Expected: FAIL because `WindowsAppPaths` does not exist.
 
-- [ ] **Step 2: Add model and path implementation**
+- [x] **Step 2: Add model and path implementation**
 
 Create `src/windows/CodexBar.Core/Models/UsageProvider.cs`:
 
@@ -404,7 +404,7 @@ public sealed class WindowsAppPaths : IAppPaths
 }
 ```
 
-- [ ] **Step 3: Write failing settings tests**
+- [x] **Step 3: Write failing settings tests**
 
 Create `src/windows/CodexBar.Tests/JsonSettingsStoreTests.cs`:
 
@@ -453,7 +453,7 @@ dotnet test src\windows\CodexBar.Tests\CodexBar.Tests.csproj --filter JsonSettin
 
 Expected: FAIL because settings types do not exist.
 
-- [ ] **Step 4: Add settings implementation**
+- [x] **Step 4: Add settings implementation**
 
 Create `src/windows/CodexBar.Core/Settings/AppSettings.cs`:
 
@@ -530,7 +530,7 @@ public sealed class JsonSettingsStore
 }
 ```
 
-- [ ] **Step 5: Run tests**
+- [x] **Step 5: Run tests**
 
 Run:
 
@@ -540,7 +540,7 @@ dotnet test src\windows\CodexBar.Tests\CodexBar.Tests.csproj --filter "WindowsAp
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```powershell
 git add src\windows
@@ -560,7 +560,7 @@ git commit -m "Add Windows core models and settings"
 - Test: `src/windows/CodexBar.Tests/CodexOAuthUsageMapperTests.cs`
 - Test: `src/windows/CodexBar.Tests/CodexOAuthCredentialsTests.cs`
 
-- [ ] **Step 1: Write failing Codex mapper tests**
+- [x] **Step 1: Write failing Codex mapper tests**
 
 Create `src/windows/CodexBar.Tests/CodexOAuthUsageMapperTests.cs`:
 
@@ -609,7 +609,7 @@ dotnet test src\windows\CodexBar.Tests\CodexBar.Tests.csproj --filter CodexOAuth
 
 Expected: FAIL because Codex mapper types do not exist.
 
-- [ ] **Step 2: Add provider contract and Codex models**
+- [x] **Step 2: Add provider contract and Codex models**
 
 Create `src/windows/CodexBar.Core/Providers/IUsageProvider.cs`:
 
@@ -699,7 +699,7 @@ public static class CodexOAuthUsageMapper
 }
 ```
 
-- [ ] **Step 3: Run mapper tests**
+- [x] **Step 3: Run mapper tests**
 
 Run:
 
@@ -709,7 +709,7 @@ dotnet test src\windows\CodexBar.Tests\CodexBar.Tests.csproj --filter CodexOAuth
 
 Expected: PASS.
 
-- [ ] **Step 4: Write failing credential tests**
+- [x] **Step 4: Write failing credential tests**
 
 Create `src/windows/CodexBar.Tests/CodexOAuthCredentialsTests.cs`:
 
@@ -751,7 +751,7 @@ dotnet test src\windows\CodexBar.Tests\CodexBar.Tests.csproj --filter CodexOAuth
 
 Expected: FAIL because `CodexOAuthCredentials` does not exist.
 
-- [ ] **Step 5: Implement Codex credentials and provider**
+- [x] **Step 5: Implement Codex credentials and provider**
 
 Create `src/windows/CodexBar.Core/Providers/Codex/CodexOAuthCredentials.cs`:
 
@@ -833,7 +833,7 @@ public sealed class CodexProvider : IUsageProvider
 }
 ```
 
-- [ ] **Step 6: Run Codex tests**
+- [x] **Step 6: Run Codex tests**
 
 Run:
 
@@ -843,7 +843,7 @@ dotnet test src\windows\CodexBar.Tests\CodexBar.Tests.csproj --filter "CodexOAut
 
 Expected: PASS.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```powershell
 git add src\windows
@@ -862,7 +862,7 @@ git commit -m "Add Codex OAuth provider"
 - Test: `src/windows/CodexBar.Tests/ClaudeUsageMapperTests.cs`
 - Test: `src/windows/CodexBar.Tests/ClaudeOAuthCredentialsTests.cs`
 
-- [ ] **Step 1: Write failing Claude mapper tests**
+- [x] **Step 1: Write failing Claude mapper tests**
 
 Create `src/windows/CodexBar.Tests/ClaudeUsageMapperTests.cs`:
 
@@ -911,7 +911,7 @@ dotnet test src\windows\CodexBar.Tests\CodexBar.Tests.csproj --filter ClaudeUsag
 
 Expected: FAIL because Claude types do not exist.
 
-- [ ] **Step 2: Implement Claude usage models and mapper**
+- [x] **Step 2: Implement Claude usage models and mapper**
 
 Create `src/windows/CodexBar.Core/Providers/Claude/ClaudeUsageModels.cs`:
 
@@ -994,7 +994,7 @@ public static class ClaudeUsageMapper
 }
 ```
 
-- [ ] **Step 3: Write failing Claude credentials tests**
+- [x] **Step 3: Write failing Claude credentials tests**
 
 Create `src/windows/CodexBar.Tests/ClaudeOAuthCredentialsTests.cs`:
 
@@ -1038,7 +1038,7 @@ dotnet test src\windows\CodexBar.Tests\CodexBar.Tests.csproj --filter ClaudeOAut
 
 Expected: FAIL because `ClaudeOAuthCredentials` does not exist.
 
-- [ ] **Step 4: Implement Claude credentials and provider**
+- [x] **Step 4: Implement Claude credentials and provider**
 
 Create `src/windows/CodexBar.Core/Providers/Claude/ClaudeOAuthCredentials.cs`:
 
@@ -1158,7 +1158,7 @@ public sealed class ClaudeProvider : IUsageProvider
 }
 ```
 
-- [ ] **Step 5: Run Claude tests**
+- [x] **Step 5: Run Claude tests**
 
 Run:
 
@@ -1168,7 +1168,7 @@ dotnet test src\windows\CodexBar.Tests\CodexBar.Tests.csproj --filter "ClaudeUsa
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```powershell
 git add src\windows
@@ -1188,7 +1188,7 @@ git commit -m "Add Claude OAuth provider foundation"
 - Test: `src/windows/CodexBar.Tests/RefreshSchedulerTests.cs`
 - Test: `src/windows/CodexBar.Tests/PopoverViewModelTests.cs`
 
-- [ ] **Step 1: Write failing scheduler tests**
+- [x] **Step 1: Write failing scheduler tests**
 
 Create `src/windows/CodexBar.Tests/RefreshSchedulerTests.cs`:
 
@@ -1253,7 +1253,7 @@ dotnet test src\windows\CodexBar.Tests\CodexBar.Tests.csproj --filter RefreshSch
 
 Expected: FAIL because refresh classes do not exist.
 
-- [ ] **Step 2: Implement refresh store and scheduler**
+- [x] **Step 2: Implement refresh store and scheduler**
 
 Create `src/windows/CodexBar.Core/Refresh/SnapshotStore.cs`:
 
@@ -1333,7 +1333,7 @@ public sealed class RefreshScheduler
 }
 ```
 
-- [ ] **Step 3: Add view models**
+- [x] **Step 3: Add view models**
 
 Create `src/windows/CodexBar.WinApp/ViewModels/ProviderTabViewModel.cs`:
 
@@ -1434,7 +1434,7 @@ public sealed class DockedOverviewViewModel
 }
 ```
 
-- [ ] **Step 4: Write and run popover view-model tests**
+- [x] **Step 4: Write and run popover view-model tests**
 
 Create `src/windows/CodexBar.Tests/PopoverViewModelTests.cs`:
 
@@ -1474,7 +1474,7 @@ dotnet test src\windows\CodexBar.Tests\CodexBar.Tests.csproj --filter "RefreshSc
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```powershell
 git add src\windows
@@ -1491,7 +1491,7 @@ git commit -m "Add Windows refresh and view models"
 - Create: `src/windows/CodexBar.Tray/TrayIconHost.cs`
 - Test: `src/windows/CodexBar.Tests/MeterIconRendererTests.cs`
 
-- [ ] **Step 1: Write failing tray renderer test**
+- [x] **Step 1: Write failing tray renderer test**
 
 Create `src/windows/CodexBar.Tests/MeterIconRendererTests.cs`:
 
@@ -1522,7 +1522,7 @@ dotnet test src\windows\CodexBar.Tests\CodexBar.Tests.csproj --filter MeterIconR
 
 Expected: FAIL because tray renderer does not exist.
 
-- [ ] **Step 2: Implement tray display and renderer**
+- [x] **Step 2: Implement tray display and renderer**
 
 Create `src/windows/CodexBar.Tray/TrayDisplayModel.cs`:
 
@@ -1584,7 +1584,7 @@ internal static class GraphicsExtensions
 }
 ```
 
-- [ ] **Step 3: Implement tray host**
+- [x] **Step 3: Implement tray host**
 
 Create `src/windows/CodexBar.Tray/TrayIconHost.cs`:
 
@@ -1641,7 +1641,7 @@ public sealed class TrayIconHost : IDisposable
 }
 ```
 
-- [ ] **Step 4: Run tray tests**
+- [x] **Step 4: Run tray tests**
 
 Run:
 
@@ -1651,7 +1651,7 @@ dotnet test src\windows\CodexBar.Tests\CodexBar.Tests.csproj --filter MeterIconR
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```powershell
 git add src\windows
@@ -1671,7 +1671,7 @@ git commit -m "Add Windows tray icon host"
 - Create: `src/windows/CodexBar.WinApp/Views/DockedOverviewWindow.xaml.cs`
 - Create: `src/windows/CodexBar.WinApp/Assets/codexbar.ico`
 
-- [ ] **Step 1: Add WPF app resource shell**
+- [x] **Step 1: Add WPF app resource shell**
 
 Create `src/windows/CodexBar.WinApp/App.xaml`:
 
@@ -1688,7 +1688,7 @@ Create `src/windows/CodexBar.WinApp/App.xaml`:
 </Application>
 ```
 
-- [ ] **Step 2: Add popover view**
+- [x] **Step 2: Add popover view**
 
 Create `src/windows/CodexBar.WinApp/Views/PopoverWindow.xaml`:
 
@@ -1763,7 +1763,7 @@ Create `src/windows/CodexBar.WinApp/Views/PopoverWindow.xaml`:
 </Window>
 ```
 
-- [ ] **Step 3: Add code-behind and converter**
+- [x] **Step 3: Add code-behind and converter**
 
 Create `src/windows/CodexBar.WinApp/Views/PopoverWindow.xaml.cs`:
 
@@ -1797,7 +1797,7 @@ public sealed class BooleanToBrushConverter : IValueConverter
 }
 ```
 
-- [ ] **Step 4: Add docked overview window**
+- [x] **Step 4: Add docked overview window**
 
 Create `src/windows/CodexBar.WinApp/Views/DockedOverviewWindow.xaml`:
 
@@ -1858,7 +1858,7 @@ public partial class DockedOverviewWindow : Window
 }
 ```
 
-- [ ] **Step 5: Add app bootstrap**
+- [x] **Step 5: Add app bootstrap**
 
 Create `src/windows/CodexBar.WinApp/App.xaml.cs`:
 
@@ -1951,7 +1951,7 @@ public partial class App : Application
 }
 ```
 
-- [ ] **Step 6: Build and run smoke test**
+- [x] **Step 6: Build and run smoke test**
 
 Run:
 
@@ -1962,7 +1962,7 @@ dotnet run --project src\windows\CodexBar.WinApp\CodexBar.WinApp.csproj
 
 Expected: app starts without a taskbar main window, tray icon appears, clicking it opens the preview popover.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```powershell
 git add src\windows
@@ -1980,7 +1980,7 @@ git commit -m "Add Windows tray popover UI"
 - Modify: `src/windows/CodexBar.Core/Providers/Codex/CodexProvider.cs`
 - Test: `src/windows/CodexBar.Tests/AppServicesTests.cs`
 
-- [ ] **Step 1: Add app service composition**
+- [x] **Step 1: Add app service composition**
 
 Create `src/windows/CodexBar.WinApp/AppServices.cs`:
 
@@ -2019,7 +2019,7 @@ public sealed class AppServices
 }
 ```
 
-- [ ] **Step 2: Replace preview-only app startup with real refresh**
+- [x] **Step 2: Replace preview-only app startup with real refresh**
 
 In `src/windows/CodexBar.WinApp/App.xaml.cs`, replace the preview `SnapshotStore` field with:
 
@@ -2083,7 +2083,7 @@ popover.Activate();
 
 Remove `SeedPreviewData()`.
 
-- [ ] **Step 3: Build and run**
+- [x] **Step 3: Build and run**
 
 Run:
 
@@ -2094,7 +2094,7 @@ dotnet run --project src\windows\CodexBar.WinApp\CodexBar.WinApp.csproj
 
 Expected: app starts, attempts Codex/Claude refresh, shows missing credential states if credentials are absent.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```powershell
 git add src\windows
@@ -2112,7 +2112,7 @@ git commit -m "Wire Windows app to provider refresh"
 - Modify: `src/windows/CodexBar.WinApp/App.xaml.cs`
 - Test: `src/windows/CodexBar.Tests/DockedOverviewViewModelTests.cs`
 
-- [ ] **Step 1: Add docked overview view-model test**
+- [x] **Step 1: Add docked overview view-model test**
 
 Create `src/windows/CodexBar.Tests/DockedOverviewViewModelTests.cs`:
 
@@ -2151,7 +2151,7 @@ dotnet test src\windows\CodexBar.Tests\CodexBar.Tests.csproj --filter DockedOver
 
 Expected: PASS if Task 5 was implemented as written.
 
-- [ ] **Step 2: Add settings window**
+- [x] **Step 2: Add settings window**
 
 Create `src/windows/CodexBar.WinApp/ViewModels/SettingsViewModel.cs`:
 
@@ -2267,7 +2267,7 @@ public partial class SettingsWindow : Window
 }
 ```
 
-- [ ] **Step 3: Wire settings and docked overview in `App.xaml.cs`**
+- [x] **Step 3: Wire settings and docked overview in `App.xaml.cs`**
 
 Add fields:
 
@@ -2337,7 +2337,7 @@ private void UpdateDockedOverview()
 }
 ```
 
-- [ ] **Step 4: Build and run**
+- [x] **Step 4: Build and run**
 
 Run:
 
@@ -2348,7 +2348,7 @@ dotnet run --project src\windows\CodexBar.WinApp\CodexBar.WinApp.csproj
 
 Expected: tray menu Settings opens a settings window; enabling docked overview persists to `%APPDATA%\CodexBar\config.json` after Save.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```powershell
 git add src\windows
@@ -2363,7 +2363,7 @@ git commit -m "Add Windows settings and overview toggle"
 - Modify: `README.md`
 - Create: `docs/windows.md`
 
-- [ ] **Step 1: Add Windows development docs**
+- [x] **Step 1: Add Windows development docs**
 
 Create `docs/windows.md`:
 
@@ -2401,7 +2401,7 @@ dotnet run --project src\windows\CodexBar.WinApp\CodexBar.WinApp.csproj
 The app starts in the notification area. Click the CodexBar tray icon to open the popover.
 ```
 
-- [ ] **Step 2: Link Windows docs from README**
+- [x] **Step 2: Link Windows docs from README**
 
 In `README.md`, under "Docs", add:
 
@@ -2409,7 +2409,7 @@ In `README.md`, under "Docs", add:
 - Windows port: [docs/windows.md](docs/windows.md)
 ```
 
-- [ ] **Step 3: Run full verification**
+- [x] **Step 3: Run full verification**
 
 Run:
 
@@ -2420,7 +2420,7 @@ dotnet build src\windows\CodexBar.Windows.sln -c Release
 
 Expected: both commands pass with no warnings.
 
-- [ ] **Step 4: Run manual UI smoke**
+- [x] **Step 4: Run manual UI smoke**
 
 Run:
 
@@ -2437,7 +2437,7 @@ Expected:
 - Settings saves `%APPDATA%\CodexBar\config.json`.
 - Docked overview appears only when enabled.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```powershell
 git add README.md docs\windows.md src\windows

@@ -1,0 +1,43 @@
+<Window x:Class="CodexBar.WinApp.Views.DockedOverviewWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        Topmost="True"
+        Width="320"
+        SizeToContent="Height"
+        Background="Transparent">
+  <Border CornerRadius="8"
+          Background="#F7FFFFFF"
+          BorderBrush="#335E6B7E"
+          BorderThickness="1"
+          Padding="14">
+    <StackPanel>
+      <DockPanel Margin="0,0,0,8">
+        <TextBlock Text="CodexBar" FontWeight="Bold" />
+        <TextBlock Text="{Binding UpdatedText}"
+                   DockPanel.Dock="Right"
+                   HorizontalAlignment="Right"
+                   Foreground="#667085" />
+      </DockPanel>
+      <ItemsControl ItemsSource="{Binding Rows}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <Grid Margin="0,5">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="72" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="54" />
+              </Grid.ColumnDefinitions>
+              <TextBlock Text="{Binding ProviderName}" FontWeight="SemiBold" />
+              <TextBlock Grid.Column="1" Text="{Binding ResetText}" Foreground="#667085" />
+              <TextBlock Grid.Column="2" Text="{Binding PercentText}" HorizontalAlignment="Right" />
+            </Grid>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </StackPanel>
+  </Border>
+</Window>
