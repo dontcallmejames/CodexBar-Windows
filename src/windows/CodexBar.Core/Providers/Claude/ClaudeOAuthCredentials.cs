@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace CodexBar.Core.Providers.Claude;
 
@@ -30,6 +31,50 @@ public sealed record ClaudeOAuthCredentials(
     }
 
     public static ClaudeOAuthCredentials Empty { get; } = new(null, null, null, Array.Empty<string>(), null, null);
+
+    public static async Task WriteAsync(
+        string path,
+        ClaudeOAuthCredentials credentials,
+        CancellationToken cancellationToken)
+    {
+        var text = await File.ReadAllTextAsync(path, cancellationToken);
+        var root = JsonNode.Parse(text)?.AsObject() ?? new JsonObject();
+        var oauth = root["claudeAiOauth"] as JsonObject ?? new JsonObject();
+        root["claudeAiOauth"] = oauth;
+
+        oauth["accessToken"] = credentials.AccessToken;
+        if (!string.IsNullOrWhiteSpace(credentials.RefreshToken))
+        {
+            oauth["refreshToken"] = credentials.RefreshToken;
+        }
+
+        if (credentials.ExpiresAt is not null)
+        {
+            oauth["expiresAt"] = credentials.ExpiresAt.Value.ToUnixTimeMilliseconds();
+        }
+
+        var scopes = new JsonArray();
+        foreach (var scope in credentials.Scopes)
+        {
+            scopes.Add(scope);
+        }
+
+        oauth["scopes"] = scopes;
+        if (!string.IsNullOrWhiteSpace(credentials.RateLimitTier))
+        {
+            oauth["rateLimitTier"] = credentials.RateLimitTier;
+        }
+
+        if (!string.IsNullOrWhiteSpace(credentials.SubscriptionType))
+        {
+            oauth["subscriptionType"] = credentials.SubscriptionType;
+        }
+
+        await File.WriteAllTextAsync(
+            path,
+            root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }),
+            cancellationToken);
+    }
 
     private static string? ReadString(JsonElement element, string propertyName) =>
         element.TryGetProperty(propertyName, out var property) && property.ValueKind == JsonValueKind.String
