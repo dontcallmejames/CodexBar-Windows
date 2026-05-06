@@ -92,7 +92,7 @@ Expected output includes `Microsoft.WindowsDesktop.App 9.0.x`.
 - Create: `src/windows/CodexBar.Tests/CodexBar.Tests.csproj`
 - Create: `src/windows/CodexBar.Windows.sln`
 
-- [ ] **Step 1: Create the directory structure**
+- [x] **Step 1: Create the directory structure**
 
 Run:
 
@@ -102,7 +102,7 @@ New-Item -ItemType Directory -Force -Path src\windows\CodexBar.Core,src\windows\
 
 Expected: all four directories exist.
 
-- [ ] **Step 2: Create `src/windows/global.json`**
+- [x] **Step 2: Create `src/windows/global.json`**
 
 ```json
 {
@@ -113,7 +113,7 @@ Expected: all four directories exist.
 }
 ```
 
-- [ ] **Step 3: Create `src/windows/Directory.Build.props`**
+- [x] **Step 3: Create `src/windows/Directory.Build.props`**
 
 ```xml
 <Project>
@@ -127,7 +127,7 @@ Expected: all four directories exist.
 </Project>
 ```
 
-- [ ] **Step 4: Create project files**
+- [x] **Step 4: Create project files**
 
 `src/windows/CodexBar.Core/CodexBar.Core.csproj`:
 
@@ -190,7 +190,7 @@ Expected: all four directories exist.
 </Project>
 ```
 
-- [ ] **Step 5: Generate and populate solution file**
+- [x] **Step 5: Generate and populate solution file**
 
 Run:
 
@@ -206,7 +206,7 @@ Pop-Location
 
 Expected: solution contains all four projects.
 
-- [ ] **Step 6: Verify scaffold builds**
+- [x] **Step 6: Verify scaffold builds**
 
 Run:
 
@@ -216,7 +216,7 @@ dotnet build src\windows\CodexBar.Windows.sln
 
 Expected: build succeeds with four projects and no warnings.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```powershell
 git add src\windows
@@ -540,7 +540,7 @@ dotnet test src\windows\CodexBar.Tests\CodexBar.Tests.csproj --filter "WindowsAp
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```powershell
 git add src\windows
@@ -843,7 +843,7 @@ dotnet test src\windows\CodexBar.Tests\CodexBar.Tests.csproj --filter "CodexOAut
 
 Expected: PASS.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```powershell
 git add src\windows
@@ -1168,7 +1168,7 @@ dotnet test src\windows\CodexBar.Tests\CodexBar.Tests.csproj --filter "ClaudeUsa
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```powershell
 git add src\windows
@@ -1474,7 +1474,7 @@ dotnet test src\windows\CodexBar.Tests\CodexBar.Tests.csproj --filter "RefreshSc
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```powershell
 git add src\windows
@@ -1651,7 +1651,7 @@ dotnet test src\windows\CodexBar.Tests\CodexBar.Tests.csproj --filter MeterIconR
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```powershell
 git add src\windows
@@ -1962,7 +1962,7 @@ dotnet run --project src\windows\CodexBar.WinApp\CodexBar.WinApp.csproj
 
 Expected: app starts without a taskbar main window, tray icon appears, clicking it opens the preview popover.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```powershell
 git add src\windows
@@ -2094,7 +2094,7 @@ dotnet run --project src\windows\CodexBar.WinApp\CodexBar.WinApp.csproj
 
 Expected: app starts, attempts Codex/Claude refresh, shows missing credential states if credentials are absent.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```powershell
 git add src\windows
@@ -2348,7 +2348,7 @@ dotnet run --project src\windows\CodexBar.WinApp\CodexBar.WinApp.csproj
 
 Expected: tray menu Settings opens a settings window; enabling docked overview persists to `%APPDATA%\CodexBar\config.json` after Save.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```powershell
 git add src\windows
@@ -2437,7 +2437,7 @@ Expected:
 - Settings saves `%APPDATA%\CodexBar\config.json`.
 - Docked overview appears only when enabled.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```powershell
 git add README.md docs\windows.md src\windows
