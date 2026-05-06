@@ -32,6 +32,8 @@ debug_*.swift
 .vscode/
 .codex/environments/
 .swiftpm-cache/
+.superpowers/
+.worktrees/
 
 # Debug/analysis docs
 docs/*-analysis.md
