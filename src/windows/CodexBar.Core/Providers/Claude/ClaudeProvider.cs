@@ -10,6 +10,7 @@ public sealed class ClaudeProvider : IUsageProvider
 {
     private static readonly Uri OAuthUsageUri = new("https://api.anthropic.com/api/oauth/usage");
     private static readonly Uri OrganizationsUri = new("https://claude.ai/api/organizations");
+    private static readonly Uri AccountUri = new("https://claude.ai/api/account");
 
     private readonly HttpClient httpClient;
     private readonly IAppPaths paths;
@@ -29,7 +30,7 @@ public sealed class ClaudeProvider : IUsageProvider
         if (File.Exists(paths.ClaudeCredentialsJson))
         {
             var credentials = await ClaudeOAuthCredentials.ReadAsync(paths.ClaudeCredentialsJson, cancellationToken);
-            if (!string.IsNullOrWhiteSpace(credentials.AccessToken))
+            if (!string.IsNullOrWhiteSpace(credentials.AccessToken) && HasUserProfileScope(credentials))
             {
                 return await RefreshOAuthAsync(credentials, cancellationToken);
             }
@@ -97,7 +98,89 @@ public sealed class ClaudeProvider : IUsageProvider
         usageResponse.EnsureSuccessStatusCode();
 
         var usage = await ReadUsageAsync(usageResponse, cancellationToken);
-        return ClaudeUsageMapper.Map(usage, DateTimeOffset.Now, "web");
+        var account = await ReadAccountAsync(cookieHeader, organization.Uuid, cancellationToken);
+        var overage = await ReadOverageAsync(cookieHeader, organization.Uuid, cancellationToken);
+        var merged = usage with
+        {
+            Account = usage.Account ?? account,
+            ExtraUsage = usage.ExtraUsage ?? overage
+        };
+
+        return ClaudeUsageMapper.Map(merged, DateTimeOffset.Now, "web");
+    }
+
+    private async Task<ClaudeAccount?> ReadAccountAsync(
+        string cookieHeader,
+        string organizationUuid,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, AccountUri);
+            AddJsonHeaders(request);
+            AddWebHeaders(request, cookieHeader);
+            using var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            if (!response.IsSuccessStatusCode)
+            {
+                return null;
+            }
+
+            await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+            var account = await JsonSerializer.DeserializeAsync<ClaudeAccountResponse>(
+                stream,
+                ClaudeUsageMapper.JsonOptions,
+                cancellationToken);
+            var membership = SelectMembership(account?.Memberships, organizationUuid);
+            return new ClaudeAccount(
+                null,
+                account?.EmailAddress,
+                null,
+                null,
+                membership?.Organization?.RateLimitTier,
+                membership?.Organization?.BillingType);
+        }
+        catch (HttpRequestException)
+        {
+            return null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    private async Task<ClaudeExtraUsage?> ReadOverageAsync(
+        string cookieHeader,
+        string organizationUuid,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var request = new HttpRequestMessage(
+                HttpMethod.Get,
+                new Uri($"https://claude.ai/api/organizations/{organizationUuid}/overage_spend_limit"));
+            AddJsonHeaders(request);
+            AddWebHeaders(request, cookieHeader);
+            using var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+            if (!response.IsSuccessStatusCode)
+            {
+                return null;
+            }
+
+            await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+            return await JsonSerializer.DeserializeAsync<ClaudeExtraUsage>(
+                stream,
+                ClaudeUsageMapper.JsonOptions,
+                cancellationToken);
+        }
+        catch (HttpRequestException)
+        {
+            return null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     private static async Task<ClaudeUsageResponse> ReadUsageAsync(
@@ -120,6 +203,20 @@ public sealed class ClaudeProvider : IUsageProvider
 
         return organizations[0];
     }
+
+    private static ClaudeMembership? SelectMembership(IReadOnlyList<ClaudeMembership>? memberships, string organizationUuid)
+    {
+        if (memberships is null || memberships.Count == 0)
+        {
+            return null;
+        }
+
+        return memberships.FirstOrDefault(membership => membership.Organization?.Uuid == organizationUuid)
+            ?? memberships[0];
+    }
+
+    private static bool HasUserProfileScope(ClaudeOAuthCredentials credentials) =>
+        credentials.Scopes.Any(scope => string.Equals(scope, "user:profile", StringComparison.Ordinal));
 
     private static void AddJsonHeaders(HttpRequestMessage request)
     {

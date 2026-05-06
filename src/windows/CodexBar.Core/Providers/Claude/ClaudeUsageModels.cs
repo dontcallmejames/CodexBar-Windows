@@ -38,3 +38,15 @@ public sealed record ClaudeOrganization(
     [property: JsonPropertyName("uuid")] string? Uuid,
     [property: JsonPropertyName("name")] string? Name,
     [property: JsonPropertyName("capabilities")] IReadOnlyList<string>? Capabilities);
+
+public sealed record ClaudeAccountResponse(
+    [property: JsonPropertyName("email_address")] string? EmailAddress,
+    [property: JsonPropertyName("memberships")] IReadOnlyList<ClaudeMembership>? Memberships);
+
+public sealed record ClaudeMembership(
+    [property: JsonPropertyName("organization")] ClaudeMembershipOrganization? Organization);
+
+public sealed record ClaudeMembershipOrganization(
+    [property: JsonPropertyName("uuid")] string? Uuid,
+    [property: JsonPropertyName("rate_limit_tier")] string? RateLimitTier,
+    [property: JsonPropertyName("billing_type")] string? BillingType);
