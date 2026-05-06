@@ -106,6 +106,7 @@ public sealed class PopoverViewModelTests
         var vm = new DockedOverviewViewModel(snapshots, showUsageAsUsed: false, now);
 
         Assert.AreEqual(1, vm.Rows.Count);
+        Assert.AreEqual($"Updated {now:t}", vm.UpdatedText);
         Assert.AreEqual("Codex", vm.Rows[0].ProviderName);
         Assert.AreEqual("80%", vm.Rows[0].PercentText);
         Assert.AreEqual("Resets in 45m", vm.Rows[0].ResetText);
@@ -126,6 +127,29 @@ public sealed class PopoverViewModelTests
 
         Assert.AreEqual("Resets in 1h", vm.Rows[0].ResetText);
         Assert.AreEqual("Resets in 23h", vm.Rows[1].ResetText);
+    }
+
+    [TestMethod]
+    public void RunsPopoverFooterCommands()
+    {
+        var invocations = new List<string>();
+        var vm = new PopoverViewModel(
+            Array.Empty<UsageSnapshot>(),
+            UsageProvider.Codex,
+            showUsageAsUsed: true,
+            openDashboard: () => invocations.Add("dashboard"),
+            openSettings: () => invocations.Add("settings"),
+            showAbout: () => invocations.Add("about"),
+            quit: () => invocations.Add("quit"));
+
+        vm.UsageDashboardCommand.Execute(null);
+        vm.SettingsCommand.Execute(null);
+        vm.AboutCommand.Execute(null);
+        vm.QuitCommand.Execute(null);
+
+        CollectionAssert.AreEqual(
+            new[] { "dashboard", "settings", "about", "quit" },
+            invocations);
     }
 
     private static UsageSnapshot SnapshotWithReset(DateTimeOffset resetsAt) =>

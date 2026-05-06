@@ -8,6 +8,7 @@ public sealed class DockedOverviewViewModel
 {
     public DockedOverviewViewModel(IReadOnlyList<UsageSnapshot> snapshots, bool showUsageAsUsed, DateTimeOffset now)
     {
+        UpdatedText = $"Updated {now:t}";
         Rows = snapshots.Select(snapshot =>
         {
             var window = snapshot.Windows.FirstOrDefault();
@@ -17,6 +18,7 @@ public sealed class DockedOverviewViewModel
         }).ToArray();
     }
 
+    public string UpdatedText { get; }
     public IReadOnlyList<DockedOverviewRow> Rows { get; }
 
     private static string FormatRelative(DateTimeOffset target, DateTimeOffset now)
