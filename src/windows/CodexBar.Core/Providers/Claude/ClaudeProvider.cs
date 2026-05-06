@@ -102,8 +102,8 @@ public sealed class ClaudeProvider : IUsageProvider
         var overage = await ReadOverageAsync(cookieHeader, organization.Uuid, cancellationToken);
         var merged = usage with
         {
-            Account = usage.Account ?? account,
-            ExtraUsage = usage.ExtraUsage ?? overage
+            Account = MergeAccount(usage.Account, account),
+            ExtraUsage = MergeExtraUsage(usage.ExtraUsage, overage)
         };
 
         return ClaudeUsageMapper.Map(merged, DateTimeOffset.Now, "web");
@@ -214,6 +214,57 @@ public sealed class ClaudeProvider : IUsageProvider
         return memberships.FirstOrDefault(membership => membership.Organization?.Uuid == organizationUuid)
             ?? memberships[0];
     }
+
+    private static ClaudeAccount? MergeAccount(ClaudeAccount? usage, ClaudeAccount? enrichment)
+    {
+        if (usage is null)
+        {
+            return enrichment;
+        }
+
+        if (enrichment is null)
+        {
+            return usage;
+        }
+
+        return usage with
+        {
+            Email = CoalesceText(usage.Email, enrichment.Email),
+            EmailAddress = CoalesceText(usage.EmailAddress, enrichment.EmailAddress),
+            SubscriptionType = CoalesceText(usage.SubscriptionType, enrichment.SubscriptionType),
+            SubscriptionTypeCamel = CoalesceText(usage.SubscriptionTypeCamel, enrichment.SubscriptionTypeCamel),
+            RateLimitTier = CoalesceText(usage.RateLimitTier, enrichment.RateLimitTier),
+            BillingType = CoalesceText(usage.BillingType, enrichment.BillingType)
+        };
+    }
+
+    private static ClaudeExtraUsage? MergeExtraUsage(ClaudeExtraUsage? usage, ClaudeExtraUsage? enrichment)
+    {
+        if (usage is null)
+        {
+            return enrichment;
+        }
+
+        if (enrichment is null)
+        {
+            return usage;
+        }
+
+        return usage with
+        {
+            IsEnabled = usage.IsEnabled ?? enrichment.IsEnabled,
+            MonthlyLimit = usage.MonthlyLimit ?? enrichment.MonthlyLimit,
+            MonthlyCreditLimit = usage.MonthlyCreditLimit ?? enrichment.MonthlyCreditLimit,
+            UsedCredits = usage.UsedCredits ?? enrichment.UsedCredits,
+            UsedUsd = usage.UsedUsd ?? enrichment.UsedUsd,
+            LimitUsd = usage.LimitUsd ?? enrichment.LimitUsd,
+            Utilization = usage.Utilization ?? enrichment.Utilization,
+            Currency = CoalesceText(usage.Currency, enrichment.Currency)
+        };
+    }
+
+    private static string? CoalesceText(string? preferred, string? fallback) =>
+        string.IsNullOrWhiteSpace(preferred) ? fallback : preferred;
 
     private static bool HasUserProfileScope(ClaudeOAuthCredentials credentials) =>
         credentials.Scopes.Any(scope => string.Equals(scope, "user:profile", StringComparison.Ordinal));
