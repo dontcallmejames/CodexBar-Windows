@@ -44,6 +44,12 @@ public sealed class CodexProvider : IUsageProvider
 
         using var request = new HttpRequestMessage(HttpMethod.Get, UsageUri);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", credentials.AccessToken);
+        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        if (!string.IsNullOrWhiteSpace(credentials.AccountId))
+        {
+            request.Headers.TryAddWithoutValidation("ChatGPT-Account-Id", credentials.AccountId);
+        }
+
         request.Headers.TryAddWithoutValidation("User-Agent", "CodexBar-Windows");
 
         using var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
@@ -56,7 +62,7 @@ public sealed class CodexProvider : IUsageProvider
             cancellationToken);
 
         return CodexOAuthUsageMapper.Map(
-            usage ?? new CodexOAuthUsageResponse(null, null, null, null),
+            usage ?? new CodexOAuthUsageResponse(null, null, null, null, null, null),
             DateTimeOffset.Now);
     }
 }
