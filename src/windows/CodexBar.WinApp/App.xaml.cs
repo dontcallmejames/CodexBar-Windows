@@ -82,7 +82,35 @@ public partial class App : System.Windows.Application
         popover = new PopoverWindow(viewModel);
         popover.Closed += (_, _) => popover = null;
         popover.Show();
+        popover.UpdateLayout();
+        PositionPopoverNearCursor(popover, System.Windows.Forms.Cursor.Position);
         popover.Activate();
+    }
+
+    private static void PositionPopoverNearCursor(System.Windows.Window window, System.Drawing.Point cursorPosition)
+    {
+        var width = window.ActualWidth > 0 ? window.ActualWidth : window.Width;
+        var height = window.ActualHeight > 0 ? window.ActualHeight : window.Height;
+        var position = CalculatePopoverPosition(width, height, System.Windows.SystemParameters.WorkArea, cursorPosition);
+        window.Left = position.Left;
+        window.Top = position.Top;
+    }
+
+    public static (double Left, double Top) CalculatePopoverPosition(
+        double width,
+        double height,
+        System.Windows.Rect workArea,
+        System.Drawing.Point cursorPosition)
+    {
+        const double margin = 16;
+        var left = cursorPosition.X - width + 24;
+        var top = cursorPosition.Y - height - 12;
+        var maxLeft = workArea.Right - width - margin;
+        var maxTop = workArea.Bottom - height - margin;
+
+        return (
+            Math.Clamp(left, workArea.Left + margin, maxLeft),
+            Math.Clamp(top, workArea.Top + margin, maxTop));
     }
 
     private static void ShowUsageDashboard()
