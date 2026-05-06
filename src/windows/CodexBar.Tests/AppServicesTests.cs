@@ -99,6 +99,22 @@ public sealed class AppServicesTests
     }
 
     [TestMethod]
+    public void FiltersSnapshotsForEnabledProviders()
+    {
+        var snapshots = new[]
+        {
+            Snapshot(UsageProvider.Codex),
+            Snapshot(UsageProvider.Claude)
+        };
+        var settings = AppSettings.Default with { ClaudeEnabled = false };
+
+        var filtered = App.FilterSnapshotsForSettings(snapshots, settings);
+
+        Assert.AreEqual(1, filtered.Count);
+        Assert.AreEqual(UsageProvider.Codex, filtered[0].Provider);
+    }
+
+    [TestMethod]
     public async Task LoadsDefaultSettingsWhenSettingsFileIsCorrupt()
     {
         var root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
@@ -120,4 +136,21 @@ public sealed class AppServicesTests
             }
         }
     }
+
+    private static UsageSnapshot Snapshot(UsageProvider provider) =>
+        new(
+            provider,
+            provider.ToString(),
+            DateTimeOffset.Now,
+            Array.Empty<RateWindow>(),
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            "test",
+            null,
+            false);
 }
