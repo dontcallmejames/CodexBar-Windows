@@ -7,14 +7,14 @@ public sealed class PopoverViewModel
     public PopoverViewModel(IReadOnlyList<UsageSnapshot> snapshots, UsageProvider activeProvider, bool showUsageAsUsed)
     {
         Snapshots = snapshots;
-        ActiveProvider = activeProvider;
         ShowUsageAsUsed = showUsageAsUsed;
         ActiveSnapshot = snapshots.FirstOrDefault(snapshot => snapshot.Provider == activeProvider) ?? snapshots.FirstOrDefault();
+        ActiveProvider = ActiveSnapshot?.Provider ?? activeProvider;
         Tabs = snapshots.Select(snapshot => new ProviderTabViewModel(
             snapshot.Provider,
             snapshot.DisplayName,
             FormatPercent(snapshot.Windows.FirstOrDefault(), showUsageAsUsed),
-            snapshot.Provider == activeProvider,
+            snapshot.Provider == ActiveProvider,
             snapshot.IsStale)).ToArray();
     }
 

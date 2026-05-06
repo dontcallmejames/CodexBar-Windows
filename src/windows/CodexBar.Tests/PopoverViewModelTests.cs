@@ -52,6 +52,35 @@ public sealed class PopoverViewModelTests
     }
 
     [TestMethod]
+    public void SelectsFallbackTabWhenActiveProviderIsMissing()
+    {
+        var snapshots = new[]
+        {
+            new UsageSnapshot(
+                UsageProvider.Codex,
+                "Codex",
+                DateTimeOffset.Now,
+                new[] { new RateWindow("session", "Session", 20, null, null) },
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                "test",
+                null,
+                false)
+        };
+
+        var vm = new PopoverViewModel(snapshots, UsageProvider.Claude, showUsageAsUsed: true);
+
+        Assert.AreEqual(UsageProvider.Codex, vm.ActiveProvider);
+        Assert.AreEqual("Codex", vm.ActiveSnapshot!.DisplayName);
+        Assert.IsTrue(vm.Tabs.Single().IsActive);
+    }
+
+    [TestMethod]
     public void BuildsDockedRowsWithRelativeResetText()
     {
         var now = new DateTimeOffset(2030, 1, 1, 12, 0, 0, TimeSpan.Zero);
@@ -82,4 +111,37 @@ public sealed class PopoverViewModelTests
         Assert.AreEqual("Resets in 45m", vm.Rows[0].ResetText);
         Assert.IsFalse(vm.Rows[0].IsStale);
     }
+
+    [TestMethod]
+    public void FloorsRelativeResetTextAtHourAndDayBoundaries()
+    {
+        var now = new DateTimeOffset(2030, 1, 1, 12, 0, 0, TimeSpan.Zero);
+        var snapshots = new[]
+        {
+            SnapshotWithReset(now.AddMinutes(89)),
+            SnapshotWithReset(now.AddHours(23.6))
+        };
+
+        var vm = new DockedOverviewViewModel(snapshots, showUsageAsUsed: false, now);
+
+        Assert.AreEqual("Resets in 1h", vm.Rows[0].ResetText);
+        Assert.AreEqual("Resets in 23h", vm.Rows[1].ResetText);
+    }
+
+    private static UsageSnapshot SnapshotWithReset(DateTimeOffset resetsAt) =>
+        new(
+            UsageProvider.Codex,
+            "Codex",
+            DateTimeOffset.Now,
+            new[] { new RateWindow("session", "Session", 20, resetsAt, null) },
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            "test",
+            null,
+            false);
 }
