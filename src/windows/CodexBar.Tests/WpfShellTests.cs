@@ -63,4 +63,25 @@ public sealed class WpfShellTests
         Assert.AreEqual(16, position.Top);
         Assert.IsTrue(position.Left > 1500);
     }
+
+    [TestMethod]
+    public void RepositionsExpandedPopoverAboveSameTrayAnchor()
+    {
+        var workArea = new System.Windows.Rect(0, 0, 1920, 1040);
+        var cursorPosition = new System.Drawing.Point(1900, 1030);
+
+        var shortPosition = CodexBar.WinApp.App.CalculatePopoverPosition(
+            width: 372,
+            height: 420,
+            workArea,
+            cursorPosition);
+        var expandedPosition = CodexBar.WinApp.App.CalculatePopoverPosition(
+            width: 372,
+            height: 780,
+            workArea,
+            cursorPosition);
+
+        Assert.AreEqual(shortPosition.Top - 360, expandedPosition.Top);
+        Assert.AreEqual(1018, expandedPosition.Top + 780);
+    }
 }
