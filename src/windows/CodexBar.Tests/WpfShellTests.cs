@@ -40,4 +40,27 @@ public sealed class WpfShellTests
         Assert.IsTrue(position.Left <= 1474);
         Assert.IsTrue(position.Top <= 664);
     }
+
+    [TestMethod]
+    public void CalculatesPopoverMaxHeightFromTrayAnchor()
+    {
+        var maxHeight = CodexBar.WinApp.App.CalculatePopoverMaxHeight(
+            workArea: new System.Windows.Rect(0, 0, 1920, 1040),
+            cursorPosition: new System.Drawing.Point(1900, 1030));
+
+        Assert.AreEqual(1002, maxHeight);
+    }
+
+    [TestMethod]
+    public void CalculatesPopoverPositionWhenWindowConsumesAvailableHeight()
+    {
+        var position = CodexBar.WinApp.App.CalculatePopoverPosition(
+            width: 372,
+            height: 1002,
+            workArea: new System.Windows.Rect(0, 0, 1920, 1040),
+            cursorPosition: new System.Drawing.Point(1900, 1030));
+
+        Assert.AreEqual(16, position.Top);
+        Assert.IsTrue(position.Left > 1500);
+    }
 }

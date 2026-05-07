@@ -94,6 +94,12 @@ public sealed class PopoverViewModelTests
         CollectionAssert.AreEqual(
             new[] { "Add Account...", "Usage Dashboard", "Status Page", "Settings...", "About CodexBar", "Quit" },
             vm.FooterRows.Select(row => row.Title).ToArray());
+        CollectionAssert.AreEqual(
+            new[] { "Settings...", "About CodexBar", "Quit" },
+            vm.TopChromeRows.Select(row => row.Title).ToArray());
+        CollectionAssert.AreEqual(
+            new[] { "Add Account...", "Usage Dashboard", "Status Page" },
+            vm.BottomActionRows.Select(row => row.Title).ToArray());
     }
 
     [TestMethod]
