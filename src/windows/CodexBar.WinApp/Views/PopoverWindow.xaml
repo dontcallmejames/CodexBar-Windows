@@ -60,6 +60,33 @@
         </Setter.Value>
       </Setter>
     </Style>
+
+    <Style x:Key="ChromeIconButton" TargetType="Button">
+      <Setter Property="Width" Value="28" />
+      <Setter Property="Height" Value="26" />
+      <Setter Property="Margin" Value="1,0" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="Foreground" Value="{StaticResource CodexBarMutedTextBrush}" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border Background="{TemplateBinding Background}"
+                    CornerRadius="7">
+              <ContentPresenter HorizontalAlignment="Center"
+                                VerticalAlignment="Center" />
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="#16000000" />
+                <Setter Property="Foreground" Value="{StaticResource CodexBarTextBrush}" />
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
   </Window.Resources>
 
   <Border CornerRadius="16"
@@ -74,9 +101,17 @@
                         Color="#000000" />
     </Border.Effect>
 
-    <StackPanel Margin="14,8,14,14">
-      <ItemsControl ItemsSource="{Binding Tabs}"
-                    HorizontalAlignment="Center">
+    <Grid Margin="14,8,14,12">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="*" />
+        <RowDefinition Height="Auto" />
+      </Grid.RowDefinitions>
+
+      <ItemsControl Grid.Row="0"
+                    ItemsSource="{Binding TopChromeRows}"
+                    HorizontalAlignment="Right"
+                    Margin="0,0,2,2">
         <ItemsControl.ItemsPanel>
           <ItemsPanelTemplate>
             <StackPanel Orientation="Horizontal" />
@@ -84,189 +119,206 @@
         </ItemsControl.ItemsPanel>
         <ItemsControl.ItemTemplate>
           <DataTemplate>
-            <Button Margin="2,0"
-                    Padding="6,4,6,4"
-                    BorderThickness="0"
-                    Cursor="Hand"
-                    Width="82"
-                    Height="44"
-                    Background="{Binding IsActive, Converter={x:Static views:BooleanToBrushConverter.Instance}}"
-                    Foreground="{Binding IsActive, Converter={x:Static views:BooleanToForegroundBrushConverter.Instance}}"
-                    Command="{Binding DataContext.SelectProviderCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                    CommandParameter="{Binding Provider}">
-              <Button.Template>
-                <ControlTemplate TargetType="Button">
-                  <Border Background="{TemplateBinding Background}"
-                          CornerRadius="8"
-                          Padding="{TemplateBinding Padding}">
-                    <ContentPresenter HorizontalAlignment="Stretch"
-                                      VerticalAlignment="Stretch" />
-                  </Border>
-                </ControlTemplate>
-              </Button.Template>
-              <Grid>
-                <Grid.RowDefinitions>
-                  <RowDefinition Height="15" />
-                  <RowDefinition Height="15" />
-                  <RowDefinition Height="5" />
-                </Grid.RowDefinitions>
-                <Viewbox Width="14"
-                         Height="14"
-                         HorizontalAlignment="Center">
-                  <Path Data="{Binding IconGeometry}"
-                        Stretch="Uniform"
-                        Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
-                </Viewbox>
-                <TextBlock Grid.Row="1"
-                           Text="{Binding Title}"
-                           FontSize="11"
-                           FontWeight="SemiBold"
-                           TextAlignment="Center"
-                           HorizontalAlignment="Center" />
-                <ProgressBar Grid.Row="2"
-                             Value="{Binding ProgressPercent}"
-                             Maximum="100"
-                             Height="3"
-                             Margin="1,2,1,0"
-                             Background="#26000000"
-                             Foreground="{Binding ProgressColor}"
-                             Style="{StaticResource ThinProgressBar}" />
-              </Grid>
+            <Button Command="{Binding Command}"
+                    ToolTip="{Binding Title}"
+                    Style="{StaticResource ChromeIconButton}">
+              <TextBlock Text="{Binding IconGlyph}"
+                         FontFamily="Segoe MDL2 Assets"
+                         FontSize="13"
+                         Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
             </Button>
           </DataTemplate>
         </ItemsControl.ItemTemplate>
       </ItemsControl>
 
-      <TextBlock Text="{Binding ActiveSnapshot.DisplayName}"
-                 FontSize="20"
-                 FontWeight="SemiBold"
-                 Foreground="{StaticResource CodexBarTextBrush}"
-                 Margin="12,16,12,1" />
-      <DockPanel Margin="12,0,12,10"
-                 LastChildFill="True">
-        <TextBlock Text="{Binding UpdatedText}"
-                   FontSize="13"
-                   Foreground="{StaticResource CodexBarMutedTextBrush}" />
-        <TextBlock Text="{Binding PlanText}"
-                   DockPanel.Dock="Right"
-                   FontSize="13"
-                   HorizontalAlignment="Right"
-                   Foreground="{StaticResource CodexBarMutedTextBrush}" />
-      </DockPanel>
+      <ScrollViewer Grid.Row="1"
+                    VerticalScrollBarVisibility="Auto"
+                    HorizontalScrollBarVisibility="Disabled"
+                    CanContentScroll="False">
+        <StackPanel>
+          <TextBlock Text="{Binding ActiveSnapshot.DisplayName}"
+                     FontSize="20"
+                     FontWeight="SemiBold"
+                     Foreground="{StaticResource CodexBarTextBrush}"
+                     Margin="12,9,12,1" />
+          <DockPanel Margin="12,0,12,10"
+                     LastChildFill="True">
+            <TextBlock Text="{Binding UpdatedText}"
+                       FontSize="13"
+                       Foreground="{StaticResource CodexBarMutedTextBrush}" />
+            <TextBlock Text="{Binding PlanText}"
+                       DockPanel.Dock="Right"
+                       FontSize="13"
+                       HorizontalAlignment="Right"
+                       Foreground="{StaticResource CodexBarMutedTextBrush}" />
+          </DockPanel>
 
-      <Border BorderBrush="#1F000000"
-              BorderThickness="0,1,0,0"
-              Margin="12,0,12,0" />
+          <Border BorderBrush="#1F000000"
+                  BorderThickness="0,1,0,0"
+                  Margin="12,0,12,0" />
 
-      <Border Margin="12,11,12,0"
-              Padding="10,8"
-              CornerRadius="8"
-              Background="#0C000000"
-              Visibility="{Binding HasStatusMessage, Converter={StaticResource BooleanToVisibilityConverter}}">
-        <TextBlock Text="{Binding StatusMessage}"
-                   FontSize="13"
-                   LineHeight="17"
-                   TextWrapping="Wrap"
-                   Foreground="{StaticResource CodexBarMutedTextBrush}" />
-      </Border>
+          <Border Margin="12,11,12,0"
+                  Padding="10,8"
+                  CornerRadius="8"
+                  Background="#0C000000"
+                  Visibility="{Binding HasStatusMessage, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <TextBlock Text="{Binding StatusMessage}"
+                       FontSize="13"
+                       LineHeight="17"
+                       TextWrapping="Wrap"
+                       Foreground="{StaticResource CodexBarMutedTextBrush}" />
+          </Border>
 
-      <ItemsControl ItemsSource="{Binding Metrics}"
-                    Margin="12,14,12,0"
-                    Visibility="{Binding HasMetrics, Converter={StaticResource BooleanToVisibilityConverter}}">
-        <ItemsControl.ItemTemplate>
-          <DataTemplate>
-            <StackPanel Margin="0,0,0,16">
-              <TextBlock Text="{Binding Title}"
-                         FontSize="17"
-                         FontWeight="SemiBold"
-                         Foreground="{StaticResource CodexBarTextBrush}" />
-              <ProgressBar Value="{Binding ProgressPercent}"
-                           Maximum="100"
-                           Height="5"
-                           Margin="0,7,0,5"
-                           Background="#17000000"
-                           Foreground="{Binding ProgressColor}"
-                           Style="{StaticResource ThinProgressBar}" />
-              <DockPanel LastChildFill="True">
-                <TextBlock Text="{Binding PercentText}"
-                           FontSize="13"
-                           Foreground="{StaticResource CodexBarTextBrush}" />
-                <TextBlock Text="{Binding ResetText}"
-                           DockPanel.Dock="Right"
-                           FontSize="13"
-                           HorizontalAlignment="Right"
-                           Foreground="{StaticResource CodexBarMutedTextBrush}" />
-              </DockPanel>
-            </StackPanel>
-          </DataTemplate>
-        </ItemsControl.ItemTemplate>
-      </ItemsControl>
+          <ItemsControl ItemsSource="{Binding Metrics}"
+                        Margin="12,14,12,0"
+                        Visibility="{Binding HasMetrics, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <StackPanel Margin="0,0,0,16">
+                  <TextBlock Text="{Binding Title}"
+                             FontSize="17"
+                             FontWeight="SemiBold"
+                             Foreground="{StaticResource CodexBarTextBrush}" />
+                  <ProgressBar Value="{Binding ProgressPercent}"
+                               Maximum="100"
+                               Height="5"
+                               Margin="0,7,0,5"
+                               Background="#17000000"
+                               Foreground="{Binding ProgressColor}"
+                               Style="{StaticResource ThinProgressBar}" />
+                  <DockPanel LastChildFill="True">
+                    <TextBlock Text="{Binding PercentText}"
+                               FontSize="13"
+                               Foreground="{StaticResource CodexBarTextBrush}" />
+                    <TextBlock Text="{Binding ResetText}"
+                               DockPanel.Dock="Right"
+                               FontSize="13"
+                               HorizontalAlignment="Right"
+                               Foreground="{StaticResource CodexBarMutedTextBrush}" />
+                  </DockPanel>
+                </StackPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
 
-      <Border BorderBrush="#1F000000"
-              BorderThickness="0,1,0,0"
-              Margin="12,0,12,0"
-              Visibility="{Binding HasCostSection, Converter={StaticResource BooleanToVisibilityConverter}}" />
+          <Border BorderBrush="#1F000000"
+                  BorderThickness="0,1,0,0"
+                  Margin="12,0,12,0"
+                  Visibility="{Binding HasCostSection, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
-      <StackPanel Margin="12,16,12,14"
-                  Visibility="{Binding HasCostSection, Converter={StaticResource BooleanToVisibilityConverter}}">
-        <TextBlock Text="Cost"
-                   FontSize="17"
-                   FontWeight="SemiBold"
-                   Foreground="{StaticResource CodexBarTextBrush}" />
-        <TextBlock Text="{Binding CostTodayText}"
-                   FontSize="13"
-                   Margin="0,6,0,0"
-                   Foreground="{StaticResource CodexBarTextBrush}" />
-        <TextBlock Text="{Binding CostLast30DaysText}"
-                   FontSize="13"
-                   Margin="0,4,0,0"
-                   Foreground="{StaticResource CodexBarTextBrush}" />
+          <StackPanel Margin="12,16,12,14"
+                      Visibility="{Binding HasCostSection, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <TextBlock Text="Cost"
+                       FontSize="17"
+                       FontWeight="SemiBold"
+                       Foreground="{StaticResource CodexBarTextBrush}" />
+            <TextBlock Text="{Binding CostTodayText}"
+                       FontSize="13"
+                       Margin="0,6,0,0"
+                       Foreground="{StaticResource CodexBarTextBrush}" />
+            <TextBlock Text="{Binding CostLast30DaysText}"
+                       FontSize="13"
+                       Margin="0,4,0,0"
+                       Foreground="{StaticResource CodexBarTextBrush}" />
+          </StackPanel>
+        </StackPanel>
+      </ScrollViewer>
+
+      <StackPanel Grid.Row="2"
+                  Margin="0,8,0,0">
+        <Border BorderBrush="#1F000000"
+                BorderThickness="0,1,0,0"
+                Margin="12,0,12,9" />
+
+        <ItemsControl ItemsSource="{Binding BottomActionRows}"
+                      Margin="12,0,12,7">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <Button Command="{Binding Command}"
+                      Style="{StaticResource MenuActionButton}">
+                <StackPanel Orientation="Horizontal">
+                  <TextBlock Text="{Binding IconGlyph}"
+                             FontFamily="Segoe MDL2 Assets"
+                             FontSize="14"
+                             Width="24"
+                             VerticalAlignment="Center"
+                             Foreground="{StaticResource CodexBarTextBrush}" />
+                  <TextBlock Text="{Binding Title}"
+                             FontSize="15"
+                             VerticalAlignment="Center"
+                             Foreground="{StaticResource CodexBarTextBrush}" />
+                </StackPanel>
+              </Button>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <Border BorderBrush="#1F000000"
+                BorderThickness="0,1,0,0"
+                Margin="12,0,12,7" />
+
+        <ItemsControl ItemsSource="{Binding Tabs}"
+                      HorizontalAlignment="Center">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <StackPanel Orientation="Horizontal" />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <Button Margin="2,0"
+                      Padding="6,4,6,4"
+                      BorderThickness="0"
+                      Cursor="Hand"
+                      Width="82"
+                      Height="44"
+                      Background="{Binding IsActive, Converter={x:Static views:BooleanToBrushConverter.Instance}}"
+                      Foreground="{Binding IsActive, Converter={x:Static views:BooleanToForegroundBrushConverter.Instance}}"
+                      Command="{Binding DataContext.SelectProviderCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                      CommandParameter="{Binding Provider}">
+                <Button.Template>
+                  <ControlTemplate TargetType="Button">
+                    <Border Background="{TemplateBinding Background}"
+                            CornerRadius="8"
+                            Padding="{TemplateBinding Padding}">
+                      <ContentPresenter HorizontalAlignment="Stretch"
+                                        VerticalAlignment="Stretch" />
+                    </Border>
+                  </ControlTemplate>
+                </Button.Template>
+                <Grid>
+                  <Grid.RowDefinitions>
+                    <RowDefinition Height="15" />
+                    <RowDefinition Height="15" />
+                    <RowDefinition Height="5" />
+                  </Grid.RowDefinitions>
+                  <Viewbox Width="14"
+                           Height="14"
+                           HorizontalAlignment="Center">
+                    <Path Data="{Binding IconGeometry}"
+                          Stretch="Uniform"
+                          Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" />
+                  </Viewbox>
+                  <TextBlock Grid.Row="1"
+                             Text="{Binding Title}"
+                             FontSize="11"
+                             FontWeight="SemiBold"
+                             TextAlignment="Center"
+                             HorizontalAlignment="Center" />
+                  <ProgressBar Grid.Row="2"
+                               Value="{Binding ProgressPercent}"
+                               Maximum="100"
+                               Height="3"
+                               Margin="1,2,1,0"
+                               Background="#26000000"
+                               Foreground="{Binding ProgressColor}"
+                               Style="{StaticResource ThinProgressBar}" />
+                </Grid>
+              </Button>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
       </StackPanel>
-
-      <Border BorderBrush="#1F000000"
-              BorderThickness="0,1,0,0"
-              Margin="12,0,12,9" />
-
-      <ItemsControl ItemsSource="{Binding FooterPrimaryRows}"
-                    Margin="12,0,12,6">
-        <ItemsControl.ItemTemplate>
-          <DataTemplate>
-            <Button Command="{Binding Command}"
-                    Style="{StaticResource MenuActionButton}">
-              <StackPanel Orientation="Horizontal">
-                <TextBlock Text="{Binding IconGlyph}"
-                           FontFamily="Segoe MDL2 Assets"
-                           FontSize="15"
-                           Width="25"
-                           VerticalAlignment="Center"
-                           Foreground="{StaticResource CodexBarTextBrush}" />
-                <TextBlock Text="{Binding Title}"
-                           FontSize="17"
-                           VerticalAlignment="Center"
-                           Foreground="{StaticResource CodexBarTextBrush}" />
-              </StackPanel>
-            </Button>
-          </DataTemplate>
-        </ItemsControl.ItemTemplate>
-      </ItemsControl>
-
-      <Border BorderBrush="#1F000000"
-              BorderThickness="0,1,0,0"
-              Margin="12,0,12,6" />
-
-      <ItemsControl ItemsSource="{Binding FooterSecondaryRows}"
-                    Margin="12,0,12,0">
-        <ItemsControl.ItemTemplate>
-          <DataTemplate>
-            <Button Command="{Binding Command}"
-                    Style="{StaticResource MenuActionButton}">
-              <TextBlock Text="{Binding Title}"
-                         FontSize="16"
-                         Foreground="{StaticResource CodexBarTextBrush}" />
-            </Button>
-          </DataTemplate>
-        </ItemsControl.ItemTemplate>
-      </ItemsControl>
-    </StackPanel>
+    </Grid>
   </Border>
 </Window>

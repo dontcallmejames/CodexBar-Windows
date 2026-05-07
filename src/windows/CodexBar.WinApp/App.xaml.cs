@@ -83,9 +83,11 @@ public partial class App : System.Windows.Application
             openStatusPage: ShowStatusPage);
         popover = new PopoverWindow(viewModel);
         popover.Closed += (_, _) => popover = null;
+        var cursorPosition = System.Windows.Forms.Cursor.Position;
+        popover.MaxHeight = CalculatePopoverMaxHeight(System.Windows.SystemParameters.WorkArea, cursorPosition);
         popover.Show();
         popover.UpdateLayout();
-        PositionPopoverNearCursor(popover, System.Windows.Forms.Cursor.Position);
+        PositionPopoverNearCursor(popover, cursorPosition);
         popover.Activate();
     }
 
@@ -106,13 +108,25 @@ public partial class App : System.Windows.Application
     {
         const double margin = 16;
         var left = cursorPosition.X - width + 24;
-        var top = cursorPosition.Y - height - 12;
+        var bottom = cursorPosition.Y - 12;
+        var top = bottom - height;
         var maxLeft = workArea.Right - width - margin;
-        var maxTop = workArea.Bottom - height - margin;
+        var maxTop = Math.Max(workArea.Top + margin, workArea.Bottom - height - margin);
 
         return (
             Math.Clamp(left, workArea.Left + margin, maxLeft),
             Math.Clamp(top, workArea.Top + margin, maxTop));
+    }
+
+    public static double CalculatePopoverMaxHeight(
+        System.Windows.Rect workArea,
+        System.Drawing.Point cursorPosition)
+    {
+        const double margin = 16;
+        const double trayGap = 12;
+        const double minimumHeight = 360;
+        var anchoredBottom = Math.Clamp(cursorPosition.Y - trayGap, workArea.Top + margin + minimumHeight, workArea.Bottom - margin);
+        return Math.Max(minimumHeight, anchoredBottom - workArea.Top - margin);
     }
 
     private static void ShowUsageDashboard()
