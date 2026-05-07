@@ -27,6 +27,22 @@ public sealed class WpfShellTests
     }
 
     [TestMethod]
+    public void PopoverPanelBrushUsesMilkyTranslucentWhite()
+    {
+        var appXamlPath = Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory,
+            "..",
+            "..",
+            "..",
+            "..",
+            "CodexBar.WinApp",
+            "App.xaml"));
+        var appXaml = File.ReadAllText(appXamlPath);
+
+        StringAssert.Contains(appXaml, "Color=\"#EEFFFFFF\"");
+    }
+
+    [TestMethod]
     public void CalculatesPopoverPositionNearBottomRightTray()
     {
         var position = CodexBar.WinApp.App.CalculatePopoverPosition(
