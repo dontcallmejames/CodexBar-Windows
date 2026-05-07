@@ -13,6 +13,7 @@ public sealed class ClaudeProvider : IUsageProvider
     private static readonly Uri OrganizationsUri = new("https://claude.ai/api/organizations");
     private static readonly Uri AccountUri = new("https://claude.ai/api/account");
     private const string OAuthClientId = "9d1c250a-e61b-44d9-88ed-5944d1962f5e";
+    private const string ClaudeCodeUserAgent = "claude-code/2.1.0";
 
     private readonly HttpClient httpClient;
     private readonly IAppPaths paths;
@@ -68,7 +69,7 @@ public sealed class ClaudeProvider : IUsageProvider
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", credentials.AccessToken);
         AddJsonHeaders(request);
         request.Headers.TryAddWithoutValidation("anthropic-beta", "oauth-2025-04-20");
-        request.Headers.TryAddWithoutValidation("User-Agent", "CodexBar-Windows");
+        request.Headers.TryAddWithoutValidation("User-Agent", ClaudeCodeUserAgent);
 
         using var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
         ThrowIfRateLimited(response);
@@ -126,7 +127,7 @@ public sealed class ClaudeProvider : IUsageProvider
         var retryText = response.Headers.RetryAfter?.Delta is { } delta
             ? $" Retry in {FormatRetryAfter(delta)}."
             : string.Empty;
-        throw new InvalidOperationException($"Claude usage API is rate limited.{retryText}");
+        throw new InvalidOperationException($"Claude subscription usage is temporarily unavailable.{retryText}");
     }
 
     private static string FormatRetryAfter(TimeSpan delta)
@@ -271,7 +272,7 @@ public sealed class ClaudeProvider : IUsageProvider
         return await JsonSerializer.DeserializeAsync<ClaudeUsageResponse>(
             stream,
             ClaudeUsageMapper.JsonOptions,
-            cancellationToken) ?? new ClaudeUsageResponse(null, null, null, null, null, null);
+            cancellationToken) ?? new ClaudeUsageResponse(null, null, null, null, null, null, null);
     }
 
     private static ClaudeOrganization? SelectOrganization(IReadOnlyList<ClaudeOrganization>? organizations)

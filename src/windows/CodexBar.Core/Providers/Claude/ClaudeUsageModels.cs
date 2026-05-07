@@ -6,10 +6,15 @@ namespace CodexBar.Core.Providers.Claude;
 public sealed record ClaudeUsageResponse(
     [property: JsonPropertyName("five_hour")] ClaudeUsageWindow? FiveHour,
     [property: JsonPropertyName("seven_day")] ClaudeUsageWindow? SevenDay,
+    [property: JsonPropertyName("seven_day_oauth_apps")] ClaudeUsageWindow? SevenDayOAuthApps,
     [property: JsonPropertyName("seven_day_sonnet")] ClaudeUsageWindow? SevenDaySonnet,
     [property: JsonPropertyName("seven_day_opus")] ClaudeUsageWindow? SevenDayOpus,
     [property: JsonPropertyName("extra_usage")] ClaudeExtraUsage? ExtraUsage,
-    [property: JsonPropertyName("account")] ClaudeAccount? Account);
+    [property: JsonPropertyName("account")] ClaudeAccount? Account)
+{
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? ExtensionData { get; init; }
+}
 
 public sealed record ClaudeTokenRefreshResponse(
     [property: JsonPropertyName("access_token")] string? AccessToken,

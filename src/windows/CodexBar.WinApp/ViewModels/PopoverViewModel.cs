@@ -16,6 +16,9 @@ public sealed class PopoverViewModel : INotifyPropertyChanged
     private string planText = string.Empty;
     private string costTodayText = string.Empty;
     private string costLast30DaysText = string.Empty;
+    private string statusMessage = string.Empty;
+    private bool hasMetrics;
+    private bool hasStatusMessage;
     private bool hasCostSection;
     private readonly DateTimeOffset now;
 
@@ -85,7 +88,13 @@ public sealed class PopoverViewModel : INotifyPropertyChanged
     public IReadOnlyList<PopoverMetricViewModel> Metrics
     {
         get => metrics;
-        private set => SetField(ref metrics, value);
+        private set
+        {
+            if (SetField(ref metrics, value))
+            {
+                HasMetrics = value.Count > 0;
+            }
+        }
     }
 
     public string UpdatedText
@@ -118,6 +127,24 @@ public sealed class PopoverViewModel : INotifyPropertyChanged
         private set => SetField(ref hasCostSection, value);
     }
 
+    public string StatusMessage
+    {
+        get => statusMessage;
+        private set => SetField(ref statusMessage, value);
+    }
+
+    public bool HasStatusMessage
+    {
+        get => hasStatusMessage;
+        private set => SetField(ref hasStatusMessage, value);
+    }
+
+    public bool HasMetrics
+    {
+        get => hasMetrics;
+        private set => SetField(ref hasMetrics, value);
+    }
+
     public ICommand SelectProviderCommand { get; }
     public ICommand AddAccountCommand { get; }
     public ICommand UsageDashboardCommand { get; }
@@ -146,6 +173,8 @@ public sealed class PopoverViewModel : INotifyPropertyChanged
             snapshot.Provider == ActiveProvider,
             snapshot.IsStale)).ToArray();
         Metrics = BuildMetrics(selectedSnapshot);
+        StatusMessage = BuildStatusMessage(selectedSnapshot);
+        HasStatusMessage = !string.IsNullOrWhiteSpace(StatusMessage);
         UpdatedText = selectedSnapshot is null ? string.Empty : $"Updated {FormatUpdatedText(selectedSnapshot.UpdatedAt, now)}";
         PlanText = selectedSnapshot?.Plan ?? string.Empty;
         CostTodayText = FormatCostLine("Today", selectedSnapshot?.TodayCostUsd, selectedSnapshot?.TodayTokens);
@@ -176,17 +205,7 @@ public sealed class PopoverViewModel : INotifyPropertyChanged
 
         if (snapshot.Windows.Count == 0)
         {
-            return new[]
-            {
-                new PopoverMetricViewModel(
-                    "No usage data",
-                    0,
-                    string.IsNullOrWhiteSpace(snapshot.ErrorMessage)
-                        ? "No usage windows are available for this provider."
-                        : snapshot.ErrorMessage,
-                    string.Empty,
-                    ProgressColor(snapshot.Provider))
-            };
+            return Array.Empty<PopoverMetricViewModel>();
         }
 
         return snapshot.Windows.Select(window => new PopoverMetricViewModel(
@@ -195,6 +214,23 @@ public sealed class PopoverViewModel : INotifyPropertyChanged
             $"{FormatPercent(window, ShowUsageAsUsed)} {(ShowUsageAsUsed ? "used" : "left")}",
             window.ResetsAt is null ? string.Empty : $"Resets {FormatRelative(window.ResetsAt.Value, now)}",
             ProgressColor(snapshot.Provider))).ToArray();
+    }
+
+    private static string BuildStatusMessage(UsageSnapshot? snapshot)
+    {
+        if (snapshot is null)
+        {
+            return string.Empty;
+        }
+
+        if (!string.IsNullOrWhiteSpace(snapshot.ErrorMessage))
+        {
+            return snapshot.ErrorMessage;
+        }
+
+        return snapshot.Windows.Count == 0
+            ? "No usage windows are available for this provider."
+            : string.Empty;
     }
 
     private static double FormatPercentValue(RateWindow? window, bool showUsageAsUsed)
@@ -294,15 +330,16 @@ public sealed class PopoverViewModel : INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 
-    private void SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
+    private bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
     {
         if (EqualityComparer<T>.Default.Equals(field, value))
         {
-            return;
+            return false;
         }
 
         field = value;
         OnPropertyChanged(propertyName);
+        return true;
     }
 
     private sealed class ActionCommand : ICommand
