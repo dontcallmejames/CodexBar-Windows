@@ -49,6 +49,28 @@ public sealed class SettingsWindowTests
         }
     }
 
+    [TestMethod]
+    public void SettingsWindowCancelButtonHasCloseHandler()
+    {
+        var settingsXamlPath = Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory,
+            "..",
+            "..",
+            "..",
+            "..",
+            "CodexBar.WinApp",
+            "Views",
+            "SettingsWindow.xaml"));
+        var settingsCodePath = Path.ChangeExtension(settingsXamlPath, ".xaml.cs");
+
+        var settingsXaml = File.ReadAllText(settingsXamlPath);
+        var settingsCode = File.ReadAllText(settingsCodePath);
+
+        StringAssert.Contains(settingsXaml, "Click=\"Cancel_Click\"");
+        StringAssert.Contains(settingsCode, "private void Cancel_Click");
+        StringAssert.Contains(settingsCode, "Close();");
+    }
+
     private sealed class ThrowingSettingsWriter : ISettingsWriter
     {
         public Task SaveAsync(AppSettings settings, CancellationToken cancellationToken) =>
