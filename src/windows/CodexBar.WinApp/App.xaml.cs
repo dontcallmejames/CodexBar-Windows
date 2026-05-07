@@ -143,6 +143,21 @@ public partial class App : System.Windows.Application
         return Math.Max(minimumHeight, anchoredBottom - workArea.Top - margin);
     }
 
+    public static (double Left, double Top) CalculateTaskbarDockPosition(
+        double width,
+        double height,
+        System.Windows.Rect workArea)
+    {
+        const double margin = 16;
+        const double taskbarGap = 12;
+        var maxLeft = workArea.Right - width - margin;
+        var maxTop = workArea.Bottom - height - taskbarGap;
+
+        return (
+            Math.Clamp(maxLeft, workArea.Left + margin, maxLeft),
+            Math.Clamp(maxTop, workArea.Top + margin, maxTop));
+    }
+
     private static void ShowUsageDashboard()
     {
         OpenUri(ProviderLinks.DashboardUri(UsageProvider.Codex));
