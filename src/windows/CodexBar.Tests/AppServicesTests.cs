@@ -19,7 +19,7 @@ public sealed class AppServicesTests
             using var services = new AppServices(paths, settings);
 
             CollectionAssert.AreEqual(
-                new[] { UsageProvider.Codex, UsageProvider.Claude },
+                new[] { UsageProvider.Codex, UsageProvider.Claude, UsageProvider.Cursor, UsageProvider.Gemini },
                 services.Providers.Select(provider => provider.Provider).ToArray());
             Assert.AreSame(paths, services.Paths);
             Assert.AreEqual(settings, services.Settings);
@@ -27,7 +27,7 @@ public sealed class AppServicesTests
             await services.Scheduler.RefreshAllAsync(CancellationToken.None);
 
             var snapshots = services.Store.All();
-            Assert.AreEqual(2, snapshots.Count);
+            Assert.AreEqual(4, snapshots.Count);
             Assert.IsTrue(snapshots.All(snapshot => snapshot.IsStale));
             Assert.IsTrue(snapshots.All(snapshot => snapshot.SourceLabel == "none"));
         }
@@ -47,8 +47,18 @@ public sealed class AppServicesTests
         try
         {
             var paths = WindowsAppPaths.ForTest(Path.Combine(root, "home"), Path.Combine(root, "appdata"));
-            using var codexOnly = new AppServices(paths, AppSettings.Default with { ClaudeEnabled = false });
-            using var claudeOnly = new AppServices(paths, AppSettings.Default with { CodexEnabled = false });
+            using var codexOnly = new AppServices(paths, AppSettings.Default with
+            {
+                ClaudeEnabled = false,
+                CursorEnabled = false,
+                GeminiEnabled = false
+            });
+            using var claudeOnly = new AppServices(paths, AppSettings.Default with
+            {
+                CodexEnabled = false,
+                CursorEnabled = false,
+                GeminiEnabled = false
+            });
 
             CollectionAssert.AreEqual(
                 new[] { UsageProvider.Codex },
@@ -56,6 +66,32 @@ public sealed class AppServicesTests
             CollectionAssert.AreEqual(
                 new[] { UsageProvider.Claude },
                 claudeOnly.Providers.Select(provider => provider.Provider).ToArray());
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
+
+    [TestMethod]
+    public void OmitsDisabledPreviewProviders()
+    {
+        var root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        try
+        {
+            var paths = WindowsAppPaths.ForTest(Path.Combine(root, "home"), Path.Combine(root, "appdata"));
+            using var services = new AppServices(paths, AppSettings.Default with
+            {
+                CursorEnabled = false,
+                GeminiEnabled = false
+            });
+
+            CollectionAssert.AreEqual(
+                new[] { UsageProvider.Codex, UsageProvider.Claude },
+                services.Providers.Select(provider => provider.Provider).ToArray());
         }
         finally
         {
@@ -104,14 +140,17 @@ public sealed class AppServicesTests
         var snapshots = new[]
         {
             Snapshot(UsageProvider.Codex),
-            Snapshot(UsageProvider.Claude)
+            Snapshot(UsageProvider.Claude),
+            Snapshot(UsageProvider.Cursor),
+            Snapshot(UsageProvider.Gemini)
         };
-        var settings = AppSettings.Default with { ClaudeEnabled = false };
+        var settings = AppSettings.Default with { ClaudeEnabled = false, GeminiEnabled = false };
 
         var filtered = App.FilterSnapshotsForSettings(snapshots, settings);
 
-        Assert.AreEqual(1, filtered.Count);
+        Assert.AreEqual(2, filtered.Count);
         Assert.AreEqual(UsageProvider.Codex, filtered[0].Provider);
+        Assert.AreEqual(UsageProvider.Cursor, filtered[1].Provider);
     }
 
     [TestMethod]

@@ -41,17 +41,48 @@ public sealed class PopoverViewModelTests
                 null,
                 "test",
                 null,
+                false),
+            new UsageSnapshot(
+                UsageProvider.Cursor,
+                "Cursor",
+                DateTimeOffset.Now,
+                new[] { new RateWindow("plan", "Included plan", 40, null, null) },
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                "test",
+                null,
+                false),
+            new UsageSnapshot(
+                UsageProvider.Gemini,
+                "Gemini",
+                DateTimeOffset.Now,
+                new[] { new RateWindow("pro", "Pro models", 50, null, null) },
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                "test",
+                null,
                 true)
         };
 
         var vm = new PopoverViewModel(snapshots, UsageProvider.Claude, showUsageAsUsed: true, now: now);
 
         Assert.AreEqual("Claude", vm.ActiveSnapshot!.DisplayName);
-        Assert.AreEqual(2, vm.Tabs.Count);
+        Assert.AreEqual(4, vm.Tabs.Count);
+        CollectionAssert.AreEqual(new[] { "Codex", "Claude", "Cursor", "Gemini" }, vm.Tabs.Select(tab => tab.Title).ToArray());
         Assert.AreEqual("30%", vm.Tabs[1].PercentText);
         Assert.AreEqual(30, vm.Tabs[1].ProgressPercent);
         Assert.IsFalse(string.IsNullOrWhiteSpace(vm.Tabs[1].IconGeometry));
-        Assert.IsTrue(vm.Tabs[1].IsStale);
+        Assert.IsTrue(vm.Tabs[3].IsStale);
     }
 
     [TestMethod]

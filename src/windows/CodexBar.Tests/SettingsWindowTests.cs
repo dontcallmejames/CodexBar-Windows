@@ -99,6 +99,27 @@ public sealed class SettingsWindowTests
         StringAssert.Contains(settingsCode, "Close();");
     }
 
+    [TestMethod]
+    public void SettingsWindowExposesPreviewProviderControls()
+    {
+        var settingsXamlPath = Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory,
+            "..",
+            "..",
+            "..",
+            "..",
+            "CodexBar.WinApp",
+            "Views",
+            "SettingsWindow.xaml"));
+
+        var settingsXaml = File.ReadAllText(settingsXamlPath);
+
+        StringAssert.Contains(settingsXaml, "Enable Cursor");
+        StringAssert.Contains(settingsXaml, "Enable Gemini");
+        StringAssert.Contains(settingsXaml, "Cursor manual cookie header");
+        StringAssert.Contains(settingsXaml, "GeminiAccountStatus");
+    }
+
     private sealed class ThrowingSettingsWriter : ISettingsWriter
     {
         public Task SaveAsync(AppSettings settings, CancellationToken cancellationToken) =>
