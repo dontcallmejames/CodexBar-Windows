@@ -4,6 +4,8 @@ using CodexBar.Core.Settings;
 using CodexBar.Tray;
 using CodexBar.WinApp.ViewModels;
 using CodexBar.WinApp.Views;
+using System.Diagnostics;
+using System.IO;
 
 namespace CodexBar.WinApp;
 
@@ -16,6 +18,7 @@ public partial class App : System.Windows.Application
     private PopoverWindow? popover;
     private DockedOverviewWindow? dockedOverview;
     private SettingsWindow? settingsWindow;
+    private IStartupRegistration? startupRegistration;
     private bool isShuttingDown;
 
     protected override async void OnStartup(System.Windows.StartupEventArgs e)
@@ -26,6 +29,8 @@ public partial class App : System.Windows.Application
         settingsStore = new JsonSettingsStore(paths.SettingsFile);
         var settings = await LoadSettingsOrDefaultAsync(paths, shutdown.Token);
         services = new AppServices(paths, settings);
+        startupRegistration = new StartupRegistration(Environment.ProcessPath ?? Environment.GetCommandLineArgs()[0]);
+        ApplyStartupRegistration(settings);
 
         tray = new TrayIconHost(ShowPopover, ShowSettings, Shutdown);
         tray.Update(new TrayDisplayModel("CodexBar", 0, true));
@@ -75,12 +80,12 @@ public partial class App : System.Windows.Application
             services.Store.All(),
             UsageProvider.Codex,
             services.Settings.ShowUsageAsUsed,
-            openDashboard: ShowUsageDashboard,
+            openDashboard: ShowActiveProviderDashboard,
             openSettings: ShowSettings,
             showAbout: ShowAbout,
             quit: Shutdown,
             addAccount: ShowSettings,
-            openStatusPage: ShowStatusPage);
+            openStatusPage: ShowActiveProviderStatusPage);
         popover = new PopoverWindow(viewModel);
         popover.Closed += (_, _) => popover = null;
         var cursorPosition = System.Windows.Forms.Cursor.Position;
@@ -138,14 +143,31 @@ public partial class App : System.Windows.Application
 
     private static void ShowUsageDashboard()
     {
-        const string message = "Usage dashboard actions will open provider dashboards after Task 8 wires live providers.";
-        System.Windows.MessageBox.Show(message, "CodexBar");
+        OpenUri(ProviderLinks.DashboardUri(UsageProvider.Codex));
     }
 
     private static void ShowStatusPage()
     {
-        const string message = "Status page actions will open provider status pages after live provider wiring is complete.";
-        System.Windows.MessageBox.Show(message, "CodexBar");
+        OpenUri(ProviderLinks.StatusUri(UsageProvider.Codex));
+    }
+
+    private void ShowActiveProviderDashboard() =>
+        OpenUri(ProviderLinks.DashboardUri(ActivePopoverProvider()));
+
+    private void ShowActiveProviderStatusPage() =>
+        OpenUri(ProviderLinks.StatusUri(ActivePopoverProvider()));
+
+    private UsageProvider ActivePopoverProvider() =>
+        popover?.DataContext is PopoverViewModel viewModel
+            ? viewModel.ActiveProvider
+            : UsageProvider.Codex;
+
+    private static void OpenUri(Uri uri)
+    {
+        Process.Start(new ProcessStartInfo(uri.AbsoluteUri)
+        {
+            UseShellExecute = true
+        });
     }
 
     private void ShowSettings()
@@ -161,7 +183,7 @@ public partial class App : System.Windows.Application
             return;
         }
 
-        settingsWindow = new SettingsWindow(services.Settings, settingsStore);
+        settingsWindow = new SettingsWindow(services.Settings, settingsStore, services.Paths);
         settingsWindow.SettingsSaved += (_, settings) => ApplySettings(settings);
         settingsWindow.Closed += (_, _) => settingsWindow = null;
         settingsWindow.Show();
@@ -185,6 +207,7 @@ public partial class App : System.Windows.Application
         var previousStore = services.Store;
         services.Dispose();
         services = new AppServices(paths, settings);
+        ApplyStartupRegistration(settings);
         foreach (var snapshot in FilterSnapshotsForSettings(previousStore.All(), settings))
         {
             services.Store.Set(snapshot);
@@ -251,12 +274,28 @@ public partial class App : System.Windows.Application
             services.Store.All(),
             UsageProvider.Codex,
             services.Settings.ShowUsageAsUsed,
-            openDashboard: ShowUsageDashboard,
+            openDashboard: ShowActiveProviderDashboard,
             openSettings: ShowSettings,
             showAbout: ShowAbout,
             quit: Shutdown,
             addAccount: ShowSettings,
-            openStatusPage: ShowStatusPage);
+            openStatusPage: ShowActiveProviderStatusPage);
+    }
+
+    private void ApplyStartupRegistration(AppSettings settings)
+    {
+        try
+        {
+            startupRegistration?.SetEnabled(settings.LaunchAtStartup);
+        }
+        catch (Exception error) when (error is UnauthorizedAccessException or IOException or InvalidOperationException)
+        {
+            System.Windows.MessageBox.Show(
+                error.Message,
+                "CodexBar Startup",
+                System.Windows.MessageBoxButton.OK,
+                System.Windows.MessageBoxImage.Warning);
+        }
     }
 
     public static TrayDisplayModel BuildTrayDisplay(IReadOnlyList<UsageSnapshot> snapshots)

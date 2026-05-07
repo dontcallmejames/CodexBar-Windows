@@ -17,6 +17,7 @@ public sealed class JsonSettingsStoreTests
         Assert.IsTrue(settings.ClaudeEnabled);
         Assert.IsTrue(settings.MergeTrayIcon);
         Assert.AreEqual(5, settings.RefreshMinutes);
+        Assert.IsFalse(settings.LaunchAtStartup);
     }
 
     [TestMethod]
@@ -48,6 +49,7 @@ public sealed class JsonSettingsStoreTests
         Assert.AreEqual(5, settings.RefreshMinutes);
         Assert.AreEqual("auto", settings.CodexSource);
         Assert.AreEqual("auto", settings.ClaudeSource);
+        Assert.IsFalse(settings.LaunchAtStartup);
     }
 
     [TestMethod]
@@ -88,5 +90,18 @@ public sealed class JsonSettingsStoreTests
         Assert.AreEqual(5, settings.RefreshMinutes);
         Assert.AreEqual("auto", settings.CodexSource);
         Assert.AreEqual("auto", settings.ClaudeSource);
+    }
+
+    [TestMethod]
+    public async Task SavesAndLoadsLaunchAtStartup()
+    {
+        var path = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "config.json");
+        var store = new JsonSettingsStore(path);
+        var settings = AppSettings.Default with { LaunchAtStartup = true };
+
+        await store.SaveAsync(settings, CancellationToken.None);
+        var loaded = await store.LoadAsync(CancellationToken.None);
+
+        Assert.IsTrue(loaded.LaunchAtStartup);
     }
 }

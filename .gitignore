@@ -18,6 +18,7 @@ CodexBar *.app/
 CodexBar_*.app/
 Codexbar.app/
 # Release artifacts
+dist/windows/
 *.ipa
 *.dSYM*
 *.zip
