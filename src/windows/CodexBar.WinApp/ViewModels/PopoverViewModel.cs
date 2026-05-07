@@ -55,13 +55,15 @@ public sealed class PopoverViewModel : INotifyPropertyChanged
             new PopoverFooterRowViewModel("Add Account...", "\uE72E", true, AddAccountCommand),
             new PopoverFooterRowViewModel("Usage Dashboard", "\uE9D2", true, UsageDashboardCommand),
             new PopoverFooterRowViewModel("Status Page", "\uE9D9", true, StatusPageCommand),
-            new PopoverFooterRowViewModel("Settings...", string.Empty, false, SettingsCommand),
-            new PopoverFooterRowViewModel("About CodexBar", string.Empty, false, AboutCommand),
-            new PopoverFooterRowViewModel("Quit", string.Empty, false, QuitCommand)
+            new PopoverFooterRowViewModel("Settings...", "\uE713", true, SettingsCommand),
+            new PopoverFooterRowViewModel("About CodexBar", "\uE946", true, AboutCommand),
+            new PopoverFooterRowViewModel("Quit", "\uE8BB", true, QuitCommand)
         };
         FooterRows = footerRows;
         FooterPrimaryRows = footerRows.Take(3).ToArray();
         FooterSecondaryRows = footerRows.Skip(3).ToArray();
+        BottomActionRows = FooterPrimaryRows;
+        TopChromeRows = FooterSecondaryRows;
         SelectProvider(activeProvider);
     }
 
@@ -155,6 +157,8 @@ public sealed class PopoverViewModel : INotifyPropertyChanged
     public IReadOnlyList<PopoverFooterRowViewModel> FooterRows { get; }
     public IReadOnlyList<PopoverFooterRowViewModel> FooterPrimaryRows { get; }
     public IReadOnlyList<PopoverFooterRowViewModel> FooterSecondaryRows { get; }
+    public IReadOnlyList<PopoverFooterRowViewModel> TopChromeRows { get; }
+    public IReadOnlyList<PopoverFooterRowViewModel> BottomActionRows { get; }
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
