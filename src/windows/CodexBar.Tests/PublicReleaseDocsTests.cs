@@ -42,4 +42,30 @@ public sealed class PublicReleaseDocsTests
         StringAssert.Contains(about, "Inspired by Peter Steinberger's CodexBar");
         StringAssert.Contains(about, "https://github.com/steipete/CodexBar");
     }
+
+    [TestMethod]
+    public void PublicRepoIncludesIssueTemplatesAndReleaseChecklist()
+    {
+        var repoRoot = Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory,
+            "..",
+            "..",
+            "..",
+            "..",
+            "..",
+            ".."));
+        var bugTemplate = File.ReadAllText(Path.Combine(repoRoot, ".github", "ISSUE_TEMPLATE", "bug_report.yml"));
+        var providerTemplate = File.ReadAllText(Path.Combine(repoRoot, ".github", "ISSUE_TEMPLATE", "provider_request.yml"));
+        var pullRequestTemplate = File.ReadAllText(Path.Combine(repoRoot, ".github", "pull_request_template.md"));
+        var releaseChecklist = File.ReadAllText(Path.Combine(repoRoot, "docs", "windows-release-checklist.md"));
+
+        StringAssert.Contains(bugTemplate, "Provider");
+        StringAssert.Contains(bugTemplate, "Portable zip");
+        StringAssert.Contains(providerTemplate, "Credential source");
+        StringAssert.Contains(providerTemplate, "Usage data");
+        StringAssert.Contains(pullRequestTemplate, "Windows tests");
+        StringAssert.Contains(releaseChecklist, "v0.25.0-preview.1");
+        StringAssert.Contains(releaseChecklist, "GitHub Release");
+        StringAssert.Contains(releaseChecklist, "CodexBar-Windows");
+    }
 }

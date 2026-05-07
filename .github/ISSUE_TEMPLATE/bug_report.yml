@@ -1,0 +1,67 @@
+name: Bug report
+description: Report a problem with CodexBar for Windows.
+title: "[Bug]: "
+labels: ["bug", "windows"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for testing CodexBar for Windows. Please avoid posting provider tokens, cookie headers, OAuth files, or screenshots that expose credentials.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Use the release tag or portable zip name.
+      placeholder: v0.25.0-preview.1 or CodexBar-Windows-0.25-win-x64.zip
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: Install type
+      options:
+        - Portable zip
+        - Local build from source
+        - Other
+    validations:
+      required: true
+  - type: checkboxes
+    id: provider
+    attributes:
+      label: Provider
+      options:
+        - label: Codex
+        - label: Claude
+        - label: Cursor
+        - label: Gemini
+        - label: Tray, dock, settings, or release packaging
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Describe the visible behavior and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Start CodexBar.WinApp.exe
+        2. Open Settings
+        3. Enable Gemini
+        4. ...
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Windows environment
+      placeholder: Windows 11 version, monitor/taskbar layout, enabled providers, CLI versions if relevant.
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional context
+      description: Logs, screenshots, or notes are welcome, but redact secrets first.
