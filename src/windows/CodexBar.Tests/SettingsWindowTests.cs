@@ -50,6 +50,34 @@ public sealed class SettingsWindowTests
     }
 
     [TestMethod]
+    public void SettingsViewModelReportsCursorAndGeminiCredentialStatus()
+    {
+        var root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        try
+        {
+            var paths = WindowsAppPaths.ForTest(Path.Combine(root, "home"), Path.Combine(root, "appdata"));
+            Directory.CreateDirectory(Path.GetDirectoryName(paths.GeminiOAuthCredentialsJson)!);
+            File.WriteAllText(paths.GeminiOAuthCredentialsJson, "{}");
+
+            var settings = AppSettings.Default with { CursorManualCookieHeader = "WorkosCursorSessionToken=abc" };
+            var viewModel = new SettingsViewModel(settings, paths);
+
+            Assert.IsTrue(viewModel.CursorEnabled);
+            Assert.IsTrue(viewModel.GeminiEnabled);
+            Assert.AreEqual("Connected", viewModel.CursorAccountStatus);
+            Assert.AreEqual("Connected", viewModel.GeminiAccountStatus);
+            Assert.AreEqual(paths.GeminiOAuthCredentialsJson, viewModel.GeminiCredentialPath);
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
+
+    [TestMethod]
     public void SettingsWindowCancelButtonHasCloseHandler()
     {
         var settingsXamlPath = Path.GetFullPath(Path.Combine(

@@ -25,6 +25,8 @@ public sealed class WindowsAppPaths : IAppPaths
     public string CacheDirectory => Path.Combine(localAppData, "CodexBar", "Cache");
     public string LogDirectory => Path.Combine(localAppData, "CodexBar", "Logs");
     public string ClaudeCredentialsJson => Path.Combine(homeDirectory, ".claude", ".credentials.json");
+    public string GeminiSettingsJson => Path.Combine(homeDirectory, ".gemini", "settings.json");
+    public string GeminiOAuthCredentialsJson => Path.Combine(homeDirectory, ".gemini", "oauth_creds.json");
 
     public string CodexAuthJson(string? codexHome) =>
         Path.Combine(string.IsNullOrWhiteSpace(codexHome) ? Path.Combine(homeDirectory, ".codex") : codexHome, "auth.json");

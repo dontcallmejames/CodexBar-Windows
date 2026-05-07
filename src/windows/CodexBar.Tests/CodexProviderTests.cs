@@ -113,6 +113,8 @@ public sealed class CodexProviderTests
         public string CacheDirectory => string.Empty;
         public string LogDirectory => string.Empty;
         public string ClaudeCredentialsJson => string.Empty;
+        public string GeminiSettingsJson => string.Empty;
+        public string GeminiOAuthCredentialsJson => string.Empty;
         public string CodexAuthJson(string? codexHome) => codexAuthJson;
     }
 }

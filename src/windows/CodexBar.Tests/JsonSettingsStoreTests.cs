@@ -21,6 +21,23 @@ public sealed class JsonSettingsStoreTests
     }
 
     [TestMethod]
+    public async Task DefaultsEnablePreviewProvidersAndKeepManualCursorCookieEmpty()
+    {
+        var path = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "config.json");
+        var store = new JsonSettingsStore(path);
+
+        var settings = await store.LoadAsync(CancellationToken.None);
+
+        Assert.IsTrue(settings.CodexEnabled);
+        Assert.IsTrue(settings.ClaudeEnabled);
+        Assert.IsTrue(settings.CursorEnabled);
+        Assert.IsTrue(settings.GeminiEnabled);
+        Assert.AreEqual("auto", settings.CursorSource);
+        Assert.AreEqual("auto", settings.GeminiSource);
+        Assert.IsNull(settings.CursorManualCookieHeader);
+    }
+
+    [TestMethod]
     public async Task SavesAndLoadsManualClaudeCookieHeader()
     {
         var path = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "config.json");
