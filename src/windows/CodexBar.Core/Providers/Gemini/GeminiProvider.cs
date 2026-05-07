@@ -80,13 +80,11 @@ public sealed class GeminiProvider : IUsageProvider
             ?? Environment.GetEnvironmentVariable("GOOGLE_CLOUD_PROJECT")
             ?? Environment.GetEnvironmentVariable("GOOGLE_CLOUD_PROJECT_ID");
 
-        using var quota = string.IsNullOrWhiteSpace(project)
-            ? JsonDocument.Parse("""{}""")
-            : await PostJsonAsync(
-                RetrieveUserQuotaUri,
-                credentials.AccessToken!,
-                new { project },
-                cancellationToken);
+        using var quota = await PostJsonAsync(
+            RetrieveUserQuotaUri,
+            credentials.AccessToken!,
+            string.IsNullOrWhiteSpace(project) ? new { } : new { project },
+            cancellationToken);
 
         return GeminiUsageMapper.Map(load.RootElement, quota.RootElement, credentials.Email, DateTimeOffset.Now);
     }
