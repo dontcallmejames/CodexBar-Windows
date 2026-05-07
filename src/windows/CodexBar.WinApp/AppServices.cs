@@ -3,6 +3,8 @@ using CodexBar.Core.Paths;
 using CodexBar.Core.Providers;
 using CodexBar.Core.Providers.Claude;
 using CodexBar.Core.Providers.Codex;
+using CodexBar.Core.Providers.Cursor;
+using CodexBar.Core.Providers.Gemini;
 using CodexBar.Core.Refresh;
 using CodexBar.Core.Settings;
 
@@ -43,6 +45,16 @@ public sealed class AppServices : IDisposable
         if (settings.ClaudeEnabled)
         {
             providers.Add(new ClaudeProvider(HttpClient, Paths, manualCookieHeader: settings.ClaudeManualCookieHeader));
+        }
+
+        if (settings.CursorEnabled)
+        {
+            providers.Add(new CursorProvider(HttpClient, settings.CursorManualCookieHeader));
+        }
+
+        if (settings.GeminiEnabled)
+        {
+            providers.Add(new GeminiProvider(HttpClient, Paths));
         }
 
         return providers;

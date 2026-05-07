@@ -384,6 +384,8 @@ public partial class App : System.Windows.Application
         {
             UsageProvider.Codex => settings.CodexEnabled,
             UsageProvider.Claude => settings.ClaudeEnabled,
+            UsageProvider.Cursor => settings.CursorEnabled,
+            UsageProvider.Gemini => settings.GeminiEnabled,
             _ => true
         }).ToArray();
 
