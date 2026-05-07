@@ -50,7 +50,19 @@ public sealed class GeminiProvider : IUsageProvider
                 return Missing("Gemini CLI OAuth refresh token was not found.");
             }
 
-            credentials = await RefreshAccessTokenAsync(credentials, cancellationToken);
+            try
+            {
+                credentials = await RefreshAccessTokenAsync(credentials, cancellationToken);
+            }
+            catch (HttpRequestException)
+            {
+                return Missing("Gemini CLI OAuth refresh failed. Run Gemini CLI login again, then retry.");
+            }
+            catch (InvalidOperationException)
+            {
+                return Missing("Gemini CLI OAuth refresh failed. Run Gemini CLI login again, then retry.");
+            }
+
             if (credentials is null)
             {
                 return Missing("Gemini CLI OAuth client metadata was not found. Reinstall or rerun Gemini CLI.");

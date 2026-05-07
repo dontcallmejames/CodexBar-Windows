@@ -22,6 +22,8 @@ public sealed class PublicReleaseDocsTests
         StringAssert.Contains(readme, "Cursor");
         StringAssert.Contains(readme, "Gemini");
         StringAssert.Contains(readme, "credentials stay on your machine");
+        StringAssert.Contains(readme, "## Screenshot");
+        StringAssert.Contains(readme, "Installer support is deferred");
     }
 
     [TestMethod]
@@ -38,5 +40,6 @@ public sealed class PublicReleaseDocsTests
             "AboutWindow.xaml")));
 
         StringAssert.Contains(about, "Inspired by Peter Steinberger's CodexBar");
+        StringAssert.Contains(about, "https://github.com/steipete/CodexBar");
     }
 }

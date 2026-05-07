@@ -6,9 +6,15 @@ This project is inspired by Peter Steinberger's original CodexBar for macOS: htt
 
 The first public preview supports Codex, Claude, Cursor, and Gemini. Codex and Claude are the primary preview paths; Cursor and Gemini are included as honest preview support while their provider APIs and credential flows continue to settle.
 
+## Screenshot
+
+The Windows preview follows the translucent tray popover style of the original CodexBar. A Windows screenshot will be added to the first public preview release notes.
+
 ## Install
 
 Download the latest Windows preview release from this repository's Releases page, unzip the portable package, and run `CodexBar.WinApp.exe`.
+
+Installer support is deferred for the first public preview. The portable zip is the supported preview artifact while the release flow stabilizes.
 
 Requirements:
 - Windows 11
