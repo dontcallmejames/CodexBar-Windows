@@ -264,7 +264,7 @@ public partial class App : System.Windows.Application
         aboutWindow.Activate();
     }
 
-    private void ApplySettings(AppSettings settings)
+    private async void ApplySettings(AppSettings settings)
     {
         if (services is null)
         {
@@ -276,9 +276,35 @@ public partial class App : System.Windows.Application
         services.Dispose();
         services = new AppServices(paths, settings);
         ApplyStartupRegistration(settings);
-        foreach (var snapshot in FilterSnapshotsForSettings(previousStore.All(), settings))
+        var activeServices = services;
+        var snapshots = EnsureEnabledProviderSnapshots(
+            FilterSnapshotsForSettings(previousStore.All(), settings),
+            settings);
+        foreach (var snapshot in snapshots)
         {
             services.Store.Set(snapshot);
+        }
+
+        UpdateTrayFromSnapshots();
+        UpdateDockedOverview();
+        UpdatePopover();
+        await RefreshServicesAsync(activeServices);
+    }
+
+    private async Task RefreshServicesAsync(AppServices activeServices)
+    {
+        try
+        {
+            await activeServices.Scheduler.RefreshAllAsync(shutdown.Token);
+        }
+        catch (OperationCanceledException) when (shutdown.IsCancellationRequested)
+        {
+            return;
+        }
+
+        if (!ReferenceEquals(services, activeServices) || isShuttingDown)
+        {
+            return;
         }
 
         UpdateTrayFromSnapshots();
@@ -340,7 +366,7 @@ public partial class App : System.Windows.Application
 
         popover.DataContext = new PopoverViewModel(
             services.Store.All(),
-            UsageProvider.Codex,
+            ActivePopoverProvider(),
             services.Settings.ShowUsageAsUsed,
             openDashboard: ShowActiveProviderDashboard,
             openSettings: ShowSettings,
@@ -388,6 +414,55 @@ public partial class App : System.Windows.Application
             UsageProvider.Gemini => settings.GeminiEnabled,
             _ => true
         }).ToArray();
+
+    public static IReadOnlyList<UsageSnapshot> EnsureEnabledProviderSnapshots(
+        IReadOnlyList<UsageSnapshot> snapshots,
+        AppSettings settings)
+    {
+        var byProvider = snapshots.ToDictionary(snapshot => snapshot.Provider);
+        foreach (var provider in EnabledProviders(settings))
+        {
+            if (!byProvider.ContainsKey(provider))
+            {
+                byProvider[provider] = UsageSnapshot.MissingCredentials(provider, ProviderDisplayName(provider), "Refreshing usage...");
+            }
+        }
+
+        return byProvider.Values.OrderBy(snapshot => snapshot.Provider).ToArray();
+    }
+
+    private static IEnumerable<UsageProvider> EnabledProviders(AppSettings settings)
+    {
+        if (settings.CodexEnabled)
+        {
+            yield return UsageProvider.Codex;
+        }
+
+        if (settings.ClaudeEnabled)
+        {
+            yield return UsageProvider.Claude;
+        }
+
+        if (settings.CursorEnabled)
+        {
+            yield return UsageProvider.Cursor;
+        }
+
+        if (settings.GeminiEnabled)
+        {
+            yield return UsageProvider.Gemini;
+        }
+    }
+
+    private static string ProviderDisplayName(UsageProvider provider) =>
+        provider switch
+        {
+            UsageProvider.Codex => "Codex",
+            UsageProvider.Claude => "Claude",
+            UsageProvider.Cursor => "Cursor",
+            UsageProvider.Gemini => "Gemini",
+            _ => provider.ToString()
+        };
 
     public static async Task<AppSettings> LoadSettingsOrDefaultAsync(
         WindowsAppPaths paths,
