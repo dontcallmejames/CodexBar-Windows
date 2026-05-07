@@ -69,6 +69,8 @@ public sealed class JsonSettingsStore
     private sealed record StoredAppSettings(
         bool? CodexEnabled,
         bool? ClaudeEnabled,
+        bool? CursorEnabled,
+        bool? GeminiEnabled,
         bool? MergeTrayIcon,
         bool? ShowUsageAsUsed,
         bool? DockOverviewNearTaskbar,
@@ -76,7 +78,10 @@ public sealed class JsonSettingsStore
         int? RefreshMinutes,
         string? CodexSource,
         string? ClaudeSource,
-        string? ClaudeManualCookieHeader)
+        string? CursorSource,
+        string? GeminiSource,
+        string? ClaudeManualCookieHeader,
+        string? CursorManualCookieHeader)
     {
         public AppSettings ToAppSettings()
         {
@@ -85,6 +90,8 @@ public sealed class JsonSettingsStore
             return new AppSettings(
                 CodexEnabled ?? defaults.CodexEnabled,
                 ClaudeEnabled ?? defaults.ClaudeEnabled,
+                CursorEnabled ?? defaults.CursorEnabled,
+                GeminiEnabled ?? defaults.GeminiEnabled,
                 MergeTrayIcon ?? defaults.MergeTrayIcon,
                 ShowUsageAsUsed ?? defaults.ShowUsageAsUsed,
                 DockOverviewNearTaskbar ?? defaults.DockOverviewNearTaskbar,
@@ -92,7 +99,10 @@ public sealed class JsonSettingsStore
                 RefreshMinutes is > 0 ? RefreshMinutes.Value : defaults.RefreshMinutes,
                 NormalizeSource(CodexSource, defaults.CodexSource),
                 NormalizeSource(ClaudeSource, defaults.ClaudeSource),
-                ClaudeManualCookieHeader);
+                NormalizeSource(CursorSource, defaults.CursorSource),
+                NormalizeSource(GeminiSource, defaults.GeminiSource),
+                ClaudeManualCookieHeader,
+                CursorManualCookieHeader);
         }
 
         private static string NormalizeSource(string? source, string fallback) =>
