@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="CodexBar Settings"
         Width="560"
-        Height="460">
+        Height="620">
   <Grid Margin="18">
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto" />
@@ -19,7 +19,28 @@
       <CheckBox Content="Merge tray icon" IsChecked="{Binding MergeTrayIcon}" Margin="0,6" />
       <CheckBox Content="Show usage as used" IsChecked="{Binding ShowUsageAsUsed}" Margin="0,6" />
       <CheckBox Content="Dock overview near taskbar" IsChecked="{Binding DockOverviewNearTaskbar}" Margin="0,6" />
-      <TextBlock Text="Claude manual cookie header" Margin="0,18,0,4" />
+      <CheckBox Content="Start CodexBar with Windows" IsChecked="{Binding LaunchAtStartup}" Margin="0,6" />
+
+      <TextBlock Text="Accounts" FontSize="17" FontWeight="SemiBold" Margin="0,18,0,6" />
+      <Grid Margin="0,0,0,8">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="90" />
+          <ColumnDefinition Width="110" />
+          <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <TextBlock Text="Codex" Grid.Row="0" Grid.Column="0" Margin="0,4" FontWeight="SemiBold" />
+        <TextBlock Text="{Binding CodexAccountStatus}" Grid.Row="0" Grid.Column="1" Margin="0,4" />
+        <TextBlock Text="{Binding CodexCredentialPath}" Grid.Row="0" Grid.Column="2" Margin="0,4" Foreground="#666666" TextTrimming="CharacterEllipsis" />
+        <TextBlock Text="Claude" Grid.Row="1" Grid.Column="0" Margin="0,4" FontWeight="SemiBold" />
+        <TextBlock Text="{Binding ClaudeAccountStatus}" Grid.Row="1" Grid.Column="1" Margin="0,4" />
+        <TextBlock Text="{Binding ClaudeCredentialPath}" Grid.Row="1" Grid.Column="2" Margin="0,4" Foreground="#666666" TextTrimming="CharacterEllipsis" />
+      </Grid>
+
+      <TextBlock Text="Claude manual cookie header" Margin="0,12,0,4" />
       <TextBox Text="{Binding ClaudeManualCookieHeader, UpdateSourceTrigger=PropertyChanged}"
                Height="80"
                TextWrapping="Wrap"

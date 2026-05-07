@@ -1,5 +1,6 @@
 using System.Windows;
 using CodexBar.Core.Settings;
+using CodexBar.Core.Paths;
 using CodexBar.WinApp.Settings;
 using CodexBar.WinApp.ViewModels;
 
@@ -9,16 +10,16 @@ public partial class SettingsWindow : Window
 {
     private readonly ISettingsWriter settingsWriter;
 
-    public SettingsWindow(AppSettings settings, JsonSettingsStore store)
-        : this(settings, new JsonSettingsWriter(store))
+    public SettingsWindow(AppSettings settings, JsonSettingsStore store, IAppPaths? paths = null)
+        : this(settings, new JsonSettingsWriter(store), paths)
     {
     }
 
-    public SettingsWindow(AppSettings settings, ISettingsWriter settingsWriter)
+    public SettingsWindow(AppSettings settings, ISettingsWriter settingsWriter, IAppPaths? paths = null)
     {
         InitializeComponent();
         this.settingsWriter = settingsWriter;
-        DataContext = new SettingsViewModel(settings);
+        DataContext = new SettingsViewModel(settings, paths);
     }
 
     public event EventHandler<AppSettings>? SettingsSaved;
