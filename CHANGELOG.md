@@ -4,6 +4,7 @@
 
 ### Windows
 - Windows preview: publish tagged portable zip builds to prerelease GitHub Releases, add public issue/PR templates, and document the release checklist.
+- Windows app: add a Settings > Report a Bug flow that copies a redacted diagnostic summary and opens the GitHub bug report form.
 
 ### Fixes
 - Augment: report the real 1-minute keepalive check/min-refresh intervals in startup logs and docs (#434). Thanks @guglielmofonda!

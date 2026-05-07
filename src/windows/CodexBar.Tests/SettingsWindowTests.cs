@@ -139,6 +139,29 @@ public sealed class SettingsWindowTests
         StringAssert.Contains(settingsXaml, "GeminiAccountStatus");
     }
 
+    [TestMethod]
+    public void SettingsWindowExposesBugReportButton()
+    {
+        var settingsXamlPath = Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory,
+            "..",
+            "..",
+            "..",
+            "..",
+            "CodexBar.WinApp",
+            "Views",
+            "SettingsWindow.xaml"));
+        var settingsCodePath = Path.ChangeExtension(settingsXamlPath, ".xaml.cs");
+
+        var settingsXaml = File.ReadAllText(settingsXamlPath);
+        var settingsCode = File.ReadAllText(settingsCodePath);
+
+        StringAssert.Contains(settingsXaml, "Report a Bug...");
+        StringAssert.Contains(settingsXaml, "Click=\"ReportBug_Click\"");
+        StringAssert.Contains(settingsCode, "BugReportRequested");
+        StringAssert.Contains(settingsCode, "ReportBug_Click");
+    }
+
     private sealed class ThrowingSettingsWriter : ISettingsWriter
     {
         public Task SaveAsync(AppSettings settings, CancellationToken cancellationToken) =>
