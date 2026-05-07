@@ -186,8 +186,65 @@ public partial class App : System.Windows.Application
         settingsWindow = new SettingsWindow(services.Settings, settingsStore, services.Paths);
         settingsWindow.SettingsSaved += (_, settings) => ApplySettings(settings);
         settingsWindow.Closed += (_, _) => settingsWindow = null;
+        PositionSettingsWindow(settingsWindow);
         settingsWindow.Show();
         settingsWindow.Activate();
+    }
+
+    private void PositionSettingsWindow(System.Windows.Window window)
+    {
+        var width = window.Width > 0 ? window.Width : 560;
+        var height = window.Height > 0 ? window.Height : 620;
+        var workArea = System.Windows.SystemParameters.WorkArea;
+        double anchorLeft;
+        double anchorTop;
+        double anchorWidth;
+        double anchorHeight;
+
+        if (popover?.IsVisible == true)
+        {
+            anchorLeft = popover.Left;
+            anchorTop = popover.Top;
+            anchorWidth = popover.ActualWidth > 0 ? popover.ActualWidth : popover.Width;
+            anchorHeight = popover.ActualHeight > 0 ? popover.ActualHeight : popover.Height;
+        }
+        else
+        {
+            var cursor = System.Windows.Forms.Cursor.Position;
+            anchorLeft = cursor.X;
+            anchorTop = cursor.Y;
+            anchorWidth = 1;
+            anchorHeight = 1;
+        }
+
+        var position = CalculateSettingsPosition(width, height, anchorLeft, anchorTop, anchorWidth, anchorHeight, workArea);
+        window.WindowStartupLocation = System.Windows.WindowStartupLocation.Manual;
+        window.Left = position.Left;
+        window.Top = position.Top;
+    }
+
+    public static (double Left, double Top) CalculateSettingsPosition(
+        double settingsWidth,
+        double settingsHeight,
+        double anchorLeft,
+        double anchorTop,
+        double anchorWidth,
+        double anchorHeight,
+        System.Windows.Rect workArea)
+    {
+        const double margin = 16;
+        const double gap = 12;
+        var rightCandidate = anchorLeft + anchorWidth + gap;
+        var leftCandidate = anchorLeft - settingsWidth - gap;
+        var maxLeft = workArea.Right - settingsWidth - margin;
+        var left = rightCandidate <= maxLeft ? rightCandidate : leftCandidate;
+        var anchorCenter = anchorTop + (anchorHeight / 2);
+        var top = anchorCenter - (settingsHeight / 2);
+        var maxTop = workArea.Bottom - settingsHeight - margin;
+
+        return (
+            Math.Clamp(left, workArea.Left + margin, maxLeft),
+            Math.Clamp(top, workArea.Top + margin, maxTop));
     }
 
     private static void ShowAbout()
