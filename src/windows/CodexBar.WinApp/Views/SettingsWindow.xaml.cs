@@ -46,6 +46,11 @@ public partial class SettingsWindow : Window
         Close();
     }
 
+    private void Cancel_Click(object sender, RoutedEventArgs e)
+    {
+        Close();
+    }
+
     public static async Task<SettingsSaveResult> SaveSettingsAsync(
         ISettingsWriter writer,
         SettingsViewModel viewModel,
