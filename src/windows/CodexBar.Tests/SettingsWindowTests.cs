@@ -100,6 +100,25 @@ public sealed class SettingsWindowTests
     }
 
     [TestMethod]
+    public void SettingsWindowLabelsDockAsTaskbarDock()
+    {
+        var settingsXamlPath = Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory,
+            "..",
+            "..",
+            "..",
+            "..",
+            "CodexBar.WinApp",
+            "Views",
+            "SettingsWindow.xaml"));
+
+        var settingsXaml = File.ReadAllText(settingsXamlPath);
+
+        StringAssert.Contains(settingsXaml, "Show taskbar dock");
+        StringAssert.Contains(settingsXaml, "IsChecked=\"{Binding DockOverviewNearTaskbar}\"");
+    }
+
+    [TestMethod]
     public void SettingsWindowExposesPreviewProviderControls()
     {
         var settingsXamlPath = Path.GetFullPath(Path.Combine(
