@@ -32,6 +32,10 @@ dotnet run --project src\windows\CodexBar.WinApp\CodexBar.WinApp.csproj
 
 The app starts in the notification area. Click the CodexBar tray icon to open the popover.
 
+## Report Bugs
+
+Use Settings > Report a Bug... to copy a redacted diagnostic summary and open the GitHub bug report form. The summary includes app version, Windows version, enabled providers, provider freshness, and latest visible provider errors. It does not include tokens, cookies, OAuth files, or credential contents.
+
 ## Package
 
 ```powershell

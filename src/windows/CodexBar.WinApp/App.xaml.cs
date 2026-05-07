@@ -348,10 +348,40 @@ public partial class App : System.Windows.Application
 
         settingsWindow = new SettingsWindow(services.Settings, settingsStore, services.Paths);
         settingsWindow.SettingsSaved += (_, settings) => ApplySettings(settings);
+        settingsWindow.BugReportRequested += (_, _) => ShowBugReport();
         settingsWindow.Closed += (_, _) => settingsWindow = null;
         PositionWindowNearApp(settingsWindow);
         settingsWindow.Show();
         settingsWindow.Activate();
+    }
+
+    private void ShowBugReport()
+    {
+        if (services is null)
+        {
+            return;
+        }
+
+        var summary = BugReportBuilder.BuildDiagnosticSummary(services.Settings, services.Store.All());
+        try
+        {
+            System.Windows.Clipboard.SetText(summary);
+            OpenUri(ProviderLinks.BugReportUri());
+            System.Windows.MessageBox.Show(
+                "Diagnostic summary copied. Paste it into the GitHub issue if useful.",
+                "CodexBar Bug Report",
+                System.Windows.MessageBoxButton.OK,
+                System.Windows.MessageBoxImage.Information);
+        }
+        catch (Exception error) when (error is System.Runtime.InteropServices.COMException or InvalidOperationException)
+        {
+            OpenUri(ProviderLinks.BugReportUri());
+            System.Windows.MessageBox.Show(
+                "Could not copy the diagnostic summary, but the GitHub issue form will still open.",
+                "CodexBar Bug Report",
+                System.Windows.MessageBoxButton.OK,
+                System.Windows.MessageBoxImage.Warning);
+        }
     }
 
     private void PositionWindowNearApp(System.Windows.Window window)

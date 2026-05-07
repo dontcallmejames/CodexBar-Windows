@@ -61,6 +61,8 @@ public sealed class PublicReleaseDocsTests
 
         StringAssert.Contains(bugTemplate, "Provider");
         StringAssert.Contains(bugTemplate, "Portable zip");
+        StringAssert.Contains(bugTemplate, "Diagnostic summary");
+        StringAssert.Contains(bugTemplate, "Report a Bug");
         StringAssert.Contains(providerTemplate, "Credential source");
         StringAssert.Contains(providerTemplate, "Usage data");
         StringAssert.Contains(pullRequestTemplate, "Windows tests");

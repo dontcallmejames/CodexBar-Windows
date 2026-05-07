@@ -4,6 +4,9 @@ namespace CodexBar.WinApp;
 
 public static class ProviderLinks
 {
+    public static Uri BugReportUri() =>
+        new("https://github.com/dontcallmejames/CodexBar-Windows/issues/new?template=bug_report.yml");
+
     public static Uri DashboardUri(UsageProvider provider) =>
         provider switch
         {
