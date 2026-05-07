@@ -72,4 +72,44 @@ public sealed class ClaudeUsageMapperTests
         Assert.AreEqual(35, snapshot.Windows[0].UsedPercent);
         Assert.AreEqual("web", snapshot.SourceLabel);
     }
+
+    [TestMethod]
+    public void MapsOAuthAppsAndProductUsageAliases()
+    {
+        const string json = """
+        {
+          "seven_day_oauth_apps": { "utilization": 22, "resets_at": "2030-01-08T00:00:00Z" },
+          "seven_day_omelette": { "utilization": 29, "resets_at": "2030-01-08T00:00:00Z" },
+          "seven_day_cowork": { "utilization": 9, "resets_at": "2030-01-08T00:00:00Z" }
+        }
+        """;
+
+        var response = JsonSerializer.Deserialize<ClaudeUsageResponse>(json, ClaudeUsageMapper.JsonOptions)!;
+        var snapshot = ClaudeUsageMapper.Map(response, DateTimeOffset.FromUnixTimeSeconds(1893440000), "oauth");
+
+        CollectionAssert.AreEqual(
+            new[] { "Weekly", "Designs", "Daily Routines" },
+            snapshot.Windows.Select(window => window.Title).ToArray());
+        Assert.AreEqual(22, snapshot.Windows[0].UsedPercent);
+        Assert.AreEqual(29, snapshot.Windows[1].UsedPercent);
+        Assert.AreEqual(9, snapshot.Windows[2].UsedPercent);
+    }
+
+    [TestMethod]
+    public void KeepsKnownProductWindowVisibleWhenAliasIsNull()
+    {
+        const string json = """
+        {
+          "five_hour": { "utilization": 12.5 },
+          "seven_day_cowork": null
+        }
+        """;
+
+        var response = JsonSerializer.Deserialize<ClaudeUsageResponse>(json, ClaudeUsageMapper.JsonOptions)!;
+        var snapshot = ClaudeUsageMapper.Map(response, DateTimeOffset.FromUnixTimeSeconds(1893440000), "oauth");
+
+        var routines = snapshot.Windows.Single(window => window.Id == "routines");
+        Assert.AreEqual("Daily Routines", routines.Title);
+        Assert.AreEqual(0, routines.UsedPercent);
+    }
 }

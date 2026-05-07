@@ -57,7 +57,7 @@ public sealed class ClaudeProviderTests
         Assert.IsTrue(request.Headers.TryGetValues("anthropic-beta", out var betaValues));
         Assert.AreEqual("oauth-2025-04-20", betaValues.Single());
         Assert.IsTrue(request.Headers.TryGetValues("User-Agent", out var userAgents));
-        Assert.AreEqual("CodexBar-Windows", userAgents.Single());
+        Assert.AreEqual("claude-code/2.1.0", userAgents.Single());
         Assert.AreEqual("oauth", snapshot.SourceLabel);
         Assert.AreEqual("Pro", snapshot.Plan);
     }
@@ -120,7 +120,7 @@ public sealed class ClaudeProviderTests
     }
 
     [TestMethod]
-    public async Task OAuthRateLimitThrowsRetryMessage()
+    public async Task OAuthThrottleThrowsSubscriptionRetryMessage()
     {
         var credentialsPath = await WriteCredentialsFileAsync("""
         {
@@ -140,7 +140,7 @@ public sealed class ClaudeProviderTests
         var error = await Assert.ThrowsExactlyAsync<InvalidOperationException>(
             () => provider.RefreshAsync(CancellationToken.None));
 
-        StringAssert.Contains(error.Message, "Claude usage API is rate limited");
+        StringAssert.Contains(error.Message, "Claude subscription usage is temporarily unavailable");
         StringAssert.Contains(error.Message, "2m");
     }
 
