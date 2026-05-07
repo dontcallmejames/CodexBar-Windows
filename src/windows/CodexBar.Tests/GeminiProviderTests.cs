@@ -83,6 +83,50 @@ public sealed class GeminiProviderTests
     }
 
     [TestMethod]
+    public async Task RetrievesQuotaWithEmptyBodyWhenProjectIsUnknown()
+    {
+        var root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        var paths = WindowsAppPaths.ForTest(Path.Combine(root, "home"), Path.Combine(root, "appdata"));
+        Directory.CreateDirectory(Path.GetDirectoryName(paths.GeminiOAuthCredentialsJson)!);
+        await File.WriteAllTextAsync(paths.GeminiOAuthCredentialsJson, """
+        {
+          "access_token": "access",
+          "refresh_token": "refresh",
+          "id_token": "header.eyJlbWFpbCI6ImdlbWluaUBleGFtcGxlLmNvbSJ9.signature",
+          "expiry_date": 1893440000000
+        }
+        """);
+        var handler = new QueueHandler(
+            new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("""{ "currentTier": { "id": "standard-tier" } }""")
+            },
+            new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("""
+                {
+                  "buckets": [
+                    { "modelId": "gemini-2.5-pro", "remainingFraction": 0.40, "resetTime": "2026-05-07T12:00:00Z" }
+                  ]
+                }
+                """)
+            });
+        var provider = new GeminiProvider(new HttpClient(handler), paths, new StaticGeminiOAuthClient("id", "secret"));
+
+        var snapshot = await provider.RefreshAsync(CancellationToken.None);
+
+        Assert.AreEqual("Pro models", snapshot.Windows.Single().Title);
+        CollectionAssert.AreEqual(
+            new[]
+            {
+                new Uri("https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist"),
+                new Uri("https://cloudcode-pa.googleapis.com/v1internal:retrieveUserQuota")
+            },
+            handler.Requests.Select(request => request.RequestUri).ToArray());
+        Assert.AreEqual("{}", handler.RequestBodies[1]);
+    }
+
+    [TestMethod]
     public async Task ExpiredCredentialsWithoutClientMetadataReturnMissingCredentialsSnapshot()
     {
         var root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));

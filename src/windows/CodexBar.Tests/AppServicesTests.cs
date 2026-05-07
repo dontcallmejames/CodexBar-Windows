@@ -154,6 +154,24 @@ public sealed class AppServicesTests
     }
 
     [TestMethod]
+    public void EnsuresEnabledProvidersHaveSnapshotsAfterSettingsChange()
+    {
+        var snapshots = new[]
+        {
+            Snapshot(UsageProvider.Codex),
+            Snapshot(UsageProvider.Claude)
+        };
+
+        var seeded = App.EnsureEnabledProviderSnapshots(snapshots, AppSettings.Default);
+
+        CollectionAssert.AreEqual(
+            new[] { UsageProvider.Codex, UsageProvider.Claude, UsageProvider.Cursor, UsageProvider.Gemini },
+            seeded.Select(snapshot => snapshot.Provider).ToArray());
+        Assert.AreEqual("Refreshing usage...", seeded.Single(snapshot => snapshot.Provider == UsageProvider.Cursor).ErrorMessage);
+        Assert.AreEqual("Refreshing usage...", seeded.Single(snapshot => snapshot.Provider == UsageProvider.Gemini).ErrorMessage);
+    }
+
+    [TestMethod]
     public async Task LoadsDefaultSettingsWhenSettingsFileIsCorrupt()
     {
         var root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
