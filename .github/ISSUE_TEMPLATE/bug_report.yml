@@ -61,6 +61,17 @@ body:
     validations:
       required: true
   - type: textarea
+    id: diagnostic-summary
+    attributes:
+      label: Diagnostic summary
+      description: If you used Settings > Report a Bug..., paste the copied CodexBar diagnostic summary here.
+      placeholder: |
+        CodexBar diagnostic summary
+        App version: ...
+        OS: ...
+        Providers:
+        - Codex: ...
+  - type: textarea
     id: notes
     attributes:
       label: Additional context

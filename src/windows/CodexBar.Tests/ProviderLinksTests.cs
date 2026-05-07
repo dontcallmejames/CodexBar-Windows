@@ -14,4 +14,12 @@ public sealed class ProviderLinksTests
         Assert.AreEqual(new Uri("https://claude.ai/settings/usage"), ProviderLinks.DashboardUri(UsageProvider.Claude));
         Assert.AreEqual(new Uri("https://status.anthropic.com/"), ProviderLinks.StatusUri(UsageProvider.Claude));
     }
+
+    [TestMethod]
+    public void ResolvesBugReportUrlToGithubIssueForm()
+    {
+        Assert.AreEqual(
+            new Uri("https://github.com/dontcallmejames/CodexBar-Windows/issues/new?template=bug_report.yml"),
+            ProviderLinks.BugReportUri());
+    }
 }
