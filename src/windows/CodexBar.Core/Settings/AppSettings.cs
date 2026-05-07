@@ -3,6 +3,8 @@ namespace CodexBar.Core.Settings;
 public sealed record AppSettings(
     bool CodexEnabled,
     bool ClaudeEnabled,
+    bool CursorEnabled,
+    bool GeminiEnabled,
     bool MergeTrayIcon,
     bool ShowUsageAsUsed,
     bool DockOverviewNearTaskbar,
@@ -10,11 +12,16 @@ public sealed record AppSettings(
     int RefreshMinutes,
     string CodexSource,
     string ClaudeSource,
-    string? ClaudeManualCookieHeader)
+    string CursorSource,
+    string GeminiSource,
+    string? ClaudeManualCookieHeader,
+    string? CursorManualCookieHeader)
 {
     public static AppSettings Default { get; } = new(
         CodexEnabled: true,
         ClaudeEnabled: true,
+        CursorEnabled: true,
+        GeminiEnabled: true,
         MergeTrayIcon: true,
         ShowUsageAsUsed: true,
         DockOverviewNearTaskbar: false,
@@ -22,5 +29,8 @@ public sealed record AppSettings(
         RefreshMinutes: 5,
         CodexSource: "auto",
         ClaudeSource: "auto",
-        ClaudeManualCookieHeader: null);
+        CursorSource: "auto",
+        GeminiSource: "auto",
+        ClaudeManualCookieHeader: null,
+        CursorManualCookieHeader: null);
 }
