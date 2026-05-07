@@ -150,12 +150,14 @@ public partial class App : System.Windows.Application
     {
         const double margin = 16;
         const double taskbarGap = 12;
+        var minLeft = workArea.Left + margin;
         var maxLeft = workArea.Right - width - margin;
+        var minTop = workArea.Top + margin;
         var maxTop = workArea.Bottom - height - taskbarGap;
 
         return (
-            Math.Clamp(maxLeft, workArea.Left + margin, maxLeft),
-            Math.Clamp(maxTop, workArea.Top + margin, maxTop));
+            maxLeft < minLeft ? minLeft : Math.Clamp(maxLeft, minLeft, maxLeft),
+            maxTop < minTop ? minTop : Math.Clamp(maxTop, minTop, maxTop));
     }
 
     private static void ShowUsageDashboard()

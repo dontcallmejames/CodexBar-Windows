@@ -146,15 +146,15 @@ public sealed class WpfShellTests
     }
 
     [TestMethod]
-    public void CalculatesTaskbarDockPositionWithMinimumMargins()
+    public void CalculatesTaskbarDockPositionWithMinimumMarginsWhenWorkAreaIsTooSmall()
     {
         var position = CodexBar.WinApp.App.CalculateTaskbarDockPosition(
             width: 600,
-            height: 120,
-            workArea: new System.Windows.Rect(100, 50, 700, 500));
+            height: 220,
+            workArea: new System.Windows.Rect(100, 50, 500, 180));
 
-        Assert.AreEqual(184, position.Left);
-        Assert.AreEqual(418, position.Top);
+        Assert.AreEqual(116, position.Left);
+        Assert.AreEqual(66, position.Top);
     }
 
     [TestMethod]
