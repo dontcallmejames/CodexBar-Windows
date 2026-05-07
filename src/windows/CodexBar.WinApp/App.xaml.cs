@@ -16,7 +16,7 @@ public partial class App : System.Windows.Application
     private JsonSettingsStore? settingsStore;
     private TrayIconHost? tray;
     private PopoverWindow? popover;
-    private DockedOverviewWindow? dockedOverview;
+    private TaskbarDockWindow? taskbarDock;
     private SettingsWindow? settingsWindow;
     private AboutWindow? aboutWindow;
     private IStartupRegistration? startupRegistration;
@@ -32,6 +32,7 @@ public partial class App : System.Windows.Application
         services = new AppServices(paths, settings);
         startupRegistration = new StartupRegistration(Environment.ProcessPath ?? Environment.GetCommandLineArgs()[0]);
         ApplyStartupRegistration(settings);
+        System.Windows.SystemParameters.StaticPropertyChanged += SystemParameters_StaticPropertyChanged;
 
         tray = new TrayIconHost(ShowPopover, ShowSettings, Shutdown);
         tray.Update(new TrayDisplayModel("CodexBar", 0, true));
@@ -42,7 +43,7 @@ public partial class App : System.Windows.Application
             if (!isShuttingDown && !shutdown.IsCancellationRequested)
             {
                 UpdateTrayFromSnapshots();
-                UpdateDockedOverview();
+                UpdateTaskbarDock();
             }
         }
         catch (OperationCanceledException) when (shutdown.IsCancellationRequested)
@@ -56,7 +57,8 @@ public partial class App : System.Windows.Application
         shutdown.Cancel();
         aboutWindow?.Close();
         settingsWindow?.Close();
-        dockedOverview?.Close();
+        System.Windows.SystemParameters.StaticPropertyChanged -= SystemParameters_StaticPropertyChanged;
+        taskbarDock?.Close();
         popover?.Close();
         tray?.Dispose();
         services?.Dispose();
@@ -112,6 +114,64 @@ public partial class App : System.Windows.Application
         var position = CalculatePopoverPosition(width, height, System.Windows.SystemParameters.WorkArea, cursorPosition);
         window.Left = position.Left;
         window.Top = position.Top;
+    }
+
+    private void PositionTaskbarDock()
+    {
+        if (taskbarDock?.IsVisible != true)
+        {
+            return;
+        }
+
+        var width = taskbarDock.ActualWidth > 0 ? taskbarDock.ActualWidth : taskbarDock.Width;
+        var height = taskbarDock.ActualHeight > 0 ? taskbarDock.ActualHeight : taskbarDock.Height;
+        var position = CalculateTaskbarDockPosition(width, height, System.Windows.SystemParameters.WorkArea);
+        taskbarDock.Left = position.Left;
+        taskbarDock.Top = position.Top;
+    }
+
+    private void ShowPopoverFromDock()
+    {
+        if (popover?.IsVisible == true)
+        {
+            popover.Activate();
+            return;
+        }
+
+        ShowPopover();
+    }
+
+    private async void RefreshNow()
+    {
+        if (services is null)
+        {
+            return;
+        }
+
+        await RefreshServicesAsync(services);
+    }
+
+    private async void HideTaskbarDock()
+    {
+        if (services is null || settingsStore is null)
+        {
+            return;
+        }
+
+        var settings = services.Settings with { DockOverviewNearTaskbar = false };
+        try
+        {
+            await settingsStore.SaveAsync(settings, shutdown.Token);
+            ApplySettings(settings);
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            System.Windows.MessageBox.Show(
+                error.Message,
+                "CodexBar Settings",
+                System.Windows.MessageBoxButton.OK,
+                System.Windows.MessageBoxImage.Warning);
+        }
     }
 
     public static (double Left, double Top) CalculatePopoverPosition(
@@ -303,7 +363,7 @@ public partial class App : System.Windows.Application
         }
 
         UpdateTrayFromSnapshots();
-        UpdateDockedOverview();
+        UpdateTaskbarDock();
         UpdatePopover();
         await RefreshServicesAsync(activeServices);
     }
@@ -325,7 +385,7 @@ public partial class App : System.Windows.Application
         }
 
         UpdateTrayFromSnapshots();
-        UpdateDockedOverview();
+        UpdateTaskbarDock();
         UpdatePopover();
     }
 
@@ -339,7 +399,7 @@ public partial class App : System.Windows.Application
         tray.Update(BuildTrayDisplay(services.Store.All()));
     }
 
-    private void UpdateDockedOverview()
+    private void UpdateTaskbarDock()
     {
         if (services is null)
         {
@@ -348,43 +408,39 @@ public partial class App : System.Windows.Application
 
         if (!services.Settings.DockOverviewNearTaskbar)
         {
-            dockedOverview?.Close();
-            dockedOverview = null;
+            taskbarDock?.Close();
+            taskbarDock = null;
             return;
         }
 
-        var viewModel = new DockedOverviewViewModel(
+        var viewModel = new TaskbarDockViewModel(
             services.Store.All(),
-            services.Settings.ShowUsageAsUsed,
-            DateTimeOffset.Now);
-        if (dockedOverview is null)
+            services.Settings.ShowUsageAsUsed);
+        if (!viewModel.HasTiles)
         {
-            dockedOverview = new DockedOverviewWindow(viewModel);
-            dockedOverview.Closed += (_, _) => dockedOverview = null;
-            dockedOverview.Show();
-            dockedOverview.UpdateLayout();
-            PositionDockedOverview();
+            taskbarDock?.Close();
+            taskbarDock = null;
+            return;
+        }
+
+        if (taskbarDock is null)
+        {
+            taskbarDock = new TaskbarDockWindow(
+                viewModel,
+                ShowPopoverFromDock,
+                RefreshNow,
+                ShowSettings,
+                HideTaskbarDock);
+            taskbarDock.Closed += (_, _) => taskbarDock = null;
+            taskbarDock.Show();
         }
         else
         {
-            dockedOverview.DataContext = viewModel;
-            dockedOverview.UpdateLayout();
-            PositionDockedOverview();
-        }
-    }
-
-    private void PositionDockedOverview()
-    {
-        if (dockedOverview?.IsVisible != true)
-        {
-            return;
+            taskbarDock.DataContext = viewModel;
         }
 
-        var width = dockedOverview.ActualWidth > 0 ? dockedOverview.ActualWidth : dockedOverview.Width;
-        var height = dockedOverview.ActualHeight > 0 ? dockedOverview.ActualHeight : dockedOverview.Height;
-        var position = CalculateTaskbarDockPosition(width, height, System.Windows.SystemParameters.WorkArea);
-        dockedOverview.Left = position.Left;
-        dockedOverview.Top = position.Top;
+        taskbarDock.UpdateLayout();
+        PositionTaskbarDock();
     }
 
     private void UpdatePopover()
@@ -419,6 +475,14 @@ public partial class App : System.Windows.Application
                 "CodexBar Startup",
                 System.Windows.MessageBoxButton.OK,
                 System.Windows.MessageBoxImage.Warning);
+        }
+    }
+
+    private void SystemParameters_StaticPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(System.Windows.SystemParameters.WorkArea))
+        {
+            PositionTaskbarDock();
         }
     }
 
