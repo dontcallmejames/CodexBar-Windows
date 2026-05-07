@@ -143,6 +143,32 @@ public sealed class GeminiProviderTests
         StringAssert.Contains(updatedCredentials, "fresh-refresh");
     }
 
+    [TestMethod]
+    public async Task RefreshTokenFailureReturnsConciseAuthSnapshot()
+    {
+        var root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        var paths = WindowsAppPaths.ForTest(Path.Combine(root, "home"), Path.Combine(root, "appdata"));
+        Directory.CreateDirectory(Path.GetDirectoryName(paths.GeminiOAuthCredentialsJson)!);
+        await File.WriteAllTextAsync(paths.GeminiOAuthCredentialsJson, """
+        {
+          "access_token": "expired",
+          "refresh_token": "refresh",
+          "expiry_date": 1
+        }
+        """);
+        var handler = new QueueHandler(new HttpResponseMessage(HttpStatusCode.BadRequest)
+        {
+            Content = new StringContent("""{ "error": "invalid_grant" }""")
+        });
+        var provider = new GeminiProvider(new HttpClient(handler), paths, new StaticGeminiOAuthClient("id", "secret"));
+
+        var snapshot = await provider.RefreshAsync(CancellationToken.None);
+
+        Assert.IsTrue(snapshot.IsStale);
+        Assert.AreEqual("none", snapshot.SourceLabel);
+        StringAssert.Contains(snapshot.ErrorMessage!, "Gemini CLI OAuth refresh failed");
+    }
+
     private sealed class QueueHandler : HttpMessageHandler
     {
         private readonly Queue<HttpResponseMessage> responses;
