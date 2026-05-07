@@ -100,4 +100,36 @@ public sealed class WpfShellTests
         Assert.AreEqual(shortPosition.Top - 360, expandedPosition.Top);
         Assert.AreEqual(1018, expandedPosition.Top + 780);
     }
+
+    [TestMethod]
+    public void CalculatesSettingsPositionNextToPopoverWhenSpaceAllows()
+    {
+        var position = CodexBar.WinApp.App.CalculateSettingsPosition(
+            settingsWidth: 560,
+            settingsHeight: 620,
+            anchorLeft: 1400,
+            anchorTop: 400,
+            anchorWidth: 372,
+            anchorHeight: 500,
+            workArea: new System.Windows.Rect(0, 0, 2560, 1040));
+
+        Assert.AreEqual(1784, position.Left);
+        Assert.AreEqual(340, position.Top);
+    }
+
+    [TestMethod]
+    public void CalculatesSettingsPositionToLeftWhenRightSideWouldOverflow()
+    {
+        var position = CodexBar.WinApp.App.CalculateSettingsPosition(
+            settingsWidth: 560,
+            settingsHeight: 620,
+            anchorLeft: 2120,
+            anchorTop: 400,
+            anchorWidth: 372,
+            anchorHeight: 500,
+            workArea: new System.Windows.Rect(0, 0, 2560, 1040));
+
+        Assert.AreEqual(1548, position.Left);
+        Assert.AreEqual(340, position.Top);
+    }
 }

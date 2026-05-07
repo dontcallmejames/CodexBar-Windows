@@ -8,7 +8,7 @@ public static class ProviderLinks
         provider switch
         {
             UsageProvider.Claude => new Uri("https://claude.ai/settings/usage"),
-            _ => new Uri("https://chatgpt.com/codex")
+            _ => new Uri("https://chatgpt.com/codex/settings/usage")
         };
 
     public static Uri StatusUri(UsageProvider provider) =>
