@@ -226,14 +226,21 @@ public sealed class GeminiOAuthClientProvider : IGeminiOAuthClientProvider
             return environmentClient;
         }
 
-        foreach (var root in CandidateRoots())
+        return await ReadClientFromRootsAsync(CandidateRoots(), cancellationToken);
+    }
+
+    public static async Task<(string ClientId, string ClientSecret)?> ReadClientFromRootsAsync(
+        IEnumerable<string> roots,
+        CancellationToken cancellationToken)
+    {
+        foreach (var root in roots)
         {
             if (!Directory.Exists(root))
             {
                 continue;
             }
 
-            foreach (var path in Directory.EnumerateFiles(root, "oauth2.js", SearchOption.AllDirectories))
+            foreach (var path in CandidateClientFiles(root))
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var text = await File.ReadAllTextAsync(path, cancellationToken);
@@ -247,6 +254,23 @@ public sealed class GeminiOAuthClientProvider : IGeminiOAuthClientProvider
         }
 
         return null;
+    }
+
+    private static IEnumerable<string> CandidateClientFiles(string root)
+    {
+        var bundle = Path.Combine(root, "bundle");
+        if (Directory.Exists(bundle))
+        {
+            foreach (var path in Directory.EnumerateFiles(bundle, "*.js", SearchOption.TopDirectoryOnly))
+            {
+                yield return path;
+            }
+        }
+
+        foreach (var path in Directory.EnumerateFiles(root, "oauth2.js", SearchOption.AllDirectories))
+        {
+            yield return path;
+        }
     }
 
     private static (string ClientId, string ClientSecret)? ReadEnvironmentClient()

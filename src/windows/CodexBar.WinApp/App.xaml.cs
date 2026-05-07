@@ -80,9 +80,19 @@ public partial class App : System.Windows.Application
             return;
         }
 
+        ShowPopoverWindow(UsageProvider.Codex, PositionPopoverNearCursor);
+    }
+
+    private void ShowPopoverWindow(UsageProvider activeProvider, Action<System.Windows.Window> positionPopover)
+    {
+        if (services is null)
+        {
+            return;
+        }
+
         var viewModel = new PopoverViewModel(
             services.Store.All(),
-            UsageProvider.Codex,
+            activeProvider,
             services.Settings.ShowUsageAsUsed,
             openDashboard: ShowActiveProviderDashboard,
             openSettings: ShowSettings,
@@ -92,28 +102,70 @@ public partial class App : System.Windows.Application
             openStatusPage: ShowActiveProviderStatusPage);
         popover = new PopoverWindow(viewModel);
         popover.Closed += (_, _) => popover = null;
-        var cursorPosition = System.Windows.Forms.Cursor.Position;
-        popover.MaxHeight = CalculatePopoverMaxHeight(System.Windows.SystemParameters.WorkArea, cursorPosition);
         popover.SizeChanged += (_, _) =>
         {
             if (popover?.IsVisible == true)
             {
-                PositionPopoverNearCursor(popover, cursorPosition);
+                positionPopover(popover);
             }
         };
         popover.Show();
         popover.UpdateLayout();
-        PositionPopoverNearCursor(popover, cursorPosition);
+        positionPopover(popover);
         popover.Activate();
+    }
+
+    private void PositionPopoverNearCursor(System.Windows.Window window)
+    {
+        var cursorPosition = System.Windows.Forms.Cursor.Position;
+        window.MaxHeight = CalculatePopoverMaxHeight(System.Windows.SystemParameters.WorkArea, cursorPosition);
+        PositionPopoverNearCursor(window, cursorPosition);
     }
 
     private static void PositionPopoverNearCursor(System.Windows.Window window, System.Drawing.Point cursorPosition)
     {
-        var width = window.ActualWidth > 0 ? window.ActualWidth : window.Width;
-        var height = window.ActualHeight > 0 ? window.ActualHeight : window.Height;
+        var width = WindowWidth(window);
+        var height = WindowHeight(window);
         var position = CalculatePopoverPosition(width, height, System.Windows.SystemParameters.WorkArea, cursorPosition);
         window.Left = position.Left;
         window.Top = position.Top;
+    }
+
+    private void PositionPopoverNearDock(System.Windows.Window window)
+    {
+        if (taskbarDock?.IsVisible != true)
+        {
+            PositionPopoverNearCursor(window);
+            return;
+        }
+
+        var dockWidth = taskbarDock.ActualWidth > 0 ? taskbarDock.ActualWidth : taskbarDock.Width;
+        var dockTop = taskbarDock.Top;
+        window.MaxHeight = CalculatePopoverMaxHeightNearDock(System.Windows.SystemParameters.WorkArea, dockTop);
+        var width = WindowWidth(window);
+        var height = WindowHeight(window);
+        var position = CalculatePopoverPositionNearDock(
+            width,
+            height,
+            System.Windows.SystemParameters.WorkArea,
+            taskbarDock.Left,
+            dockTop,
+            dockWidth);
+        window.Left = position.Left;
+        window.Top = position.Top;
+    }
+
+    private static double WindowWidth(System.Windows.Window window) =>
+        window.ActualWidth > 0 ? window.ActualWidth : window.Width;
+
+    private static double WindowHeight(System.Windows.Window window)
+    {
+        if (window.ActualHeight > 0)
+        {
+            return window.ActualHeight;
+        }
+
+        return double.IsNaN(window.Height) ? window.MaxHeight : window.Height;
     }
 
     private void PositionTaskbarDock()
@@ -134,11 +186,12 @@ public partial class App : System.Windows.Application
     {
         if (popover?.IsVisible == true)
         {
-            popover.Activate();
+            popover.Close();
+            popover = null;
             return;
         }
 
-        ShowPopover();
+        ShowPopoverWindow(UsageProvider.Codex, PositionPopoverNearDock);
     }
 
     private async void RefreshNow()
@@ -201,6 +254,37 @@ public partial class App : System.Windows.Application
         const double minimumHeight = 360;
         var anchoredBottom = Math.Clamp(cursorPosition.Y - trayGap, workArea.Top + margin + minimumHeight, workArea.Bottom - margin);
         return Math.Max(minimumHeight, anchoredBottom - workArea.Top - margin);
+    }
+
+    public static double CalculatePopoverMaxHeightNearDock(
+        System.Windows.Rect workArea,
+        double dockTop)
+    {
+        const double margin = 16;
+        const double dockGap = 12;
+        const double minimumHeight = 360;
+        return Math.Max(minimumHeight, dockTop - dockGap - workArea.Top - margin);
+    }
+
+    public static (double Left, double Top) CalculatePopoverPositionNearDock(
+        double width,
+        double height,
+        System.Windows.Rect workArea,
+        double dockLeft,
+        double dockTop,
+        double dockWidth)
+    {
+        const double margin = 16;
+        const double dockGap = 12;
+        var minLeft = workArea.Left + margin;
+        var maxLeft = workArea.Right - width - margin;
+        var minTop = workArea.Top + margin;
+        var maxTop = dockTop - height - dockGap;
+        var left = dockLeft + dockWidth - width;
+
+        return (
+            maxLeft < minLeft ? minLeft : Math.Clamp(left, minLeft, maxLeft),
+            maxTop < minTop ? minTop : Math.Clamp(maxTop, minTop, maxTop));
     }
 
     public static (double Left, double Top) CalculateTaskbarDockPosition(

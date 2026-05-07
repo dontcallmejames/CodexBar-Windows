@@ -188,6 +188,34 @@ public sealed class GeminiProviderTests
     }
 
     [TestMethod]
+    public async Task OAuthClientProviderReadsBundledGeminiCliChunks()
+    {
+        var root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        try
+        {
+            var bundle = Path.Combine(root, "bundle");
+            Directory.CreateDirectory(bundle);
+            await File.WriteAllTextAsync(Path.Combine(bundle, "chunk-test.js"), """
+            // packages/core/dist/src/code_assist/oauth2.js
+            var OAUTH_CLIENT_ID = "bundled-client-id";
+            var OAUTH_CLIENT_SECRET = "bundled-client-secret";
+            """);
+
+            var client = await GeminiOAuthClientProvider.ReadClientFromRootsAsync(new[] { root }, CancellationToken.None);
+
+            Assert.AreEqual("bundled-client-id", client?.ClientId);
+            Assert.AreEqual("bundled-client-secret", client?.ClientSecret);
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
+
+    [TestMethod]
     public async Task RefreshTokenFailureReturnsConciseAuthSnapshot()
     {
         var root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
