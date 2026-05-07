@@ -360,18 +360,31 @@ public partial class App : System.Windows.Application
         if (dockedOverview is null)
         {
             dockedOverview = new DockedOverviewWindow(viewModel);
-            dockedOverview.Left = System.Windows.SystemParameters.WorkArea.Right - dockedOverview.Width - 16;
             dockedOverview.Closed += (_, _) => dockedOverview = null;
             dockedOverview.Show();
             dockedOverview.UpdateLayout();
-            dockedOverview.Top = System.Windows.SystemParameters.WorkArea.Bottom - dockedOverview.ActualHeight - 16;
+            PositionDockedOverview();
         }
         else
         {
             dockedOverview.DataContext = viewModel;
             dockedOverview.UpdateLayout();
-            dockedOverview.Top = System.Windows.SystemParameters.WorkArea.Bottom - dockedOverview.ActualHeight - 16;
+            PositionDockedOverview();
         }
+    }
+
+    private void PositionDockedOverview()
+    {
+        if (dockedOverview?.IsVisible != true)
+        {
+            return;
+        }
+
+        var width = dockedOverview.ActualWidth > 0 ? dockedOverview.ActualWidth : dockedOverview.Width;
+        var height = dockedOverview.ActualHeight > 0 ? dockedOverview.ActualHeight : dockedOverview.Height;
+        var position = CalculateTaskbarDockPosition(width, height, System.Windows.SystemParameters.WorkArea);
+        dockedOverview.Left = position.Left;
+        dockedOverview.Top = position.Top;
     }
 
     private void UpdatePopover()
