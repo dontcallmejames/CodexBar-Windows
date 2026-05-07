@@ -10,7 +10,10 @@ The first public preview supports Codex, Claude, Cursor, and Gemini. Codex and C
 
 The Windows preview follows the translucent tray popover style of the original CodexBar.
 
-![CodexBar for Windows Codex usage popover](docs/screenshots/windows-codex-preview.png)
+<p>
+  <img src="docs/screenshots/windows-codex-preview.png" alt="CodexBar for Windows Codex usage popover" width="360">
+  <img src="docs/screenshots/windows-claude-preview.png" alt="CodexBar for Windows Claude usage popover" width="360">
+</p>
 
 ## Install
 
