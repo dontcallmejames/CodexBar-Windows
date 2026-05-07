@@ -85,6 +85,13 @@ public partial class App : System.Windows.Application
         popover.Closed += (_, _) => popover = null;
         var cursorPosition = System.Windows.Forms.Cursor.Position;
         popover.MaxHeight = CalculatePopoverMaxHeight(System.Windows.SystemParameters.WorkArea, cursorPosition);
+        popover.SizeChanged += (_, _) =>
+        {
+            if (popover?.IsVisible == true)
+            {
+                PositionPopoverNearCursor(popover, cursorPosition);
+            }
+        };
         popover.Show();
         popover.UpdateLayout();
         PositionPopoverNearCursor(popover, cursorPosition);
