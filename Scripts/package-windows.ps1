@@ -20,12 +20,16 @@ if (Test-Path -LiteralPath $versionFile) {
 $distRoot = Join-Path $repoRoot "dist\windows"
 $publishDir = Join-Path $distRoot "CodexBar-Windows-$version-$Runtime"
 $zipPath = Join-Path $distRoot "CodexBar-Windows-$version-$Runtime.zip"
+$checksumPath = "$zipPath.sha256"
 
 if (Test-Path -LiteralPath $publishDir) {
     Remove-Item -LiteralPath $publishDir -Recurse -Force
 }
 if (Test-Path -LiteralPath $zipPath) {
     Remove-Item -LiteralPath $zipPath -Force
+}
+if (Test-Path -LiteralPath $checksumPath) {
+    Remove-Item -LiteralPath $checksumPath -Force
 }
 
 New-Item -ItemType Directory -Path $distRoot -Force | Out-Null
@@ -41,7 +45,11 @@ New-Item -ItemType Directory -Path $distRoot -Force | Out-Null
 
 Compress-Archive -Path (Join-Path $publishDir "*") -DestinationPath $zipPath -Force
 
+$hash = Get-FileHash -Algorithm SHA256 -LiteralPath $zipPath
+"$($hash.Hash.ToLowerInvariant())  $(Split-Path -Leaf $zipPath)" | Set-Content -LiteralPath $checksumPath -Encoding ascii
+
 [pscustomobject]@{
     PublishDirectory = $publishDir
     ZipPath = $zipPath
+    ChecksumPath = $checksumPath
 }
