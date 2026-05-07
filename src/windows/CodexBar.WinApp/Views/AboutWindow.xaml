@@ -1,0 +1,34 @@
+<Window x:Class="CodexBar.WinApp.Views.AboutWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="About CodexBar"
+        Width="320"
+        Height="160"
+        ResizeMode="NoResize"
+        WindowStartupLocation="Manual">
+  <Grid Margin="18">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <StackPanel>
+      <TextBlock Text="CodexBar"
+                 FontSize="24"
+                 FontWeight="SemiBold"
+                 Foreground="{StaticResource CodexBarTextBrush}" />
+      <TextBlock Text="CodexBar for Windows"
+                 Margin="0,8,0,0"
+                 FontSize="14"
+                 Foreground="{StaticResource CodexBarMutedTextBrush}" />
+    </StackPanel>
+
+    <Button Grid.Row="1"
+            Content="OK"
+            IsDefault="True"
+            IsCancel="True"
+            Width="88"
+            HorizontalAlignment="Right"
+            Click="Ok_Click" />
+  </Grid>
+</Window>
