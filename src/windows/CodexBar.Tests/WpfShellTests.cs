@@ -134,6 +134,30 @@ public sealed class WpfShellTests
     }
 
     [TestMethod]
+    public void CalculatesTaskbarDockPositionNearBottomRight()
+    {
+        var position = CodexBar.WinApp.App.CalculateTaskbarDockPosition(
+            width: 320,
+            height: 64,
+            workArea: new System.Windows.Rect(0, 0, 2560, 1040));
+
+        Assert.AreEqual(2224, position.Left);
+        Assert.AreEqual(964, position.Top);
+    }
+
+    [TestMethod]
+    public void CalculatesTaskbarDockPositionWithMinimumMargins()
+    {
+        var position = CodexBar.WinApp.App.CalculateTaskbarDockPosition(
+            width: 600,
+            height: 120,
+            workArea: new System.Windows.Rect(100, 50, 700, 500));
+
+        Assert.AreEqual(184, position.Left);
+        Assert.AreEqual(418, position.Top);
+    }
+
+    [TestMethod]
     public void AboutWindowUsesManualPlacementAndCompactSize()
     {
         var aboutXamlPath = Path.GetFullPath(Path.Combine(
