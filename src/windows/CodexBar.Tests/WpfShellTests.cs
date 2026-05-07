@@ -132,4 +132,24 @@ public sealed class WpfShellTests
         Assert.AreEqual(1548, position.Left);
         Assert.AreEqual(340, position.Top);
     }
+
+    [TestMethod]
+    public void AboutWindowUsesManualPlacementAndCompactSize()
+    {
+        var aboutXamlPath = Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory,
+            "..",
+            "..",
+            "..",
+            "..",
+            "CodexBar.WinApp",
+            "Views",
+            "AboutWindow.xaml"));
+
+        var aboutXaml = File.ReadAllText(aboutXamlPath);
+
+        StringAssert.Contains(aboutXaml, "WindowStartupLocation=\"Manual\"");
+        StringAssert.Contains(aboutXaml, "Width=\"320\"");
+        StringAssert.Contains(aboutXaml, "Height=\"160\"");
+    }
 }

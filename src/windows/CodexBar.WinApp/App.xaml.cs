@@ -18,6 +18,7 @@ public partial class App : System.Windows.Application
     private PopoverWindow? popover;
     private DockedOverviewWindow? dockedOverview;
     private SettingsWindow? settingsWindow;
+    private AboutWindow? aboutWindow;
     private IStartupRegistration? startupRegistration;
     private bool isShuttingDown;
 
@@ -53,6 +54,7 @@ public partial class App : System.Windows.Application
     {
         isShuttingDown = true;
         shutdown.Cancel();
+        aboutWindow?.Close();
         settingsWindow?.Close();
         dockedOverview?.Close();
         popover?.Close();
@@ -186,12 +188,12 @@ public partial class App : System.Windows.Application
         settingsWindow = new SettingsWindow(services.Settings, settingsStore, services.Paths);
         settingsWindow.SettingsSaved += (_, settings) => ApplySettings(settings);
         settingsWindow.Closed += (_, _) => settingsWindow = null;
-        PositionSettingsWindow(settingsWindow);
+        PositionWindowNearApp(settingsWindow);
         settingsWindow.Show();
         settingsWindow.Activate();
     }
 
-    private void PositionSettingsWindow(System.Windows.Window window)
+    private void PositionWindowNearApp(System.Windows.Window window)
     {
         var width = window.Width > 0 ? window.Width : 560;
         var height = window.Height > 0 ? window.Height : 620;
@@ -247,10 +249,19 @@ public partial class App : System.Windows.Application
             Math.Clamp(top, workArea.Top + margin, maxTop));
     }
 
-    private static void ShowAbout()
+    private void ShowAbout()
     {
-        const string message = "CodexBar for Windows";
-        System.Windows.MessageBox.Show(message, "About CodexBar");
+        if (aboutWindow?.IsVisible == true)
+        {
+            aboutWindow.Activate();
+            return;
+        }
+
+        aboutWindow = new AboutWindow();
+        aboutWindow.Closed += (_, _) => aboutWindow = null;
+        PositionWindowNearApp(aboutWindow);
+        aboutWindow.Show();
+        aboutWindow.Activate();
     }
 
     private void ApplySettings(AppSettings settings)
