@@ -42,4 +42,27 @@ public sealed class PackagingScriptTests
         StringAssert.Contains(workflow, "v*");
         StringAssert.Contains(workflow, "if: startsWith(github.ref, 'refs/tags/')");
     }
+
+    [TestMethod]
+    public void WindowsWorkflowPublishesPreviewReleaseAssetsForTags()
+    {
+        var workflowPath = Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory,
+            "..",
+            "..",
+            "..",
+            "..",
+            "..",
+            "..",
+            ".github",
+            "workflows",
+            "windows.yml"));
+        var workflow = File.ReadAllText(workflowPath);
+
+        StringAssert.Contains(workflow, "contents: write");
+        StringAssert.Contains(workflow, "softprops/action-gh-release");
+        StringAssert.Contains(workflow, "prerelease: true");
+        StringAssert.Contains(workflow, "dist/windows/*.zip");
+        StringAssert.Contains(workflow, "dist/windows/*.zip.sha256");
+    }
 }

@@ -9,6 +9,8 @@ The Windows CodexBar port lives under `src/windows`.
 - Existing Codex and/or Claude credentials:
   - Codex: `%CODEX_HOME%\auth.json` or `%USERPROFILE%\.codex\auth.json`
   - Claude: `%USERPROFILE%\.claude\.credentials.json` or manual cookie header in settings
+  - Cursor: manual cookie header in settings
+  - Gemini: `%USERPROFILE%\.gemini\oauth_creds.json` from Gemini CLI OAuth
 
 ## Build
 
@@ -29,3 +31,15 @@ dotnet run --project src\windows\CodexBar.WinApp\CodexBar.WinApp.csproj
 ```
 
 The app starts in the notification area. Click the CodexBar tray icon to open the popover.
+
+## Package
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\Scripts\package-windows.ps1 -DotNet dotnet
+```
+
+The portable preview zip and checksum are written under `dist\windows`.
+
+## Release
+
+Use [windows-release-checklist.md](windows-release-checklist.md) before tagging a Windows prerelease.
