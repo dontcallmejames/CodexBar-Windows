@@ -1,0 +1,54 @@
+name: Provider request
+description: Request a new AI coding provider for CodexBar for Windows.
+title: "[Provider]: "
+labels: ["provider", "enhancement", "windows"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Provider support is safest when there is a documented local credential source and a stable usage endpoint. Do not paste tokens, cookies, or OAuth files into this issue.
+  - type: input
+    id: provider
+    attributes:
+      label: Provider name
+      placeholder: GitHub Copilot, OpenRouter, Windsurf, etc.
+    validations:
+      required: true
+  - type: textarea
+    id: credential-source
+    attributes:
+      label: Credential source
+      description: Where does the signed-in Windows app or CLI store credentials?
+      placeholder: CLI config path, browser session source, documented OAuth flow, API key support, or manual cookie flow.
+    validations:
+      required: true
+  - type: textarea
+    id: usage-data
+    attributes:
+      label: Usage data
+      description: What usage, quota, reset, cost, or plan data is available?
+      placeholder: Include public docs or redacted response shapes when possible.
+    validations:
+      required: true
+  - type: dropdown
+    id: auth-mode
+    attributes:
+      label: Preferred auth mode
+      options:
+        - Existing CLI OAuth/session
+        - Manual cookie header
+        - API key
+        - Browser import
+        - Unknown
+    validations:
+      required: true
+  - type: textarea
+    id: dashboard
+    attributes:
+      label: Dashboard or status links
+      placeholder: Usage dashboard URL, status page URL, setup docs.
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional context
+      description: Anything that makes this provider especially useful on Windows.

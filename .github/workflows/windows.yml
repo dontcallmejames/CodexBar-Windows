@@ -12,6 +12,9 @@ concurrency:
   group: windows-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: write
+
 jobs:
   build-test:
     runs-on: windows-2025
@@ -44,5 +47,14 @@ jobs:
         with:
           name: CodexBar-Windows-portable
           path: |
+            dist/windows/*.zip
+            dist/windows/*.zip.sha256
+      - name: Publish prerelease assets
+        uses: softprops/action-gh-release@v2
+        with:
+          prerelease: true
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
             dist/windows/*.zip
             dist/windows/*.zip.sha256

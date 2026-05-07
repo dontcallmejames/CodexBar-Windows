@@ -2,6 +2,9 @@
 
 ## 0.25 — Unreleased
 
+### Windows
+- Windows preview: publish tagged portable zip builds to prerelease GitHub Releases, add public issue/PR templates, and document the release checklist.
+
 ### Fixes
 - Augment: report the real 1-minute keepalive check/min-refresh intervals in startup logs and docs (#434). Thanks @guglielmofonda!
 

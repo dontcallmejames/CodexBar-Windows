@@ -80,6 +80,8 @@ C:\tmp\dotnet\dotnet.exe test src\windows\CodexBar.Windows.sln --verbosity minim
 
 Keep provider data siloed by provider, add focused tests for behavior changes, and document any new credential source before exposing it in the UI.
 
+Windows prereleases use the checklist in [docs/windows-release-checklist.md](docs/windows-release-checklist.md).
+
 ## License
 
 MIT. Original project copyright and attribution belong to Peter Steinberger and contributors to https://github.com/steipete/CodexBar.
