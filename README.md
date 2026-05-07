@@ -8,7 +8,9 @@ The first public preview supports Codex, Claude, Cursor, and Gemini. Codex and C
 
 ## Screenshot
 
-The Windows preview follows the translucent tray popover style of the original CodexBar. A Windows screenshot will be added to the first public preview release notes.
+The Windows preview follows the translucent tray popover style of the original CodexBar.
+
+![CodexBar for Windows Codex usage popover](docs/screenshots/windows-codex-preview.png)
 
 ## Install
 
