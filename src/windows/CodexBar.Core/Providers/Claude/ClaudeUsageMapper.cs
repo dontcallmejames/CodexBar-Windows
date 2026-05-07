@@ -17,15 +17,43 @@ public static class ClaudeUsageMapper
         string sourceLabel,
         ClaudeOAuthCredentials? credentials = null)
     {
-        var windows = new List<RateWindow>(3);
+        var windows = new List<RateWindow>(5);
         AddWindow(windows, "session", "Session", response.FiveHour, SessionMinutes);
-        AddWindow(windows, "weekly", "Weekly", response.SevenDay, WeeklyMinutes);
+        AddWindow(windows, "weekly", "Weekly", response.SevenDay ?? response.SevenDayOAuthApps, WeeklyMinutes);
         AddWindow(windows, "sonnet", "Sonnet", response.SevenDaySonnet, WeeklyMinutes);
         AddWindow(windows, "opus", "Opus", response.SevenDayOpus, WeeklyMinutes);
+        AddProductWindow(
+            windows,
+            response,
+            "designs",
+            "Designs",
+            [
+                "seven_day_design",
+                "seven_day_claude_design",
+                "claude_design",
+                "design",
+                "seven_day_omelette",
+                "omelette",
+                "omelette_promotional"
+            ]);
+        AddProductWindow(
+            windows,
+            response,
+            "routines",
+            "Daily Routines",
+            [
+                "seven_day_routines",
+                "seven_day_claude_routines",
+                "claude_routines",
+                "routines",
+                "routine",
+                "seven_day_cowork",
+                "cowork"
+            ]);
 
         if (windows.Count == 0)
         {
-            AddWindow(windows, "weekly", "Weekly", response.SevenDay, WeeklyMinutes);
+            AddWindow(windows, "weekly", "Weekly", response.SevenDayOAuthApps, WeeklyMinutes);
         }
 
         return new UsageSnapshot(
@@ -67,6 +95,63 @@ public static class ClaudeUsageMapper
             usedPercent.Value,
             ParseReset(window?.ResetsAt),
             windowMinutes));
+    }
+
+    private static void AddProductWindow(
+        ICollection<RateWindow> windows,
+        ClaudeUsageResponse response,
+        string id,
+        string title,
+        IReadOnlyList<string> aliases)
+    {
+        var (window, wasPresent) = DecodeAliasedWindow(response, aliases);
+        if (window is null && !wasPresent)
+        {
+            return;
+        }
+
+        windows.Add(new RateWindow(
+            id,
+            title,
+            Math.Clamp(window?.Utilization ?? window?.UsedPercent ?? 0, 0, 100),
+            ParseReset(window?.ResetsAt),
+            WeeklyMinutes));
+    }
+
+    private static (ClaudeUsageWindow? Window, bool WasPresent) DecodeAliasedWindow(
+        ClaudeUsageResponse response,
+        IReadOnlyList<string> aliases)
+    {
+        if (response.ExtensionData is null)
+        {
+            return (null, false);
+        }
+
+        var sawNull = false;
+        foreach (var alias in aliases)
+        {
+            if (!response.ExtensionData.TryGetValue(alias, out var value))
+            {
+                continue;
+            }
+
+            if (value.ValueKind is JsonValueKind.Null)
+            {
+                sawNull = true;
+                continue;
+            }
+
+            try
+            {
+                return (value.Deserialize<ClaudeUsageWindow>(JsonOptions), true);
+            }
+            catch (JsonException)
+            {
+                sawNull = true;
+            }
+        }
+
+        return (null, sawNull);
     }
 
     private static DateTimeOffset? ParseReset(JsonElement? value)
