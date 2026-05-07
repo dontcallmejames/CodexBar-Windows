@@ -13,39 +13,59 @@
 
     <TextBlock Text="CodexBar" FontSize="24" FontWeight="Bold" />
 
-    <StackPanel Grid.Row="1" Margin="0,18,0,0">
-      <CheckBox Content="Enable Codex" IsChecked="{Binding CodexEnabled}" Margin="0,6" />
-      <CheckBox Content="Enable Claude" IsChecked="{Binding ClaudeEnabled}" Margin="0,6" />
-      <CheckBox Content="Merge tray icon" IsChecked="{Binding MergeTrayIcon}" Margin="0,6" />
-      <CheckBox Content="Show usage as used" IsChecked="{Binding ShowUsageAsUsed}" Margin="0,6" />
-      <CheckBox Content="Dock overview near taskbar" IsChecked="{Binding DockOverviewNearTaskbar}" Margin="0,6" />
-      <CheckBox Content="Start CodexBar with Windows" IsChecked="{Binding LaunchAtStartup}" Margin="0,6" />
+    <ScrollViewer Grid.Row="1"
+                  Margin="0,18,0,0"
+                  VerticalScrollBarVisibility="Auto"
+                  HorizontalScrollBarVisibility="Disabled">
+      <StackPanel>
+        <CheckBox Content="Enable Codex" IsChecked="{Binding CodexEnabled}" Margin="0,6" />
+        <CheckBox Content="Enable Claude" IsChecked="{Binding ClaudeEnabled}" Margin="0,6" />
+        <CheckBox Content="Enable Cursor" IsChecked="{Binding CursorEnabled}" Margin="0,6" />
+        <CheckBox Content="Enable Gemini" IsChecked="{Binding GeminiEnabled}" Margin="0,6" />
+        <CheckBox Content="Merge tray icon" IsChecked="{Binding MergeTrayIcon}" Margin="0,6" />
+        <CheckBox Content="Show usage as used" IsChecked="{Binding ShowUsageAsUsed}" Margin="0,6" />
+        <CheckBox Content="Dock overview near taskbar" IsChecked="{Binding DockOverviewNearTaskbar}" Margin="0,6" />
+        <CheckBox Content="Start CodexBar with Windows" IsChecked="{Binding LaunchAtStartup}" Margin="0,6" />
 
-      <TextBlock Text="Accounts" FontSize="17" FontWeight="SemiBold" Margin="0,18,0,6" />
-      <Grid Margin="0,0,0,8">
-        <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="90" />
-          <ColumnDefinition Width="110" />
-          <ColumnDefinition Width="*" />
-        </Grid.ColumnDefinitions>
-        <Grid.RowDefinitions>
-          <RowDefinition Height="Auto" />
-          <RowDefinition Height="Auto" />
-        </Grid.RowDefinitions>
-        <TextBlock Text="Codex" Grid.Row="0" Grid.Column="0" Margin="0,4" FontWeight="SemiBold" />
-        <TextBlock Text="{Binding CodexAccountStatus}" Grid.Row="0" Grid.Column="1" Margin="0,4" />
-        <TextBlock Text="{Binding CodexCredentialPath}" Grid.Row="0" Grid.Column="2" Margin="0,4" Foreground="#666666" TextTrimming="CharacterEllipsis" />
-        <TextBlock Text="Claude" Grid.Row="1" Grid.Column="0" Margin="0,4" FontWeight="SemiBold" />
-        <TextBlock Text="{Binding ClaudeAccountStatus}" Grid.Row="1" Grid.Column="1" Margin="0,4" />
-        <TextBlock Text="{Binding ClaudeCredentialPath}" Grid.Row="1" Grid.Column="2" Margin="0,4" Foreground="#666666" TextTrimming="CharacterEllipsis" />
-      </Grid>
+        <TextBlock Text="Accounts" FontSize="17" FontWeight="SemiBold" Margin="0,18,0,6" />
+        <Grid Margin="0,0,0,8">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="90" />
+            <ColumnDefinition Width="110" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+          </Grid.RowDefinitions>
+          <TextBlock Text="Codex" Grid.Row="0" Grid.Column="0" Margin="0,4" FontWeight="SemiBold" />
+          <TextBlock Text="{Binding CodexAccountStatus}" Grid.Row="0" Grid.Column="1" Margin="0,4" />
+          <TextBlock Text="{Binding CodexCredentialPath}" Grid.Row="0" Grid.Column="2" Margin="0,4" Foreground="#666666" TextTrimming="CharacterEllipsis" />
+          <TextBlock Text="Claude" Grid.Row="1" Grid.Column="0" Margin="0,4" FontWeight="SemiBold" />
+          <TextBlock Text="{Binding ClaudeAccountStatus}" Grid.Row="1" Grid.Column="1" Margin="0,4" />
+          <TextBlock Text="{Binding ClaudeCredentialPath}" Grid.Row="1" Grid.Column="2" Margin="0,4" Foreground="#666666" TextTrimming="CharacterEllipsis" />
+          <TextBlock Text="Cursor" Grid.Row="2" Grid.Column="0" Margin="0,4" FontWeight="SemiBold" />
+          <TextBlock Text="{Binding CursorAccountStatus}" Grid.Row="2" Grid.Column="1" Margin="0,4" />
+          <TextBlock Text="Manual cookie header" Grid.Row="2" Grid.Column="2" Margin="0,4" Foreground="#666666" TextTrimming="CharacterEllipsis" />
+          <TextBlock Text="Gemini" Grid.Row="3" Grid.Column="0" Margin="0,4" FontWeight="SemiBold" />
+          <TextBlock Text="{Binding GeminiAccountStatus}" Grid.Row="3" Grid.Column="1" Margin="0,4" />
+          <TextBlock Text="{Binding GeminiCredentialPath}" Grid.Row="3" Grid.Column="2" Margin="0,4" Foreground="#666666" TextTrimming="CharacterEllipsis" />
+        </Grid>
 
-      <TextBlock Text="Claude manual cookie header" Margin="0,12,0,4" />
-      <TextBox Text="{Binding ClaudeManualCookieHeader, UpdateSourceTrigger=PropertyChanged}"
-               Height="80"
-               TextWrapping="Wrap"
-               AcceptsReturn="True" />
-    </StackPanel>
+        <TextBlock Text="Claude manual cookie header" Margin="0,12,0,4" />
+        <TextBox Text="{Binding ClaudeManualCookieHeader, UpdateSourceTrigger=PropertyChanged}"
+                 Height="80"
+                 TextWrapping="Wrap"
+                 AcceptsReturn="True" />
+        <TextBlock Text="Cursor manual cookie header" Margin="0,12,0,4" />
+        <TextBox Text="{Binding CursorManualCookieHeader, UpdateSourceTrigger=PropertyChanged}"
+                 Height="80"
+                 TextWrapping="Wrap"
+                 AcceptsReturn="True" />
+      </StackPanel>
+    </ScrollViewer>
 
     <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
       <Button Content="Save" IsDefault="True" Width="88" Margin="8,0" Click="Save_Click" />
