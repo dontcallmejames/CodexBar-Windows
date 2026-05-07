@@ -158,6 +158,31 @@ public sealed class WpfShellTests
     }
 
     [TestMethod]
+    public void CalculatesPopoverPositionAboveTaskbarDock()
+    {
+        var position = CodexBar.WinApp.App.CalculatePopoverPositionNearDock(
+            width: 372,
+            height: 500,
+            workArea: new System.Windows.Rect(0, 0, 2560, 1040),
+            dockLeft: 2224,
+            dockTop: 964,
+            dockWidth: 320);
+
+        Assert.AreEqual(2172, position.Left);
+        Assert.AreEqual(452, position.Top);
+    }
+
+    [TestMethod]
+    public void CalculatesPopoverMaxHeightFromTaskbarDockAnchor()
+    {
+        var maxHeight = CodexBar.WinApp.App.CalculatePopoverMaxHeightNearDock(
+            workArea: new System.Windows.Rect(0, 0, 2560, 1040),
+            dockTop: 964);
+
+        Assert.AreEqual(936, maxHeight);
+    }
+
+    [TestMethod]
     public void AboutWindowUsesManualPlacementAndCompactSize()
     {
         var aboutXamlPath = Path.GetFullPath(Path.Combine(
