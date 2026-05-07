@@ -176,4 +176,26 @@ public sealed class WpfShellTests
         StringAssert.Contains(aboutXaml, "Width=\"320\"");
         StringAssert.Contains(aboutXaml, "Height=\"190\"");
     }
+
+    [TestMethod]
+    public void TaskbarDockWindowUsesCompactTranslucentSurface()
+    {
+        var xamlPath = Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory,
+            "..",
+            "..",
+            "..",
+            "..",
+            "CodexBar.WinApp",
+            "Views",
+            "TaskbarDockWindow.xaml"));
+
+        var xaml = File.ReadAllText(xamlPath);
+
+        StringAssert.Contains(xaml, "ShowInTaskbar=\"False\"");
+        StringAssert.Contains(xaml, "Topmost=\"True\"");
+        StringAssert.Contains(xaml, "Width=\"320\"");
+        StringAssert.Contains(xaml, "{StaticResource CodexBarPanelBrush}");
+        StringAssert.Contains(xaml, "Hide Taskbar Dock");
+    }
 }
