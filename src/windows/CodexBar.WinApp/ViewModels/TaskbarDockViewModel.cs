@@ -36,7 +36,7 @@ public sealed class TaskbarDockViewModel
                 snapshot.Provider,
                 snapshot.DisplayName,
                 $"{percent:0}% {suffix}",
-                percent,
+                Math.Clamp(percent, 0, 100),
                 ProgressColor(snapshot.Provider),
                 snapshot.IsStale,
                 false);
