@@ -102,4 +102,80 @@ public sealed class TaskbarDockViewModelTests
         Assert.AreEqual("82% left", vm.Tiles[0].PercentText);
         Assert.AreEqual(82, vm.Tiles[0].ProgressPercent);
     }
+
+    [TestMethod]
+    public void ClampsProgressPercentForProgressBarBinding()
+    {
+        var now = DateTimeOffset.FromUnixTimeSeconds(1000);
+        var snapshots = new[]
+        {
+            new UsageSnapshot(
+                UsageProvider.Codex,
+                "Codex",
+                now,
+                new[] { new RateWindow("over", "Over Limit", 135, now.AddHours(2), null) },
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                "test",
+                null,
+                false),
+            new UsageSnapshot(
+                UsageProvider.Claude,
+                "Claude",
+                now,
+                new[] { new RateWindow("negative", "Negative", -12, now.AddHours(2), null) },
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                "test",
+                null,
+                false)
+        };
+
+        var vm = new TaskbarDockViewModel(snapshots, showUsageAsUsed: true);
+
+        Assert.AreEqual("135% used", vm.Tiles[0].PercentText);
+        Assert.AreEqual(100, vm.Tiles[0].ProgressPercent);
+        Assert.AreEqual("-12% used", vm.Tiles[1].PercentText);
+        Assert.AreEqual(0, vm.Tiles[1].ProgressPercent);
+    }
+
+    [TestMethod]
+    public void UsesFirstWindowWhenSnapshotHasMultipleWindows()
+    {
+        var now = DateTimeOffset.FromUnixTimeSeconds(1000);
+        var snapshot = new UsageSnapshot(
+            UsageProvider.Gemini,
+            "Gemini",
+            now,
+            new[]
+            {
+                new RateWindow("first", "First", 25, now.AddHours(2), null),
+                new RateWindow("second", "Second", 90, now.AddDays(1), null)
+            },
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            "test",
+            null,
+            false);
+
+        var vm = new TaskbarDockViewModel(new[] { snapshot }, showUsageAsUsed: true);
+
+        Assert.AreEqual("25% used", vm.Tiles[0].PercentText);
+        Assert.AreEqual(25, vm.Tiles[0].ProgressPercent);
+    }
 }
