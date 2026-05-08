@@ -77,6 +77,26 @@ public sealed class AppServicesTests
     }
 
     [TestMethod]
+    public void UsesExplicitHttpTimeoutForProviderRequests()
+    {
+        var root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        try
+        {
+            var paths = WindowsAppPaths.ForTest(Path.Combine(root, "home"), Path.Combine(root, "appdata"));
+            using var services = new AppServices(paths, AppSettings.Default);
+
+            Assert.AreEqual(TimeSpan.FromSeconds(30), services.HttpClient.Timeout);
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
+
+    [TestMethod]
     public void OmitsDisabledPreviewProviders()
     {
         var root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));

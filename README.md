@@ -59,6 +59,12 @@ Windows-specific setup notes live in:
 - [Cursor on Windows](docs/windows-cursor.md)
 - [Gemini on Windows](docs/windows-gemini.md)
 
+## Legacy macOS sources
+
+This repository was forked from the original macOS CodexBar project, so legacy macOS sources such as `Package.swift`, `Sources/`, `Tests/`, `Icon.icns`, `appcast.xml`, and Sparkle release scripts remain in the tree for upstream reference and current Swift CI compatibility. Windows releases are built from `src/windows`, `installer/windows`, and `.github/workflows/windows.yml`.
+
+Do not use `Scripts/release.sh` for Windows releases. It is the legacy macOS/Sparkle release path and requires an explicit opt-in environment variable before it will run.
+
 ## Privacy
 
 CodexBar reads known credential/configuration files for enabled providers and sends usage requests directly to the matching provider endpoint. Provider credentials stay on your machine and are not sent to a CodexBar service.
