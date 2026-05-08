@@ -39,9 +39,15 @@ jobs:
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 9.0.x
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --no-progress -y
       - name: Package
         shell: pwsh
         run: ./Scripts/package-windows.ps1 -DotNet dotnet
+      - name: Package installer
+        shell: pwsh
+        run: ./Scripts/package-windows-installer.ps1 -DotNet dotnet -SkipPortablePackage
       - name: Upload portable artifact
         uses: actions/upload-artifact@v5
         with:
@@ -49,6 +55,8 @@ jobs:
           path: |
             dist/windows/*.zip
             dist/windows/*.zip.sha256
+            dist/windows/*.installer.exe
+            dist/windows/*.installer.exe.sha256
       - name: Publish prerelease assets
         uses: softprops/action-gh-release@v2
         with:
@@ -58,3 +66,5 @@ jobs:
           files: |
             dist/windows/*.zip
             dist/windows/*.zip.sha256
+            dist/windows/*.installer.exe
+            dist/windows/*.installer.exe.sha256

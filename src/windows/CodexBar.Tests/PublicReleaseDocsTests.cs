@@ -23,7 +23,8 @@ public sealed class PublicReleaseDocsTests
         StringAssert.Contains(readme, "Gemini");
         StringAssert.Contains(readme, "credentials stay on your machine");
         StringAssert.Contains(readme, "## Screenshot");
-        StringAssert.Contains(readme, "Installer support is deferred");
+        StringAssert.Contains(readme, "installer");
+        StringAssert.Contains(readme, "portable zip");
     }
 
     [TestMethod]
@@ -69,5 +70,6 @@ public sealed class PublicReleaseDocsTests
         StringAssert.Contains(releaseChecklist, "v0.25.0-preview.1");
         StringAssert.Contains(releaseChecklist, "GitHub Release");
         StringAssert.Contains(releaseChecklist, "CodexBar-Windows");
+        StringAssert.Contains(releaseChecklist, ".installer.exe");
     }
 }

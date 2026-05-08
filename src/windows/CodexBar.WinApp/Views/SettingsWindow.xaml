@@ -68,10 +68,15 @@
     </ScrollViewer>
 
     <Grid Grid.Row="2">
-      <Button Content="Report a Bug..."
-              Width="116"
-              HorizontalAlignment="Left"
-              Click="ReportBug_Click" />
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+        <Button Content="Report a Bug..."
+                Width="116"
+                Margin="0,0,8,0"
+                Click="ReportBug_Click" />
+        <Button Content="Check for Updates..."
+                Width="136"
+                Click="CheckUpdates_Click" />
+      </StackPanel>
       <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
         <Button Content="Save" IsDefault="True" Width="88" Margin="8,0" Click="Save_Click" />
         <Button Content="Cancel" IsCancel="True" Width="88" Click="Cancel_Click" />
