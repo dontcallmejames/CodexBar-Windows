@@ -10,6 +10,15 @@ public static class ProviderLinks
     public static Uri ReleasesUri() =>
         new("https://github.com/dontcallmejames/CodexBar-Windows/releases/latest");
 
+    public static Uri SetupUri(UsageProvider provider) =>
+        provider switch
+        {
+            UsageProvider.Claude => new Uri("https://github.com/dontcallmejames/CodexBar-Windows/blob/main/docs/windows-claude.md"),
+            UsageProvider.Cursor => new Uri("https://github.com/dontcallmejames/CodexBar-Windows/blob/main/docs/windows-cursor.md"),
+            UsageProvider.Gemini => new Uri("https://github.com/dontcallmejames/CodexBar-Windows/blob/main/docs/windows-gemini.md"),
+            _ => new Uri("https://github.com/dontcallmejames/CodexBar-Windows/blob/main/docs/windows-codex.md")
+        };
+
     public static Uri DashboardUri(UsageProvider provider) =>
         provider switch
         {

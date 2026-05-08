@@ -1,13 +1,19 @@
 using CodexBar.Core.Settings;
 using CodexBar.Core.Paths;
+using CodexBar.Core.Models;
 using System.IO;
 
 namespace CodexBar.WinApp.ViewModels;
 
 public sealed class SettingsViewModel
 {
-    public SettingsViewModel(AppSettings settings, IAppPaths? paths = null)
+    public SettingsViewModel(
+        AppSettings settings,
+        IAppPaths? paths = null,
+        IReadOnlyList<UsageSnapshot>? snapshots = null)
     {
+        var byProvider = (snapshots ?? Array.Empty<UsageSnapshot>())
+            .ToDictionary(snapshot => snapshot.Provider);
         CodexEnabled = settings.CodexEnabled;
         ClaudeEnabled = settings.ClaudeEnabled;
         CursorEnabled = settings.CursorEnabled;
@@ -26,10 +32,30 @@ public sealed class SettingsViewModel
         CodexCredentialPath = paths?.CodexAuthJson(null) ?? string.Empty;
         ClaudeCredentialPath = paths?.ClaudeCredentialsJson ?? string.Empty;
         GeminiCredentialPath = paths?.GeminiOAuthCredentialsJson ?? string.Empty;
-        CodexAccountStatus = CredentialStatus(CodexCredentialPath);
-        ClaudeAccountStatus = CredentialStatus(ClaudeCredentialPath);
-        CursorAccountStatus = string.IsNullOrWhiteSpace(CursorManualCookieHeader) ? "Not connected" : "Connected";
-        GeminiAccountStatus = CredentialStatus(GeminiCredentialPath);
+        (CodexAccountStatus, CodexAccountDetail) = ProviderStatus(
+            UsageProvider.Codex,
+            CodexEnabled,
+            CredentialStatus(CodexCredentialPath),
+            CodexCredentialPath,
+            byProvider);
+        (ClaudeAccountStatus, ClaudeAccountDetail) = ProviderStatus(
+            UsageProvider.Claude,
+            ClaudeEnabled,
+            CredentialStatus(ClaudeCredentialPath),
+            ClaudeCredentialPath,
+            byProvider);
+        (CursorAccountStatus, CursorAccountDetail) = ProviderStatus(
+            UsageProvider.Cursor,
+            CursorEnabled,
+            string.IsNullOrWhiteSpace(CursorManualCookieHeader) ? "Not connected" : "Connected",
+            "Manual cookie header",
+            byProvider);
+        (GeminiAccountStatus, GeminiAccountDetail) = ProviderStatus(
+            UsageProvider.Gemini,
+            GeminiEnabled,
+            CredentialStatus(GeminiCredentialPath),
+            GeminiCredentialPath,
+            byProvider);
     }
 
     public bool CodexEnabled { get; set; }
@@ -54,6 +80,10 @@ public sealed class SettingsViewModel
     public string ClaudeAccountStatus { get; }
     public string CursorAccountStatus { get; }
     public string GeminiAccountStatus { get; }
+    public string CodexAccountDetail { get; }
+    public string ClaudeAccountDetail { get; }
+    public string CursorAccountDetail { get; }
+    public string GeminiAccountDetail { get; }
 
     public AppSettings ToSettings() => new(
         CodexEnabled,
@@ -76,4 +106,34 @@ public sealed class SettingsViewModel
         string.IsNullOrWhiteSpace(path)
             ? "Not checked"
             : File.Exists(path) ? "Connected" : "Not connected";
+
+    private static (string Status, string Detail) ProviderStatus(
+        UsageProvider provider,
+        bool enabled,
+        string credentialStatus,
+        string fallbackDetail,
+        IReadOnlyDictionary<UsageProvider, UsageSnapshot> snapshots)
+    {
+        if (!enabled)
+        {
+            return ("Disabled", "Provider is disabled.");
+        }
+
+        if (!snapshots.TryGetValue(provider, out var snapshot))
+        {
+            return (credentialStatus, string.IsNullOrWhiteSpace(fallbackDetail) ? "No credential path available." : fallbackDetail);
+        }
+
+        if (!string.IsNullOrWhiteSpace(snapshot.ErrorMessage))
+        {
+            return ("Needs attention", snapshot.ErrorMessage);
+        }
+
+        if (snapshot.IsStale)
+        {
+            return ("Needs attention", "Last refresh did not complete successfully.");
+        }
+
+        return ("Connected", "Usage data refreshed successfully.");
+    }
 }

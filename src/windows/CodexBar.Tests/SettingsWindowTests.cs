@@ -1,5 +1,6 @@
 using CodexBar.Core.Settings;
 using CodexBar.Core.Paths;
+using CodexBar.Core.Models;
 using CodexBar.WinApp.Settings;
 using CodexBar.WinApp.ViewModels;
 using CodexBar.WinApp.Views;
@@ -75,6 +76,40 @@ public sealed class SettingsWindowTests
                 Directory.Delete(root, recursive: true);
             }
         }
+    }
+
+    [TestMethod]
+    public void SettingsViewModelUsesLatestProviderSnapshotsForStatusAndDetails()
+    {
+        var snapshots = new[]
+        {
+            new UsageSnapshot(
+                UsageProvider.Codex,
+                "Codex",
+                DateTimeOffset.Now,
+                new[] { new RateWindow("weekly", "Weekly", 25, null, null) },
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                "test",
+                null,
+                false),
+            UsageSnapshot.MissingCredentials(
+                UsageProvider.Gemini,
+                "Gemini",
+                "Gemini CLI OAuth credentials were not found.")
+        };
+
+        var viewModel = new SettingsViewModel(AppSettings.Default, snapshots: snapshots);
+
+        Assert.AreEqual("Connected", viewModel.CodexAccountStatus);
+        Assert.AreEqual("Usage data refreshed successfully.", viewModel.CodexAccountDetail);
+        Assert.AreEqual("Needs attention", viewModel.GeminiAccountStatus);
+        Assert.AreEqual("Gemini CLI OAuth credentials were not found.", viewModel.GeminiAccountDetail);
     }
 
     [TestMethod]
@@ -183,6 +218,33 @@ public sealed class SettingsWindowTests
         StringAssert.Contains(settingsXaml, "Click=\"CheckUpdates_Click\"");
         StringAssert.Contains(settingsCode, "UpdateCheckRequested");
         StringAssert.Contains(settingsCode, "CheckUpdates_Click");
+    }
+
+    [TestMethod]
+    public void SettingsWindowExposesProviderTestAndHelpButtons()
+    {
+        var settingsXamlPath = Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory,
+            "..",
+            "..",
+            "..",
+            "..",
+            "CodexBar.WinApp",
+            "Views",
+            "SettingsWindow.xaml"));
+        var settingsCodePath = Path.ChangeExtension(settingsXamlPath, ".xaml.cs");
+
+        var settingsXaml = File.ReadAllText(settingsXamlPath);
+        var settingsCode = File.ReadAllText(settingsCodePath);
+
+        StringAssert.Contains(settingsXaml, "TestProvider_Click");
+        StringAssert.Contains(settingsXaml, "ProviderHelp_Click");
+        StringAssert.Contains(settingsXaml, "Tag=\"Codex\"");
+        StringAssert.Contains(settingsXaml, "Tag=\"Claude\"");
+        StringAssert.Contains(settingsXaml, "Tag=\"Cursor\"");
+        StringAssert.Contains(settingsXaml, "Tag=\"Gemini\"");
+        StringAssert.Contains(settingsCode, "TestProviderRequested");
+        StringAssert.Contains(settingsCode, "ProviderHelpRequested");
     }
 
     private sealed class ThrowingSettingsWriter : ISettingsWriter
