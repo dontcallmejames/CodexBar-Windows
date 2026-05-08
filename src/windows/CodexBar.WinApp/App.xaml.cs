@@ -346,10 +346,12 @@ public partial class App : System.Windows.Application
             return;
         }
 
-        settingsWindow = new SettingsWindow(services.Settings, settingsStore, services.Paths);
+        settingsWindow = new SettingsWindow(services.Settings, settingsStore, services.Paths, services.Store.All());
         settingsWindow.SettingsSaved += (_, settings) => ApplySettings(settings);
         settingsWindow.BugReportRequested += (_, _) => ShowBugReport();
         settingsWindow.UpdateCheckRequested += (_, _) => ShowUpdates();
+        settingsWindow.TestProviderRequested += (_, provider) => TestProvider(provider);
+        settingsWindow.ProviderHelpRequested += (_, provider) => ShowProviderHelp(provider);
         settingsWindow.Closed += (_, _) => settingsWindow = null;
         PositionWindowNearApp(settingsWindow);
         settingsWindow.Show();
@@ -359,6 +361,34 @@ public partial class App : System.Windows.Application
     private static void ShowUpdates()
     {
         OpenUri(ProviderLinks.ReleasesUri());
+    }
+
+    private static void ShowProviderHelp(UsageProvider provider)
+    {
+        OpenUri(ProviderLinks.SetupUri(provider));
+    }
+
+    private async void TestProvider(UsageProvider provider)
+    {
+        if (services is null)
+        {
+            return;
+        }
+
+        var snapshot = await services.TestProviderAsync(provider, shutdown.Token);
+        UpdateTrayFromSnapshots();
+        UpdateTaskbarDock();
+        UpdatePopover();
+        UpdateSettingsWindow();
+
+        var message = string.IsNullOrWhiteSpace(snapshot.ErrorMessage)
+            ? $"{snapshot.DisplayName} credentials are working."
+            : snapshot.ErrorMessage;
+        System.Windows.MessageBox.Show(
+            message,
+            $"{snapshot.DisplayName} Credential Test",
+            System.Windows.MessageBoxButton.OK,
+            snapshot.IsStale ? System.Windows.MessageBoxImage.Warning : System.Windows.MessageBoxImage.Information);
     }
 
     private void ShowBugReport()
@@ -485,6 +515,7 @@ public partial class App : System.Windows.Application
         UpdateTrayFromSnapshots();
         UpdateTaskbarDock();
         UpdatePopover();
+        UpdateSettingsWindow();
         await RefreshServicesAsync(activeServices);
     }
 
@@ -507,6 +538,7 @@ public partial class App : System.Windows.Application
         UpdateTrayFromSnapshots();
         UpdateTaskbarDock();
         UpdatePopover();
+        UpdateSettingsWindow();
     }
 
     private void UpdateTrayFromSnapshots()
@@ -580,6 +612,19 @@ public partial class App : System.Windows.Application
             quit: Shutdown,
             addAccount: ShowSettings,
             openStatusPage: ShowActiveProviderStatusPage);
+    }
+
+    private void UpdateSettingsWindow()
+    {
+        if (services is null || settingsWindow?.IsVisible != true)
+        {
+            return;
+        }
+
+        settingsWindow.DataContext = new SettingsViewModel(
+            services.Settings,
+            services.Paths,
+            services.Store.All());
     }
 
     private void ApplyStartupRegistration(AppSettings settings)

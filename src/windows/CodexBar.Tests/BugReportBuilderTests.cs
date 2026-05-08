@@ -45,6 +45,26 @@ public sealed class BugReportBuilderTests
     }
 
     [TestMethod]
+    public void DiagnosticSummaryIncludesLatestTestCredentialFailure()
+    {
+        var snapshots = new[]
+        {
+            UsageSnapshot.MissingCredentials(
+                UsageProvider.Cursor,
+                "Cursor",
+                "Cursor cookie header was not found. Add it in Settings.")
+        };
+
+        var summary = BugReportBuilder.BuildDiagnosticSummary(
+            AppSettings.Default,
+            snapshots,
+            appVersion: "0.25-test",
+            osDescription: "Windows 11 test");
+
+        StringAssert.Contains(summary, "- Cursor: enabled, stale, 0 usage windows, latest error: Cursor cookie header was not found. Add it in Settings.");
+    }
+
+    [TestMethod]
     public void DiagnosticSummaryDoesNotIncludeManualCookieHeaders()
     {
         var settings = AppSettings.Default with

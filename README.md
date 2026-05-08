@@ -39,8 +39,9 @@ Requirements:
 2. Click the CodexBar tray icon.
 3. Open Settings.
 4. Enable only the providers you use.
-5. Confirm each provider shows a connected account or follow the provider setup notes below.
-6. Use Settings > Report a Bug... to copy a redacted diagnostic summary and open the GitHub bug form.
+5. Use each provider's Test button to verify credentials and see the latest provider-specific status.
+6. Use each provider's Help button to open the matching Windows setup notes.
+7. Use Settings > Report a Bug... to copy a redacted diagnostic summary and open the GitHub bug form.
 
 ## Provider Setup
 

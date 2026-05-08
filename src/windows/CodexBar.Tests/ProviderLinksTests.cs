@@ -30,4 +30,21 @@ public sealed class ProviderLinksTests
             new Uri("https://github.com/dontcallmejames/CodexBar-Windows/releases/latest"),
             ProviderLinks.ReleasesUri());
     }
+
+    [TestMethod]
+    public void ResolvesProviderSetupDocs()
+    {
+        Assert.AreEqual(
+            new Uri("https://github.com/dontcallmejames/CodexBar-Windows/blob/main/docs/windows-codex.md"),
+            ProviderLinks.SetupUri(UsageProvider.Codex));
+        Assert.AreEqual(
+            new Uri("https://github.com/dontcallmejames/CodexBar-Windows/blob/main/docs/windows-claude.md"),
+            ProviderLinks.SetupUri(UsageProvider.Claude));
+        Assert.AreEqual(
+            new Uri("https://github.com/dontcallmejames/CodexBar-Windows/blob/main/docs/windows-cursor.md"),
+            ProviderLinks.SetupUri(UsageProvider.Cursor));
+        Assert.AreEqual(
+            new Uri("https://github.com/dontcallmejames/CodexBar-Windows/blob/main/docs/windows-gemini.md"),
+            ProviderLinks.SetupUri(UsageProvider.Gemini));
+    }
 }
