@@ -18,7 +18,10 @@ public sealed class AppServices : IDisposable
         Paths = paths;
         Settings = settings;
         Store = new SnapshotStore();
-        HttpClient = new HttpClient();
+        HttpClient = new HttpClient
+        {
+            Timeout = TimeSpan.FromSeconds(30)
+        };
         VersionInfo = AppVersionInfo.Current;
         UpdateChecker = new GitHubUpdateChecker(HttpClient, VersionInfo);
         Providers = BuildProviders(settings);

@@ -5,6 +5,7 @@ using CodexBar.WinApp;
 using CodexBar.WinApp.Settings;
 using CodexBar.WinApp.ViewModels;
 using CodexBar.WinApp.Views;
+using System.ComponentModel;
 
 namespace CodexBar.Tests;
 
@@ -77,6 +78,22 @@ public sealed class SettingsWindowTests
                 Directory.Delete(root, recursive: true);
             }
         }
+    }
+
+    [TestMethod]
+    public void SettingsViewModelRaisesPropertyChangedForMutableSettings()
+    {
+        var viewModel = new SettingsViewModel(AppSettings.Default);
+        var changed = new List<string>();
+        ((INotifyPropertyChanged)viewModel).PropertyChanged += (_, args) => changed.Add(args.PropertyName!);
+
+        viewModel.CodexEnabled = false;
+        viewModel.RefreshMinutes = 12;
+        viewModel.ClaudeManualCookieHeader = "sessionKey=abc";
+
+        CollectionAssert.Contains(changed, nameof(SettingsViewModel.CodexEnabled));
+        CollectionAssert.Contains(changed, nameof(SettingsViewModel.RefreshMinutes));
+        CollectionAssert.Contains(changed, nameof(SettingsViewModel.ClaudeManualCookieHeader));
     }
 
     [TestMethod]
