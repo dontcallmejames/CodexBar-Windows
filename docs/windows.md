@@ -36,7 +36,9 @@ The app starts in the notification area. Click the CodexBar tray icon to open th
 
 Use each provider's Test button in Settings to refresh only that provider and show the current credential status. Use the matching Help button to open that provider's Windows setup notes.
 
-Use Settings > Report a Bug... to copy a redacted diagnostic summary and open the GitHub bug report form. The summary includes app version, Windows version, enabled providers, provider freshness, and latest visible provider errors, including recent Test results. It does not include tokens, cookies, OAuth files, or credential contents.
+Use Settings > Check for Updates... to compare the current app version with the latest GitHub Release. CodexBar opens the release page when an update is available; it does not auto-install updates.
+
+Use Settings > Report a Bug... to copy a redacted diagnostic summary and open the GitHub bug report form. The summary includes app version, Windows version, update status, enabled providers, provider freshness, and latest visible provider errors, including recent Test results. It does not include tokens, cookies, OAuth files, or credential contents.
 
 ## Package
 

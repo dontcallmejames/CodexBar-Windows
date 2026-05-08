@@ -20,6 +20,12 @@ public sealed class PackagingScriptTests
 
         StringAssert.Contains(script, "Get-FileHash");
         StringAssert.Contains(script, ".sha256");
+        StringAssert.Contains(script, "BUILD_NUMBER");
+        StringAssert.Contains(script, "WINDOWS_PREVIEW_NUMBER");
+        StringAssert.Contains(script, "-p:InformationalVersion=$version");
+        StringAssert.Contains(script, "-p:IncludeSourceRevisionInInformationalVersion=false");
+        StringAssert.Contains(script, "-p:BuildNumber=$buildNumber");
+        StringAssert.Contains(script, "-p:WindowsPreviewNumber=$windowsPreviewNumber");
     }
 
     [TestMethod]

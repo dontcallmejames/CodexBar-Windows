@@ -20,6 +20,7 @@ public partial class App : System.Windows.Application
     private SettingsWindow? settingsWindow;
     private AboutWindow? aboutWindow;
     private IStartupRegistration? startupRegistration;
+    private UpdateCheckResult? latestUpdateCheck;
     private bool isShuttingDown;
 
     protected override async void OnStartup(System.Windows.StartupEventArgs e)
@@ -346,7 +347,13 @@ public partial class App : System.Windows.Application
             return;
         }
 
-        settingsWindow = new SettingsWindow(services.Settings, settingsStore, services.Paths, services.Store.All());
+        settingsWindow = new SettingsWindow(
+            services.Settings,
+            settingsStore,
+            services.Paths,
+            services.Store.All(),
+            services.VersionInfo,
+            latestUpdateCheck);
         settingsWindow.SettingsSaved += (_, settings) => ApplySettings(settings);
         settingsWindow.BugReportRequested += (_, _) => ShowBugReport();
         settingsWindow.UpdateCheckRequested += (_, _) => ShowUpdates();
@@ -358,9 +365,34 @@ public partial class App : System.Windows.Application
         settingsWindow.Activate();
     }
 
-    private static void ShowUpdates()
+    private async void ShowUpdates()
     {
-        OpenUri(ProviderLinks.ReleasesUri());
+        if (services is null)
+        {
+            OpenUri(ProviderLinks.ReleasesUri());
+            return;
+        }
+
+        try
+        {
+            latestUpdateCheck = await services.UpdateChecker.CheckAsync(shutdown.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
+        UpdateSettingsWindow();
+        if (latestUpdateCheck.UpdateAvailable && latestUpdateCheck.ReleaseUri is not null)
+        {
+            OpenUri(latestUpdateCheck.ReleaseUri);
+        }
+
+        System.Windows.MessageBox.Show(
+            latestUpdateCheck.StatusText,
+            "CodexBar Updates",
+            System.Windows.MessageBoxButton.OK,
+            latestUpdateCheck.UpdateAvailable ? System.Windows.MessageBoxImage.Information : System.Windows.MessageBoxImage.None);
     }
 
     private static void ShowProviderHelp(UsageProvider provider)
@@ -398,7 +430,11 @@ public partial class App : System.Windows.Application
             return;
         }
 
-        var summary = BugReportBuilder.BuildDiagnosticSummary(services.Settings, services.Store.All());
+        var summary = BugReportBuilder.BuildDiagnosticSummary(
+            services.Settings,
+            services.Store.All(),
+            services.VersionInfo.CurrentTag,
+            updateStatus: latestUpdateCheck);
         try
         {
             System.Windows.Clipboard.SetText(summary);
@@ -624,7 +660,9 @@ public partial class App : System.Windows.Application
         settingsWindow.DataContext = new SettingsViewModel(
             services.Settings,
             services.Paths,
-            services.Store.All());
+            services.Store.All(),
+            services.VersionInfo,
+            latestUpdateCheck);
     }
 
     private void ApplyStartupRegistration(AppSettings settings)

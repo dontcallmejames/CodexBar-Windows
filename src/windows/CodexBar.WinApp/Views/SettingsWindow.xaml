@@ -18,6 +18,14 @@
                   VerticalScrollBarVisibility="Auto"
                   HorizontalScrollBarVisibility="Disabled">
       <StackPanel>
+        <TextBlock Text="{Binding CurrentVersionText}"
+                   FontSize="13"
+                   Foreground="#666666"
+                   Margin="0,0,0,4" />
+        <TextBlock Text="{Binding UpdateStatusText}"
+                   FontSize="13"
+                   Foreground="#666666"
+                   Margin="0,0,0,12" />
         <CheckBox Content="Enable Codex" IsChecked="{Binding CodexEnabled}" Margin="0,6" />
         <CheckBox Content="Enable Claude" IsChecked="{Binding ClaudeEnabled}" Margin="0,6" />
         <CheckBox Content="Enable Cursor" IsChecked="{Binding CursorEnabled}" Margin="0,6" />

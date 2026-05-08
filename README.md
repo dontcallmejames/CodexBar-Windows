@@ -41,7 +41,8 @@ Requirements:
 4. Enable only the providers you use.
 5. Use each provider's Test button to verify credentials and see the latest provider-specific status.
 6. Use each provider's Help button to open the matching Windows setup notes.
-7. Use Settings > Report a Bug... to copy a redacted diagnostic summary and open the GitHub bug form.
+7. Use Settings > Check for Updates... to compare your build with the latest GitHub Release.
+8. Use Settings > Report a Bug... to copy a redacted diagnostic summary and open the GitHub bug form.
 
 ## Provider Setup
 

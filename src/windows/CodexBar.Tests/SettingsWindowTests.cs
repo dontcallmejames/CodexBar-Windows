@@ -1,6 +1,7 @@
 using CodexBar.Core.Settings;
 using CodexBar.Core.Paths;
 using CodexBar.Core.Models;
+using CodexBar.WinApp;
 using CodexBar.WinApp.Settings;
 using CodexBar.WinApp.ViewModels;
 using CodexBar.WinApp.Views;
@@ -218,6 +219,38 @@ public sealed class SettingsWindowTests
         StringAssert.Contains(settingsXaml, "Click=\"CheckUpdates_Click\"");
         StringAssert.Contains(settingsCode, "UpdateCheckRequested");
         StringAssert.Contains(settingsCode, "CheckUpdates_Click");
+    }
+
+    [TestMethod]
+    public void SettingsWindowShowsVersionAndUpdateStatus()
+    {
+        var settingsXamlPath = Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory,
+            "..",
+            "..",
+            "..",
+            "..",
+            "CodexBar.WinApp",
+            "Views",
+            "SettingsWindow.xaml"));
+
+        var settingsXaml = File.ReadAllText(settingsXamlPath);
+
+        StringAssert.Contains(settingsXaml, "CurrentVersionText");
+        StringAssert.Contains(settingsXaml, "UpdateStatusText");
+
+        var viewModel = new SettingsViewModel(
+            AppSettings.Default,
+            versionInfo: AppVersionInfo.FromMarketingVersion(
+                "0.25",
+                buildNumber: "60",
+                windowsPreviewNumber: "3"),
+            updateStatus: UpdateCheckResult.Available(
+                "v0.25.0-preview.4",
+                new Uri("https://github.com/dontcallmejames/CodexBar-Windows/releases/tag/v0.25.0-preview.4")));
+
+        Assert.AreEqual("Version v0.25.0-preview.3", viewModel.CurrentVersionText);
+        Assert.AreEqual("Update available: v0.25.0-preview.4", viewModel.UpdateStatusText);
     }
 
     [TestMethod]

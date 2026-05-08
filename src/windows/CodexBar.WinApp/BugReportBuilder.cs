@@ -10,7 +10,8 @@ public static class BugReportBuilder
         AppSettings settings,
         IReadOnlyList<UsageSnapshot> snapshots,
         string? appVersion = null,
-        string? osDescription = null)
+        string? osDescription = null,
+        UpdateCheckResult? updateStatus = null)
     {
         appVersion ??= Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "unknown";
         osDescription ??= System.Runtime.InteropServices.RuntimeInformation.OSDescription;
@@ -21,6 +22,7 @@ public static class BugReportBuilder
             "CodexBar diagnostic summary",
             $"App version: {appVersion}",
             $"OS: {osDescription}",
+            $"Update status: {FormatUpdateStatus(updateStatus)}",
             $"Taskbar dock enabled: {settings.DockOverviewNearTaskbar}",
             $"Show usage as used: {settings.ShowUsageAsUsed}",
             "Providers:",
@@ -67,4 +69,19 @@ public static class BugReportBuilder
 
     private static string SanitizeSingleLine(string value) =>
         value.ReplaceLineEndings(" ").Trim();
+
+    private static string FormatUpdateStatus(UpdateCheckResult? updateStatus)
+    {
+        if (updateStatus is null)
+        {
+            return "not checked";
+        }
+
+        if (updateStatus.UpdateAvailable)
+        {
+            return $"update available ({updateStatus.LatestTag})";
+        }
+
+        return updateStatus.StatusText;
+    }
 }

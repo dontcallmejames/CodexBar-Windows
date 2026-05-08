@@ -85,4 +85,19 @@ public sealed class BugReportBuilderTests
         Assert.IsFalse(summary.Contains("WorkosCursorSessionToken=", StringComparison.Ordinal));
         StringAssert.Contains(summary, "No tokens, cookies, OAuth files, or credential contents are included.");
     }
+
+    [TestMethod]
+    public void DiagnosticSummaryIncludesUpdateStatusWhenAvailable()
+    {
+        var summary = BugReportBuilder.BuildDiagnosticSummary(
+            AppSettings.Default,
+            Array.Empty<UsageSnapshot>(),
+            appVersion: "0.25-test",
+            osDescription: "Windows 11 test",
+            updateStatus: UpdateCheckResult.Available(
+                "v0.25.0-preview.3",
+                new Uri("https://github.com/dontcallmejames/CodexBar-Windows/releases/tag/v0.25.0-preview.3")));
+
+        StringAssert.Contains(summary, "Update status: update available (v0.25.0-preview.3)");
+    }
 }
