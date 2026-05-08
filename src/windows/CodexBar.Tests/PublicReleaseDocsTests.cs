@@ -23,8 +23,11 @@ public sealed class PublicReleaseDocsTests
         StringAssert.Contains(readme, "Gemini");
         StringAssert.Contains(readme, "credentials stay on your machine");
         StringAssert.Contains(readme, "## Screenshot");
+        StringAssert.Contains(readme, "## Provider Support Matrix");
+        StringAssert.Contains(readme, "| Provider | Credential source | Usage status | Notes |");
         StringAssert.Contains(readme, "installer");
         StringAssert.Contains(readme, "portable zip");
+        StringAssert.Contains(readme, "Open Release");
         StringAssert.Contains(readme, "Test");
         StringAssert.Contains(readme, "Help");
     }
@@ -75,5 +78,26 @@ public sealed class PublicReleaseDocsTests
         StringAssert.Contains(releaseChecklist, "GitHub Release");
         StringAssert.Contains(releaseChecklist, "CodexBar-Windows");
         StringAssert.Contains(releaseChecklist, ".installer.exe");
+    }
+
+    [TestMethod]
+    public void WindowsDocsIncludeUpdateAndProviderTroubleshooting()
+    {
+        var windowsDoc = File.ReadAllText(Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory,
+            "..",
+            "..",
+            "..",
+            "..",
+            "..",
+            "..",
+            "docs",
+            "windows.md")));
+
+        StringAssert.Contains(windowsDoc, "No usage yet");
+        StringAssert.Contains(windowsDoc, "Open Release");
+        StringAssert.Contains(windowsDoc, "Known limitations");
+        StringAssert.Contains(windowsDoc, "Gemini");
+        StringAssert.Contains(windowsDoc, "Cursor");
     }
 }

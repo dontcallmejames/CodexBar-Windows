@@ -15,10 +15,10 @@ public sealed record UpdateCheckResult(
         new(true, latestTag, releaseUri, $"Update available: {latestTag}", null);
 
     public static UpdateCheckResult UpToDate(string? latestTag) =>
-        new(false, latestTag, null, latestTag is null ? "No release metadata found." : $"Up to date: {latestTag}", null);
+        new(false, latestTag, null, latestTag is null ? "No release metadata found." : "You're on the latest release.", null);
 
     public static UpdateCheckResult Failed(string message) =>
-        new(false, null, null, $"Update check failed: {message}", message);
+        new(false, null, null, "Update check failed. Open Releases to check manually.", message);
 }
 
 public interface IUpdateChecker
@@ -46,7 +46,11 @@ public sealed class GitHubUpdateChecker : IUpdateChecker
             request.Headers.UserAgent.Add(new ProductInfoHeaderValue("CodexBar-Windows", versionInfo.DisplayVersion));
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
             using var response = await httpClient.SendAsync(request, cancellationToken);
-            response.EnsureSuccessStatusCode();
+            if (!response.IsSuccessStatusCode)
+            {
+                return UpdateCheckResult.Failed(
+                    $"{(int)response.StatusCode} {response.ReasonPhrase}".Trim());
+            }
             await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
             using var json = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
             var release = FindLatestRelease(json.RootElement);

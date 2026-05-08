@@ -36,9 +36,34 @@ The app starts in the notification area. Click the CodexBar tray icon to open th
 
 Use each provider's Test button in Settings to refresh only that provider and show the current credential status. Use the matching Help button to open that provider's Windows setup notes.
 
-Use Settings > Check for Updates... to compare the current app version with the latest GitHub Release. CodexBar opens the release page when an update is available; it does not auto-install updates.
+Use Settings > Check for Updates... to compare the current app version with the latest GitHub Release. Settings shows the current version, latest release, and update status. When an update is available, the action changes to Open Release. CodexBar does not auto-install updates.
 
 Use Settings > Report a Bug... to copy a redacted diagnostic summary and open the GitHub bug report form. The summary includes app version, Windows version, update status, enabled providers, provider freshness, and latest visible provider errors, including recent Test results. It does not include tokens, cookies, OAuth files, or credential contents.
+
+## Provider Troubleshooting
+
+Settings uses these provider health states:
+
+- Connected: credentials were found and the latest refresh returned usage data.
+- No usage yet: credentials were found, but the provider did not return measurable usage windows yet.
+- Needs attention: credentials exist, but the latest refresh or Test action failed. The detail text shows the latest provider-specific error.
+- Not connected: the expected credential file or manual credential source is missing.
+- Disabled: the provider is turned off in Settings.
+
+For Gemini, sign in with the Gemini CLI OAuth flow and confirm `%USERPROFILE%\.gemini\oauth_creds.json` exists. API key and Vertex AI modes are not supported in this preview.
+
+For Cursor, paste a manual `Cookie:` header from a signed-in Cursor browser request. If Cursor shows No usage yet, the cookie may be accepted while Cursor's private usage endpoint has not returned measurable windows.
+
+For Claude, OAuth subscription credentials are preferred. Manual cookie headers remain available as a fallback.
+
+For Codex, confirm the Codex CLI is signed in and that `%CODEX_HOME%\auth.json` or `%USERPROFILE%\.codex\auth.json` exists.
+
+## Known limitations
+
+- Updates are manual; Open Release takes you to GitHub to download the installer or portable zip.
+- Cursor support depends on a manual browser cookie header.
+- Gemini support is Gemini CLI OAuth only.
+- Provider dashboards and private usage APIs can change without notice.
 
 ## Package
 
