@@ -8,7 +8,7 @@ public static class ProviderLinks
         new("https://github.com/dontcallmejames/CodexBar-Windows/issues/new?template=bug_report.yml");
 
     public static Uri ReleasesUri() =>
-        new("https://github.com/dontcallmejames/CodexBar-Windows/releases/latest");
+        new("https://github.com/dontcallmejames/CodexBar-Windows/releases");
 
     public static Uri SetupUri(UsageProvider provider) =>
         provider switch

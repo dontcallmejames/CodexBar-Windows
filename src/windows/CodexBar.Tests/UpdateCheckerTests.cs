@@ -11,11 +11,20 @@ public sealed class UpdateCheckerTests
     public async Task ParsesLatestGithubReleaseAndReportsAvailableUpdate()
     {
         using var httpClient = new HttpClient(new StaticJsonHandler("""
-        {
-          "tag_name": "v0.25.0-preview.3",
-          "html_url": "https://github.com/dontcallmejames/CodexBar-Windows/releases/tag/v0.25.0-preview.3",
-          "prerelease": true
-        }
+        [
+          {
+            "tag_name": "v0.25.0-preview.4",
+            "html_url": "https://github.com/dontcallmejames/CodexBar-Windows/releases/tag/v0.25.0-preview.4",
+            "draft": true,
+            "prerelease": true
+          },
+          {
+            "tag_name": "v0.25.0-preview.3",
+            "html_url": "https://github.com/dontcallmejames/CodexBar-Windows/releases/tag/v0.25.0-preview.3",
+            "draft": false,
+            "prerelease": true
+          }
+        ]
         """));
         var checker = new GitHubUpdateChecker(httpClient, AppVersionInfo.FromMarketingVersion("0.25", "2"));
 
@@ -30,11 +39,14 @@ public sealed class UpdateCheckerTests
     public async Task ReportsUpToDateWhenCurrentTagMatchesLatest()
     {
         using var httpClient = new HttpClient(new StaticJsonHandler("""
-        {
-          "tag_name": "v0.25.0-preview.2",
-          "html_url": "https://github.com/dontcallmejames/CodexBar-Windows/releases/tag/v0.25.0-preview.2",
-          "prerelease": true
-        }
+        [
+          {
+            "tag_name": "v0.25.0-preview.2",
+            "html_url": "https://github.com/dontcallmejames/CodexBar-Windows/releases/tag/v0.25.0-preview.2",
+            "draft": false,
+            "prerelease": true
+          }
+        ]
         """));
         var checker = new GitHubUpdateChecker(httpClient, AppVersionInfo.FromMarketingVersion("0.25", "2"));
 
@@ -55,7 +67,7 @@ public sealed class UpdateCheckerTests
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
-            Assert.AreEqual(new Uri("https://api.github.com/repos/dontcallmejames/CodexBar-Windows/releases/latest"), request.RequestUri);
+            Assert.AreEqual(new Uri("https://api.github.com/repos/dontcallmejames/CodexBar-Windows/releases?per_page=20"), request.RequestUri);
             Assert.IsTrue(request.Headers.UserAgent.Any());
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
             {
