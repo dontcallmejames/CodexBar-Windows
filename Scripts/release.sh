@@ -5,7 +5,19 @@ ROOT=$(cd "$(dirname "$0")/.." && pwd)
 cd "$ROOT"
 
 source "$ROOT/version.env"
-source "$HOME/Projects/agent-scripts/release/sparkle_lib.sh"
+
+if [[ "${CODEXBAR_RUN_LEGACY_MACOS_RELEASE:-0}" != "1" ]]; then
+  echo "ERROR: Legacy macOS release script. Windows releases use .github/workflows/windows.yml and GitHub release tags." >&2
+  echo "Set CODEXBAR_RUN_LEGACY_MACOS_RELEASE=1 only when intentionally releasing the legacy macOS/Sparkle app." >&2
+  exit 1
+fi
+
+SPARKLE_LIB="${SPARKLE_LIB:-$HOME/Projects/agent-scripts/release/sparkle_lib.sh}"
+if [[ ! -f "$SPARKLE_LIB" ]]; then
+  echo "ERROR: SPARKLE_LIB not found: $SPARKLE_LIB" >&2
+  exit 1
+fi
+source "$SPARKLE_LIB"
 
 APPCAST="$ROOT/appcast.xml"
 APP_NAME="CodexBar"

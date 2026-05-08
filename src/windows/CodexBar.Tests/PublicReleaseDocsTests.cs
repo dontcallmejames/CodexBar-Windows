@@ -100,4 +100,42 @@ public sealed class PublicReleaseDocsTests
         StringAssert.Contains(windowsDoc, "Gemini");
         StringAssert.Contains(windowsDoc, "Cursor");
     }
+
+    [TestMethod]
+    public void ReadmeMarksMacOSArtifactsAsLegacy()
+    {
+        var readme = File.ReadAllText(Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory,
+            "..",
+            "..",
+            "..",
+            "..",
+            "..",
+            "..",
+            "README.md")));
+
+        StringAssert.Contains(readme, "Legacy macOS sources");
+        StringAssert.Contains(readme, "Package.swift");
+        StringAssert.Contains(readme, "appcast.xml");
+        StringAssert.Contains(readme, "Windows releases are built from `src/windows`");
+    }
+
+    [TestMethod]
+    public void MacOSReleaseScriptRequiresExplicitLegacyOptIn()
+    {
+        var script = File.ReadAllText(Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory,
+            "..",
+            "..",
+            "..",
+            "..",
+            "..",
+            "..",
+            "Scripts",
+            "release.sh")));
+
+        StringAssert.Contains(script, "CODEXBAR_RUN_LEGACY_MACOS_RELEASE");
+        StringAssert.Contains(script, "Legacy macOS release script");
+        StringAssert.Contains(script, "SPARKLE_LIB");
+    }
 }

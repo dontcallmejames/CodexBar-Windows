@@ -21,6 +21,9 @@ public partial class App : System.Windows.Application
     private AboutWindow? aboutWindow;
     private IStartupRegistration? startupRegistration;
     private UpdateCheckResult? latestUpdateCheck;
+    private System.Windows.Threading.DispatcherTimer? refreshTimer;
+    private Action<System.Windows.Window>? positionPopover;
+    private bool isRefreshing;
     private bool isShuttingDown;
 
     protected override async void OnStartup(System.Windows.StartupEventArgs e)
@@ -50,12 +53,15 @@ public partial class App : System.Windows.Application
         catch (OperationCanceledException) when (shutdown.IsCancellationRequested)
         {
         }
+
+        StartRefreshTimer(settings);
     }
 
     protected override void OnExit(System.Windows.ExitEventArgs e)
     {
         isShuttingDown = true;
         shutdown.Cancel();
+        StopRefreshTimer();
         aboutWindow?.Close();
         settingsWindow?.Close();
         System.Windows.SystemParameters.StaticPropertyChanged -= SystemParameters_StaticPropertyChanged;
@@ -103,18 +109,46 @@ public partial class App : System.Windows.Application
             addAccount: ShowSettings,
             openStatusPage: ShowActiveProviderStatusPage);
         popover = new PopoverWindow(viewModel);
-        popover.Closed += (_, _) => popover = null;
-        popover.SizeChanged += (_, _) =>
-        {
-            if (popover?.IsVisible == true)
-            {
-                positionPopover(popover);
-            }
-        };
+        this.positionPopover = positionPopover;
+        WirePopoverWindowEvents(popover);
         popover.Show();
         popover.UpdateLayout();
         positionPopover(popover);
         popover.Activate();
+    }
+
+    private void WirePopoverWindowEvents(PopoverWindow window)
+    {
+        window.SizeChanged += Popover_SizeChanged;
+        window.Closed += Popover_Closed;
+    }
+
+    private void UnwirePopoverWindowEvents(PopoverWindow window)
+    {
+        window.SizeChanged -= Popover_SizeChanged;
+        window.Closed -= Popover_Closed;
+    }
+
+    private void Popover_SizeChanged(object sender, System.Windows.SizeChangedEventArgs e)
+    {
+        if (sender is System.Windows.Window window && window.IsVisible)
+        {
+            positionPopover?.Invoke(window);
+        }
+    }
+
+    private void Popover_Closed(object? sender, EventArgs e)
+    {
+        if (sender is PopoverWindow window)
+        {
+            UnwirePopoverWindowEvents(window);
+            if (ReferenceEquals(popover, window))
+            {
+                popover = null;
+            }
+        }
+
+        positionPopover = null;
     }
 
     private void PositionPopoverNearCursor(System.Windows.Window window)
@@ -195,6 +229,50 @@ public partial class App : System.Windows.Application
         }
 
         ShowPopoverWindow(UsageProvider.Codex, PositionPopoverNearDock);
+    }
+
+    public static TimeSpan CalculateRefreshInterval(int refreshMinutes) =>
+        TimeSpan.FromMinutes(Math.Max(1, refreshMinutes));
+
+    private void StartRefreshTimer(AppSettings settings)
+    {
+        StopRefreshTimer();
+        refreshTimer = new System.Windows.Threading.DispatcherTimer
+        {
+            Interval = CalculateRefreshInterval(settings.RefreshMinutes)
+        };
+        refreshTimer.Tick += RefreshTimer_Tick;
+        refreshTimer.Start();
+    }
+
+    private void StopRefreshTimer()
+    {
+        if (refreshTimer is null)
+        {
+            return;
+        }
+
+        refreshTimer.Stop();
+        refreshTimer.Tick -= RefreshTimer_Tick;
+        refreshTimer = null;
+    }
+
+    private async void RefreshTimer_Tick(object? sender, EventArgs e)
+    {
+        if (services is null || isRefreshing)
+        {
+            return;
+        }
+
+        isRefreshing = true;
+        try
+        {
+            await RefreshServicesAsync(services);
+        }
+        finally
+        {
+            isRefreshing = false;
+        }
     }
 
     private async void RefreshNow()
@@ -356,15 +434,57 @@ public partial class App : System.Windows.Application
             services.Store.All(),
             services.VersionInfo,
             latestUpdateCheck);
-        settingsWindow.SettingsSaved += (_, settings) => ApplySettings(settings);
-        settingsWindow.BugReportRequested += (_, _) => ShowBugReport();
-        settingsWindow.UpdateCheckRequested += (_, _) => ShowUpdates();
-        settingsWindow.TestProviderRequested += (_, provider) => TestProvider(provider);
-        settingsWindow.ProviderHelpRequested += (_, provider) => ShowProviderHelp(provider);
-        settingsWindow.Closed += (_, _) => settingsWindow = null;
+        WireSettingsWindowEvents(settingsWindow);
         PositionWindowNearApp(settingsWindow);
         settingsWindow.Show();
         settingsWindow.Activate();
+    }
+
+    private void WireSettingsWindowEvents(SettingsWindow window)
+    {
+        window.SettingsSaved += SettingsWindow_SettingsSaved;
+        window.BugReportRequested += SettingsWindow_BugReportRequested;
+        window.UpdateCheckRequested += SettingsWindow_UpdateCheckRequested;
+        window.TestProviderRequested += SettingsWindow_TestProviderRequested;
+        window.ProviderHelpRequested += SettingsWindow_ProviderHelpRequested;
+        window.Closed += SettingsWindow_Closed;
+    }
+
+    private void UnwireSettingsWindowEvents(SettingsWindow window)
+    {
+        window.SettingsSaved -= SettingsWindow_SettingsSaved;
+        window.BugReportRequested -= SettingsWindow_BugReportRequested;
+        window.UpdateCheckRequested -= SettingsWindow_UpdateCheckRequested;
+        window.TestProviderRequested -= SettingsWindow_TestProviderRequested;
+        window.ProviderHelpRequested -= SettingsWindow_ProviderHelpRequested;
+        window.Closed -= SettingsWindow_Closed;
+    }
+
+    private void SettingsWindow_SettingsSaved(object? sender, AppSettings settings) =>
+        ApplySettings(settings);
+
+    private void SettingsWindow_BugReportRequested(object? sender, EventArgs e) =>
+        ShowBugReport();
+
+    private void SettingsWindow_UpdateCheckRequested(object? sender, EventArgs e) =>
+        ShowUpdates();
+
+    private void SettingsWindow_TestProviderRequested(object? sender, UsageProvider provider) =>
+        TestProvider(provider);
+
+    private void SettingsWindow_ProviderHelpRequested(object? sender, UsageProvider provider) =>
+        ShowProviderHelp(provider);
+
+    private void SettingsWindow_Closed(object? sender, EventArgs e)
+    {
+        if (sender is SettingsWindow window)
+        {
+            UnwireSettingsWindowEvents(window);
+            if (ReferenceEquals(settingsWindow, window))
+            {
+                settingsWindow = null;
+            }
+        }
     }
 
     private async void ShowUpdates()
@@ -547,6 +667,7 @@ public partial class App : System.Windows.Application
         services.Dispose();
         services = new AppServices(paths, settings);
         ApplyStartupRegistration(settings);
+        StartRefreshTimer(settings);
         var activeServices = services;
         var snapshots = EnsureEnabledProviderSnapshots(
             FilterSnapshotsForSettings(previousStore.All(), settings),

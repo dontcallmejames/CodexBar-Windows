@@ -1,14 +1,17 @@
 # Changelog
 
-## 0.25 — Unreleased
+## 0.25 — Preview
 
 ### Windows
+- Windows preview builds are published as `v0.25.0-preview.N` until the final 0.25 release is cut.
 - Windows preview: publish tagged portable zip builds to prerelease GitHub Releases, add public issue/PR templates, and document the release checklist.
 - Windows app: add a Settings > Report a Bug flow that copies a redacted diagnostic summary and opens the GitHub bug report form.
 - Windows installer: add Inno Setup packaging, installer release assets, and a Settings > Check for Updates link to the latest GitHub Release.
 - Windows provider setup: add per-provider Test and Help actions in Settings, show latest provider-specific status details, and include recent credential-test failures in bug-report diagnostics.
 - Windows updates: show app version and release channel, compare against the latest GitHub Release, and include update status in bug-report diagnostics.
 - Windows release polish: add clearer update state, provider health wording, and public README troubleshooting guidance.
+- Windows reliability: run periodic refreshes from the configured refresh interval, set an explicit provider HTTP timeout, and make Settings bindings notify on programmatic changes.
+- Windows repository hygiene: mark legacy macOS release artifacts and scripts so they are not mistaken for the Windows release path.
 
 ### Fixes
 - Windows updates: check GitHub's releases list so prerelease-only repos do not fail with a 404.

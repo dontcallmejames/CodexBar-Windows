@@ -1,12 +1,30 @@
 using CodexBar.Core.Settings;
 using CodexBar.Core.Paths;
 using CodexBar.Core.Models;
+using System.ComponentModel;
 using System.IO;
+using System.Runtime.CompilerServices;
 
 namespace CodexBar.WinApp.ViewModels;
 
-public sealed class SettingsViewModel
+public sealed class SettingsViewModel : INotifyPropertyChanged
 {
+    private bool codexEnabled;
+    private bool claudeEnabled;
+    private bool cursorEnabled;
+    private bool geminiEnabled;
+    private bool mergeTrayIcon;
+    private bool showUsageAsUsed;
+    private bool dockOverviewNearTaskbar;
+    private bool launchAtStartup;
+    private int refreshMinutes;
+    private string codexSource = string.Empty;
+    private string claudeSource = string.Empty;
+    private string cursorSource = string.Empty;
+    private string geminiSource = string.Empty;
+    private string? claudeManualCookieHeader;
+    private string? cursorManualCookieHeader;
+
     public SettingsViewModel(
         AppSettings settings,
         IAppPaths? paths = null,
@@ -17,21 +35,21 @@ public sealed class SettingsViewModel
         versionInfo ??= AppVersionInfo.Current;
         var byProvider = (snapshots ?? Array.Empty<UsageSnapshot>())
             .ToDictionary(snapshot => snapshot.Provider);
-        CodexEnabled = settings.CodexEnabled;
-        ClaudeEnabled = settings.ClaudeEnabled;
-        CursorEnabled = settings.CursorEnabled;
-        GeminiEnabled = settings.GeminiEnabled;
-        MergeTrayIcon = settings.MergeTrayIcon;
-        ShowUsageAsUsed = settings.ShowUsageAsUsed;
-        DockOverviewNearTaskbar = settings.DockOverviewNearTaskbar;
-        LaunchAtStartup = settings.LaunchAtStartup;
-        RefreshMinutes = settings.RefreshMinutes;
-        CodexSource = settings.CodexSource;
-        ClaudeSource = settings.ClaudeSource;
-        CursorSource = settings.CursorSource;
-        GeminiSource = settings.GeminiSource;
-        ClaudeManualCookieHeader = settings.ClaudeManualCookieHeader;
-        CursorManualCookieHeader = settings.CursorManualCookieHeader;
+        codexEnabled = settings.CodexEnabled;
+        claudeEnabled = settings.ClaudeEnabled;
+        cursorEnabled = settings.CursorEnabled;
+        geminiEnabled = settings.GeminiEnabled;
+        mergeTrayIcon = settings.MergeTrayIcon;
+        showUsageAsUsed = settings.ShowUsageAsUsed;
+        dockOverviewNearTaskbar = settings.DockOverviewNearTaskbar;
+        launchAtStartup = settings.LaunchAtStartup;
+        refreshMinutes = settings.RefreshMinutes;
+        codexSource = settings.CodexSource;
+        claudeSource = settings.ClaudeSource;
+        cursorSource = settings.CursorSource;
+        geminiSource = settings.GeminiSource;
+        claudeManualCookieHeader = settings.ClaudeManualCookieHeader;
+        cursorManualCookieHeader = settings.CursorManualCookieHeader;
         CodexCredentialPath = paths?.CodexAuthJson(null) ?? string.Empty;
         ClaudeCredentialPath = paths?.ClaudeCredentialsJson ?? string.Empty;
         GeminiCredentialPath = paths?.GeminiOAuthCredentialsJson ?? string.Empty;
@@ -72,21 +90,23 @@ public sealed class SettingsViewModel
         };
     }
 
-    public bool CodexEnabled { get; set; }
-    public bool ClaudeEnabled { get; set; }
-    public bool CursorEnabled { get; set; }
-    public bool GeminiEnabled { get; set; }
-    public bool MergeTrayIcon { get; set; }
-    public bool ShowUsageAsUsed { get; set; }
-    public bool DockOverviewNearTaskbar { get; set; }
-    public bool LaunchAtStartup { get; set; }
-    public int RefreshMinutes { get; set; }
-    public string CodexSource { get; set; }
-    public string ClaudeSource { get; set; }
-    public string CursorSource { get; set; }
-    public string GeminiSource { get; set; }
-    public string? ClaudeManualCookieHeader { get; set; }
-    public string? CursorManualCookieHeader { get; set; }
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    public bool CodexEnabled { get => codexEnabled; set => SetField(ref codexEnabled, value); }
+    public bool ClaudeEnabled { get => claudeEnabled; set => SetField(ref claudeEnabled, value); }
+    public bool CursorEnabled { get => cursorEnabled; set => SetField(ref cursorEnabled, value); }
+    public bool GeminiEnabled { get => geminiEnabled; set => SetField(ref geminiEnabled, value); }
+    public bool MergeTrayIcon { get => mergeTrayIcon; set => SetField(ref mergeTrayIcon, value); }
+    public bool ShowUsageAsUsed { get => showUsageAsUsed; set => SetField(ref showUsageAsUsed, value); }
+    public bool DockOverviewNearTaskbar { get => dockOverviewNearTaskbar; set => SetField(ref dockOverviewNearTaskbar, value); }
+    public bool LaunchAtStartup { get => launchAtStartup; set => SetField(ref launchAtStartup, value); }
+    public int RefreshMinutes { get => refreshMinutes; set => SetField(ref refreshMinutes, value); }
+    public string CodexSource { get => codexSource; set => SetField(ref codexSource, value); }
+    public string ClaudeSource { get => claudeSource; set => SetField(ref claudeSource, value); }
+    public string CursorSource { get => cursorSource; set => SetField(ref cursorSource, value); }
+    public string GeminiSource { get => geminiSource; set => SetField(ref geminiSource, value); }
+    public string? ClaudeManualCookieHeader { get => claudeManualCookieHeader; set => SetField(ref claudeManualCookieHeader, value); }
+    public string? CursorManualCookieHeader { get => cursorManualCookieHeader; set => SetField(ref cursorManualCookieHeader, value); }
     public string CodexCredentialPath { get; }
     public string ClaudeCredentialPath { get; }
     public string GeminiCredentialPath { get; }
@@ -158,5 +178,16 @@ public sealed class SettingsViewModel
         }
 
         return ("Connected", "Usage data refreshed successfully.");
+    }
+
+    private void SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
+    {
+        if (EqualityComparer<T>.Default.Equals(field, value))
+        {
+            return;
+        }
+
+        field = value;
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }

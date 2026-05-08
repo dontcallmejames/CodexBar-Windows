@@ -120,6 +120,47 @@ public sealed class WpfShellTests
     }
 
     [TestMethod]
+    public void WiresPeriodicRefreshTimerFromSettings()
+    {
+        var interval = CodexBar.WinApp.App.CalculateRefreshInterval(refreshMinutes: 5);
+        var minimum = CodexBar.WinApp.App.CalculateRefreshInterval(refreshMinutes: 0);
+        var appCodePath = Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory,
+            "..",
+            "..",
+            "..",
+            "..",
+            "CodexBar.WinApp",
+            "App.xaml.cs"));
+        var appCode = File.ReadAllText(appCodePath);
+
+        Assert.AreEqual(TimeSpan.FromMinutes(5), interval);
+        Assert.AreEqual(TimeSpan.FromMinutes(1), minimum);
+        StringAssert.Contains(appCode, "DispatcherTimer");
+        StringAssert.Contains(appCode, "StartRefreshTimer(settings)");
+        StringAssert.Contains(appCode, "RefreshTimer_Tick");
+    }
+
+    [TestMethod]
+    public void WindowEventHandlersAreUnwiredOnClose()
+    {
+        var appCodePath = Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory,
+            "..",
+            "..",
+            "..",
+            "..",
+            "CodexBar.WinApp",
+            "App.xaml.cs"));
+        var appCode = File.ReadAllText(appCodePath);
+
+        StringAssert.Contains(appCode, "UnwirePopoverWindowEvents");
+        StringAssert.Contains(appCode, "UnwireSettingsWindowEvents");
+        StringAssert.Contains(appCode, "window.SizeChanged -= Popover_SizeChanged");
+        StringAssert.Contains(appCode, "window.SettingsSaved -= SettingsWindow_SettingsSaved");
+    }
+
+    [TestMethod]
     public void CalculatesSettingsPositionNextToPopoverWhenSpaceAllows()
     {
         var position = CodexBar.WinApp.App.CalculateSettingsPosition(
