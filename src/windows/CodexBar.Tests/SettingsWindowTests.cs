@@ -162,6 +162,29 @@ public sealed class SettingsWindowTests
         StringAssert.Contains(settingsCode, "ReportBug_Click");
     }
 
+    [TestMethod]
+    public void SettingsWindowExposesUpdateCheckButton()
+    {
+        var settingsXamlPath = Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory,
+            "..",
+            "..",
+            "..",
+            "..",
+            "CodexBar.WinApp",
+            "Views",
+            "SettingsWindow.xaml"));
+        var settingsCodePath = Path.ChangeExtension(settingsXamlPath, ".xaml.cs");
+
+        var settingsXaml = File.ReadAllText(settingsXamlPath);
+        var settingsCode = File.ReadAllText(settingsCodePath);
+
+        StringAssert.Contains(settingsXaml, "Check for Updates...");
+        StringAssert.Contains(settingsXaml, "Click=\"CheckUpdates_Click\"");
+        StringAssert.Contains(settingsCode, "UpdateCheckRequested");
+        StringAssert.Contains(settingsCode, "CheckUpdates_Click");
+    }
+
     private sealed class ThrowingSettingsWriter : ISettingsWriter
     {
         public Task SaveAsync(AppSettings settings, CancellationToken cancellationToken) =>

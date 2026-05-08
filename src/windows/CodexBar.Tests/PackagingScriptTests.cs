@@ -65,4 +65,54 @@ public sealed class PackagingScriptTests
         StringAssert.Contains(workflow, "dist/windows/*.zip");
         StringAssert.Contains(workflow, "dist/windows/*.zip.sha256");
     }
+
+    [TestMethod]
+    public void WindowsInstallerScriptBuildsInnoSetupInstallerAndChecksum()
+    {
+        var repoRoot = Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory,
+            "..",
+            "..",
+            "..",
+            "..",
+            "..",
+            ".."));
+        var scriptPath = Path.Combine(repoRoot, "Scripts", "package-windows-installer.ps1");
+        var innoPath = Path.Combine(repoRoot, "installer", "windows", "CodexBar.iss");
+
+        Assert.IsTrue(File.Exists(scriptPath), scriptPath);
+        Assert.IsTrue(File.Exists(innoPath), innoPath);
+        var script = File.ReadAllText(scriptPath);
+        var inno = File.ReadAllText(innoPath);
+
+        StringAssert.Contains(script, "ISCC.exe");
+        StringAssert.Contains(script, "package-windows.ps1");
+        StringAssert.Contains(script, "Get-FileHash");
+        StringAssert.Contains(script, ".installer.exe.sha256");
+        StringAssert.Contains(inno, "CodexBar for Windows");
+        StringAssert.Contains(inno, "CodexBar.WinApp.exe");
+        StringAssert.Contains(inno, "{group}\\CodexBar");
+    }
+
+    [TestMethod]
+    public void WindowsWorkflowPublishesInstallerAssetsForTags()
+    {
+        var workflowPath = Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory,
+            "..",
+            "..",
+            "..",
+            "..",
+            "..",
+            "..",
+            ".github",
+            "workflows",
+            "windows.yml"));
+        var workflow = File.ReadAllText(workflowPath);
+
+        StringAssert.Contains(workflow, "choco install innosetup");
+        StringAssert.Contains(workflow, "package-windows-installer.ps1");
+        StringAssert.Contains(workflow, "dist/windows/*.installer.exe");
+        StringAssert.Contains(workflow, "dist/windows/*.installer.exe.sha256");
+    }
 }
