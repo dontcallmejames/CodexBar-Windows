@@ -114,6 +114,34 @@ public sealed class SettingsWindowTests
     }
 
     [TestMethod]
+    public void SettingsViewModelReportsNoUsageYetWhenCredentialsReturnNoWindows()
+    {
+        var snapshots = new[]
+        {
+            new UsageSnapshot(
+                UsageProvider.Gemini,
+                "Gemini",
+                DateTimeOffset.Now,
+                Array.Empty<RateWindow>(),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                "oauth",
+                null,
+                false)
+        };
+
+        var viewModel = new SettingsViewModel(AppSettings.Default, snapshots: snapshots);
+
+        Assert.AreEqual("No usage yet", viewModel.GeminiAccountStatus);
+        Assert.AreEqual("Credentials were found, but Gemini did not return usage windows yet.", viewModel.GeminiAccountDetail);
+    }
+
+    [TestMethod]
     public void SettingsWindowCancelButtonHasCloseHandler()
     {
         var settingsXamlPath = Path.GetFullPath(Path.Combine(
@@ -215,7 +243,7 @@ public sealed class SettingsWindowTests
         var settingsXaml = File.ReadAllText(settingsXamlPath);
         var settingsCode = File.ReadAllText(settingsCodePath);
 
-        StringAssert.Contains(settingsXaml, "Check for Updates...");
+        StringAssert.Contains(settingsXaml, "UpdateActionText");
         StringAssert.Contains(settingsXaml, "Click=\"CheckUpdates_Click\"");
         StringAssert.Contains(settingsCode, "UpdateCheckRequested");
         StringAssert.Contains(settingsCode, "CheckUpdates_Click");
@@ -237,7 +265,9 @@ public sealed class SettingsWindowTests
         var settingsXaml = File.ReadAllText(settingsXamlPath);
 
         StringAssert.Contains(settingsXaml, "CurrentVersionText");
+        StringAssert.Contains(settingsXaml, "LatestVersionText");
         StringAssert.Contains(settingsXaml, "UpdateStatusText");
+        StringAssert.Contains(settingsXaml, "UpdateActionText");
 
         var viewModel = new SettingsViewModel(
             AppSettings.Default,
@@ -250,7 +280,34 @@ public sealed class SettingsWindowTests
                 new Uri("https://github.com/dontcallmejames/CodexBar-Windows/releases/tag/v0.25.0-preview.4")));
 
         Assert.AreEqual("Version v0.25.0-preview.3", viewModel.CurrentVersionText);
+        Assert.AreEqual("Latest v0.25.0-preview.4", viewModel.LatestVersionText);
         Assert.AreEqual("Update available: v0.25.0-preview.4", viewModel.UpdateStatusText);
+        Assert.AreEqual("Open Release...", viewModel.UpdateActionText);
+    }
+
+    [TestMethod]
+    public void SettingsViewModelUsesFriendlyUpdateStatusText()
+    {
+        var current = AppVersionInfo.FromMarketingVersion(
+            "0.25",
+            buildNumber: "60",
+            windowsPreviewNumber: "4");
+
+        var upToDate = new SettingsViewModel(
+            AppSettings.Default,
+            versionInfo: current,
+            updateStatus: UpdateCheckResult.UpToDate("v0.25.0-preview.4"));
+        var failed = new SettingsViewModel(
+            AppSettings.Default,
+            versionInfo: current,
+            updateStatus: UpdateCheckResult.Failed("404 raw status"));
+
+        Assert.AreEqual("Latest v0.25.0-preview.4", upToDate.LatestVersionText);
+        Assert.AreEqual("You're on the latest release.", upToDate.UpdateStatusText);
+        Assert.AreEqual("Check for Updates...", upToDate.UpdateActionText);
+        Assert.AreEqual("Latest not checked", failed.LatestVersionText);
+        Assert.AreEqual("Update check failed. Open Releases to check manually.", failed.UpdateStatusText);
+        Assert.AreEqual("Open Releases...", failed.UpdateActionText);
     }
 
     [TestMethod]

@@ -8,6 +8,7 @@
 - Windows installer: add Inno Setup packaging, installer release assets, and a Settings > Check for Updates link to the latest GitHub Release.
 - Windows provider setup: add per-provider Test and Help actions in Settings, show latest provider-specific status details, and include recent credential-test failures in bug-report diagnostics.
 - Windows updates: show app version and release channel, compare against the latest GitHub Release, and include update status in bug-report diagnostics.
+- Windows release polish: add clearer update state, provider health wording, and public README troubleshooting guidance.
 
 ### Fixes
 - Windows updates: check GitHub's releases list so prerelease-only repos do not fail with a 404.

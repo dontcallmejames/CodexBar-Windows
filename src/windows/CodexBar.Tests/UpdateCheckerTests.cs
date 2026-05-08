@@ -54,6 +54,20 @@ public sealed class UpdateCheckerTests
 
         Assert.IsFalse(result.UpdateAvailable);
         Assert.AreEqual("v0.25.0-preview.2", result.LatestTag);
+        Assert.AreEqual("You're on the latest release.", result.StatusText);
+    }
+
+    [TestMethod]
+    public async Task ReportsFriendlyFailureForGithubErrors()
+    {
+        using var httpClient = new HttpClient(new StatusHandler(HttpStatusCode.NotFound));
+        var checker = new GitHubUpdateChecker(httpClient, AppVersionInfo.FromMarketingVersion("0.25", "2"));
+
+        var result = await checker.CheckAsync(CancellationToken.None);
+
+        Assert.IsFalse(result.UpdateAvailable);
+        Assert.AreEqual("Update check failed. Open Releases to check manually.", result.StatusText);
+        StringAssert.Contains(result.ErrorMessage, "404");
     }
 
     private sealed class StaticJsonHandler : HttpMessageHandler
@@ -74,5 +88,18 @@ public sealed class UpdateCheckerTests
                 Content = new StringContent(json, Encoding.UTF8, "application/json")
             });
         }
+    }
+
+    private sealed class StatusHandler : HttpMessageHandler
+    {
+        private readonly HttpStatusCode statusCode;
+
+        public StatusHandler(HttpStatusCode statusCode)
+        {
+            this.statusCode = statusCode;
+        }
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            Task.FromResult(new HttpResponseMessage(statusCode));
     }
 }
