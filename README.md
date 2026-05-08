@@ -26,12 +26,14 @@ Requirements:
 - Signed-in provider tools or credentials for each provider you enable
 - .NET is bundled in the installer and portable preview packages when built self-contained
 
-## Supported Providers
+## Provider Support Matrix
 
-- Codex: reads Codex CLI OAuth credentials and calls OpenAI/Codex usage APIs.
-- Claude: reads Claude CLI OAuth credentials or a manual Claude cookie header, then calls Anthropic usage APIs.
-- Cursor: preview support through a manual `Cookie:` header copied from a signed-in Cursor browser request.
-- Gemini: preview support through Gemini CLI OAuth credentials.
+| Provider | Credential source | Usage status | Notes |
+| --- | --- | --- | --- |
+| Codex | Codex CLI OAuth at `%CODEX_HOME%\auth.json` or `%USERPROFILE%\.codex\auth.json` | Primary preview support | Settings can test credentials and open setup help. |
+| Claude | Claude CLI OAuth at `%USERPROFILE%\.claude\.credentials.json` or manual cookie header | Primary preview support | OAuth subscriptions are preferred; manual cookies are a fallback. |
+| Cursor | Manual `Cookie:` header copied from a signed-in Cursor browser request | Preview support | Cursor does not expose a stable public usage API for this preview. |
+| Gemini | Gemini CLI OAuth at `%USERPROFILE%\.gemini\oauth_creds.json` | Preview support | API key and Vertex AI modes are not supported in this preview. |
 
 ## First Run
 
@@ -41,8 +43,12 @@ Requirements:
 4. Enable only the providers you use.
 5. Use each provider's Test button to verify credentials and see the latest provider-specific status.
 6. Use each provider's Help button to open the matching Windows setup notes.
-7. Use Settings > Check for Updates... to compare your build with the latest GitHub Release.
+7. Use Settings > Check for Updates... to compare your build with the latest GitHub Release. When an update is found, Settings changes the action to Open Release.
 8. Use Settings > Report a Bug... to copy a redacted diagnostic summary and open the GitHub bug form.
+
+## Updates
+
+CodexBar checks GitHub Releases only when you ask it to. The app shows your current version, the latest release it found, and whether an update is available. It does not auto-install updates yet; use Open Release to download the installer or portable zip.
 
 ## Provider Setup
 
@@ -62,8 +68,10 @@ The preview does not crawl your disk. It checks specific paths such as `%USERPRO
 ## Known Limitations
 
 - Windows support is a public preview.
+- Updates are manual: CodexBar can detect an update and open the release, but it does not download or install automatically.
 - Cursor support is manual-cookie only for this preview.
 - Gemini support requires Gemini CLI OAuth credentials; API key and Vertex AI modes are not supported in the preview.
+- A provider can show No usage yet when credentials are present but the provider returns no measurable usage windows.
 - Provider dashboards and private usage APIs can change without notice.
 - The Windows port is separate from the original macOS app and does not yet include every macOS feature.
 

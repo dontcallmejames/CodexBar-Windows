@@ -60,7 +60,16 @@ public sealed class SettingsViewModel
             GeminiCredentialPath,
             byProvider);
         CurrentVersionText = $"Version {versionInfo.CurrentTag}";
+        LatestVersionText = updateStatus?.LatestTag is { Length: > 0 }
+            ? $"Latest {updateStatus.LatestTag}"
+            : "Latest not checked";
         UpdateStatusText = updateStatus?.StatusText ?? "Update status: not checked";
+        UpdateActionText = updateStatus switch
+        {
+            { UpdateAvailable: true } => "Open Release...",
+            { ErrorMessage: not null } => "Open Releases...",
+            _ => "Check for Updates..."
+        };
     }
 
     public bool CodexEnabled { get; set; }
@@ -90,7 +99,9 @@ public sealed class SettingsViewModel
     public string CursorAccountDetail { get; }
     public string GeminiAccountDetail { get; }
     public string CurrentVersionText { get; }
+    public string LatestVersionText { get; }
     public string UpdateStatusText { get; }
+    public string UpdateActionText { get; }
 
     public AppSettings ToSettings() => new(
         CodexEnabled,
@@ -139,6 +150,11 @@ public sealed class SettingsViewModel
         if (snapshot.IsStale)
         {
             return ("Needs attention", "Last refresh did not complete successfully.");
+        }
+
+        if (snapshot.Windows.Count == 0)
+        {
+            return ("No usage yet", $"Credentials were found, but {snapshot.DisplayName} did not return usage windows yet.");
         }
 
         return ("Connected", "Usage data refreshed successfully.");

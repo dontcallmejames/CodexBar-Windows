@@ -9,7 +9,7 @@
     <InformationalVersion Condition="'$(InformationalVersion)' == ''">0.25</InformationalVersion>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <BuildNumber Condition="'$(BuildNumber)' == ''">60</BuildNumber>
-    <WindowsPreviewNumber Condition="'$(WindowsPreviewNumber)' == ''">4</WindowsPreviewNumber>
+    <WindowsPreviewNumber Condition="'$(WindowsPreviewNumber)' == ''">5</WindowsPreviewNumber>
   </PropertyGroup>
   <ItemGroup>
     <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">

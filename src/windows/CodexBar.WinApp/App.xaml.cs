@@ -369,6 +369,12 @@ public partial class App : System.Windows.Application
 
     private async void ShowUpdates()
     {
+        if (latestUpdateCheck?.UpdateAvailable == true && latestUpdateCheck.ReleaseUri is not null)
+        {
+            OpenUri(latestUpdateCheck.ReleaseUri);
+            return;
+        }
+
         if (services is null)
         {
             OpenUri(ProviderLinks.ReleasesUri());
