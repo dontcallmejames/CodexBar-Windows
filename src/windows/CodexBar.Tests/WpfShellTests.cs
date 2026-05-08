@@ -102,6 +102,24 @@ public sealed class WpfShellTests
     }
 
     [TestMethod]
+    public void TrayPopoverCapturesCursorAnchorOnceForResizeRepositioning()
+    {
+        var appCodePath = Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory,
+            "..",
+            "..",
+            "..",
+            "..",
+            "CodexBar.WinApp",
+            "App.xaml.cs"));
+        var appCode = File.ReadAllText(appCodePath);
+
+        StringAssert.Contains(appCode, "var cursorPosition = System.Windows.Forms.Cursor.Position;");
+        StringAssert.Contains(appCode, "window => PositionPopoverNearCursor(window, cursorPosition)");
+        Assert.IsFalse(appCode.Contains("ShowPopoverWindow(UsageProvider.Codex, PositionPopoverNearCursor)", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
     public void CalculatesSettingsPositionNextToPopoverWhenSpaceAllows()
     {
         var position = CodexBar.WinApp.App.CalculateSettingsPosition(

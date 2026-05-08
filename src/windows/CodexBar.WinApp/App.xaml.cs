@@ -81,7 +81,8 @@ public partial class App : System.Windows.Application
             return;
         }
 
-        ShowPopoverWindow(UsageProvider.Codex, PositionPopoverNearCursor);
+        var cursorPosition = System.Windows.Forms.Cursor.Position;
+        ShowPopoverWindow(UsageProvider.Codex, window => PositionPopoverNearCursor(window, cursorPosition));
     }
 
     private void ShowPopoverWindow(UsageProvider activeProvider, Action<System.Windows.Window> positionPopover)
@@ -125,6 +126,7 @@ public partial class App : System.Windows.Application
 
     private static void PositionPopoverNearCursor(System.Windows.Window window, System.Drawing.Point cursorPosition)
     {
+        window.MaxHeight = CalculatePopoverMaxHeight(System.Windows.SystemParameters.WorkArea, cursorPosition);
         var width = WindowWidth(window);
         var height = WindowHeight(window);
         var position = CalculatePopoverPosition(width, height, System.Windows.SystemParameters.WorkArea, cursorPosition);

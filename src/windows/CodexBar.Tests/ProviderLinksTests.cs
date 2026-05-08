@@ -27,7 +27,7 @@ public sealed class ProviderLinksTests
     public void ResolvesReleasesUrlForUpdates()
     {
         Assert.AreEqual(
-            new Uri("https://github.com/dontcallmejames/CodexBar-Windows/releases/latest"),
+            new Uri("https://github.com/dontcallmejames/CodexBar-Windows/releases"),
             ProviderLinks.ReleasesUri());
     }
 

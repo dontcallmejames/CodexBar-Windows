@@ -10,6 +10,8 @@
 - Windows updates: show app version and release channel, compare against the latest GitHub Release, and include update status in bug-report diagnostics.
 
 ### Fixes
+- Windows updates: check GitHub's releases list so prerelease-only repos do not fail with a 404.
+- Windows popover: keep tray-opened popovers anchored to their original tray click while provider tab content resizes.
 - Augment: report the real 1-minute keepalive check/min-refresh intervals in startup logs and docs (#434). Thanks @guglielmofonda!
 
 ## 0.24 — 2026-05-06
