@@ -17,14 +17,14 @@ The Windows preview follows the translucent tray popover style of the original C
 
 ## Install
 
-Download the latest Windows preview release from this repository's Releases page, unzip the portable package, and run `CodexBar.WinApp.exe`.
+Download the latest Windows preview release from this repository's Releases page. Most users should download and run the `.installer.exe` asset.
 
-Installer support is deferred for the first public preview. The portable zip is the supported preview artifact while the release flow stabilizes.
+The portable zip is still published for testers who prefer a no-install build. Unzip the portable package and run `CodexBar.WinApp.exe`.
 
 Requirements:
 - Windows 11
 - Signed-in provider tools or credentials for each provider you enable
-- .NET is bundled in the portable preview package when built self-contained
+- .NET is bundled in the installer and portable preview packages when built self-contained
 
 ## Supported Providers
 

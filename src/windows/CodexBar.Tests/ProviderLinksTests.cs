@@ -22,4 +22,12 @@ public sealed class ProviderLinksTests
             new Uri("https://github.com/dontcallmejames/CodexBar-Windows/issues/new?template=bug_report.yml"),
             ProviderLinks.BugReportUri());
     }
+
+    [TestMethod]
+    public void ResolvesReleasesUrlForUpdates()
+    {
+        Assert.AreEqual(
+            new Uri("https://github.com/dontcallmejames/CodexBar-Windows/releases/latest"),
+            ProviderLinks.ReleasesUri());
+    }
 }

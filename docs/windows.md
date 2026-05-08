@@ -44,6 +44,14 @@ powershell -ExecutionPolicy Bypass -File .\Scripts\package-windows.ps1 -DotNet d
 
 The portable preview zip and checksum are written under `dist\windows`.
 
+When Inno Setup 6 is installed, build the preview installer with:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\Scripts\package-windows-installer.ps1 -DotNet dotnet -SkipPortablePackage
+```
+
+The installer and checksum are written under `dist\windows`.
+
 ## Release
 
 Use [windows-release-checklist.md](windows-release-checklist.md) before tagging a Windows prerelease.

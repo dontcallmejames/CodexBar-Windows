@@ -349,10 +349,16 @@ public partial class App : System.Windows.Application
         settingsWindow = new SettingsWindow(services.Settings, settingsStore, services.Paths);
         settingsWindow.SettingsSaved += (_, settings) => ApplySettings(settings);
         settingsWindow.BugReportRequested += (_, _) => ShowBugReport();
+        settingsWindow.UpdateCheckRequested += (_, _) => ShowUpdates();
         settingsWindow.Closed += (_, _) => settingsWindow = null;
         PositionWindowNearApp(settingsWindow);
         settingsWindow.Show();
         settingsWindow.Activate();
+    }
+
+    private static void ShowUpdates()
+    {
+        OpenUri(ProviderLinks.ReleasesUri());
     }
 
     private void ShowBugReport()

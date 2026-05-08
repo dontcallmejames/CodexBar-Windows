@@ -24,6 +24,7 @@ public partial class SettingsWindow : Window
 
     public event EventHandler<AppSettings>? SettingsSaved;
     public event EventHandler? BugReportRequested;
+    public event EventHandler? UpdateCheckRequested;
 
     private async void Save_Click(object sender, RoutedEventArgs e)
     {
@@ -55,6 +56,11 @@ public partial class SettingsWindow : Window
     private void ReportBug_Click(object sender, RoutedEventArgs e)
     {
         BugReportRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void CheckUpdates_Click(object sender, RoutedEventArgs e)
+    {
+        UpdateCheckRequested?.Invoke(this, EventArgs.Empty);
     }
 
     public static async Task<SettingsSaveResult> SaveSettingsAsync(
