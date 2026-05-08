@@ -15,8 +15,10 @@ public partial class SettingsWindow : Window
         AppSettings settings,
         JsonSettingsStore store,
         IAppPaths? paths = null,
-        IReadOnlyList<UsageSnapshot>? snapshots = null)
-        : this(settings, new JsonSettingsWriter(store), paths, snapshots)
+        IReadOnlyList<UsageSnapshot>? snapshots = null,
+        AppVersionInfo? versionInfo = null,
+        UpdateCheckResult? updateStatus = null)
+        : this(settings, new JsonSettingsWriter(store), paths, snapshots, versionInfo, updateStatus)
     {
     }
 
@@ -24,11 +26,13 @@ public partial class SettingsWindow : Window
         AppSettings settings,
         ISettingsWriter settingsWriter,
         IAppPaths? paths = null,
-        IReadOnlyList<UsageSnapshot>? snapshots = null)
+        IReadOnlyList<UsageSnapshot>? snapshots = null,
+        AppVersionInfo? versionInfo = null,
+        UpdateCheckResult? updateStatus = null)
     {
         InitializeComponent();
         this.settingsWriter = settingsWriter;
-        DataContext = new SettingsViewModel(settings, paths, snapshots);
+        DataContext = new SettingsViewModel(settings, paths, snapshots, versionInfo, updateStatus);
     }
 
     public event EventHandler<AppSettings>? SettingsSaved;

@@ -5,7 +5,22 @@
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
     <ApplicationIcon>Assets\codexbar.ico</ApplicationIcon>
+    <Version Condition="'$(Version)' == ''">0.25</Version>
+    <InformationalVersion Condition="'$(InformationalVersion)' == ''">0.25</InformationalVersion>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <BuildNumber Condition="'$(BuildNumber)' == ''">60</BuildNumber>
+    <WindowsPreviewNumber Condition="'$(WindowsPreviewNumber)' == ''">3</WindowsPreviewNumber>
   </PropertyGroup>
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>BuildNumber</_Parameter1>
+      <_Parameter2>$(BuildNumber)</_Parameter2>
+    </AssemblyAttribute>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>WindowsPreviewNumber</_Parameter1>
+      <_Parameter2>$(WindowsPreviewNumber)</_Parameter2>
+    </AssemblyAttribute>
+  </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\CodexBar.Core\CodexBar.Core.csproj" />
     <ProjectReference Include="..\CodexBar.Tray\CodexBar.Tray.csproj" />

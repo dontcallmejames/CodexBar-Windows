@@ -44,6 +44,8 @@ public sealed class PublicReleaseDocsTests
 
         StringAssert.Contains(about, "Inspired by Peter Steinberger's CodexBar");
         StringAssert.Contains(about, "https://github.com/steipete/CodexBar");
+        StringAssert.Contains(about, "Version");
+        StringAssert.Contains(about, "Release channel");
     }
 
     [TestMethod]

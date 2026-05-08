@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="About CodexBar"
         Width="320"
-        Height="190"
+        Height="230"
         ResizeMode="NoResize"
         WindowStartupLocation="Manual">
   <Grid Margin="18">
@@ -21,6 +21,18 @@
                  Margin="0,8,0,0"
                  FontSize="14"
                  Foreground="{StaticResource CodexBarMutedTextBrush}" />
+      <TextBlock Margin="0,8,0,0"
+                 FontSize="12"
+                 Foreground="{StaticResource CodexBarMutedTextBrush}">
+        <Run Text="Version " />
+        <Run Text="{Binding DisplayVersion}" />
+      </TextBlock>
+      <TextBlock Margin="0,4,0,0"
+                 FontSize="12"
+                 Foreground="{StaticResource CodexBarMutedTextBrush}">
+        <Run Text="Release channel: " />
+        <Run Text="{Binding Channel}" />
+      </TextBlock>
       <TextBlock Text="Inspired by Peter Steinberger's CodexBar"
                  Margin="0,8,0,0"
                  FontSize="12"
