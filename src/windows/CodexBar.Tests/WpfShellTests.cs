@@ -199,7 +199,7 @@ public sealed class WpfShellTests
 
         StringAssert.Contains(aboutXaml, "WindowStartupLocation=\"Manual\"");
         StringAssert.Contains(aboutXaml, "Width=\"320\"");
-        StringAssert.Contains(aboutXaml, "Height=\"190\"");
+        StringAssert.Contains(aboutXaml, "Height=\"230\"");
     }
 
     [TestMethod]

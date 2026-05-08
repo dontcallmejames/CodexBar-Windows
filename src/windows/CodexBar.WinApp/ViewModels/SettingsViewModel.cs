@@ -10,8 +10,11 @@ public sealed class SettingsViewModel
     public SettingsViewModel(
         AppSettings settings,
         IAppPaths? paths = null,
-        IReadOnlyList<UsageSnapshot>? snapshots = null)
+        IReadOnlyList<UsageSnapshot>? snapshots = null,
+        AppVersionInfo? versionInfo = null,
+        UpdateCheckResult? updateStatus = null)
     {
+        versionInfo ??= AppVersionInfo.Current;
         var byProvider = (snapshots ?? Array.Empty<UsageSnapshot>())
             .ToDictionary(snapshot => snapshot.Provider);
         CodexEnabled = settings.CodexEnabled;
@@ -56,6 +59,8 @@ public sealed class SettingsViewModel
             CredentialStatus(GeminiCredentialPath),
             GeminiCredentialPath,
             byProvider);
+        CurrentVersionText = $"Version {versionInfo.CurrentTag}";
+        UpdateStatusText = updateStatus?.StatusText ?? "Update status: not checked";
     }
 
     public bool CodexEnabled { get; set; }
@@ -84,6 +89,8 @@ public sealed class SettingsViewModel
     public string ClaudeAccountDetail { get; }
     public string CursorAccountDetail { get; }
     public string GeminiAccountDetail { get; }
+    public string CurrentVersionText { get; }
+    public string UpdateStatusText { get; }
 
     public AppSettings ToSettings() => new(
         CodexEnabled,

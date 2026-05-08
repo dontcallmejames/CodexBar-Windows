@@ -7,6 +7,7 @@
 - Windows app: add a Settings > Report a Bug flow that copies a redacted diagnostic summary and opens the GitHub bug report form.
 - Windows installer: add Inno Setup packaging, installer release assets, and a Settings > Check for Updates link to the latest GitHub Release.
 - Windows provider setup: add per-provider Test and Help actions in Settings, show latest provider-specific status details, and include recent credential-test failures in bug-report diagnostics.
+- Windows updates: show app version and release channel, compare against the latest GitHub Release, and include update status in bug-report diagnostics.
 
 ### Fixes
 - Augment: report the real 1-minute keepalive check/min-refresh intervals in startup logs and docs (#434). Thanks @guglielmofonda!

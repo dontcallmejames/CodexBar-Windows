@@ -19,6 +19,8 @@ public sealed class AppServices : IDisposable
         Settings = settings;
         Store = new SnapshotStore();
         HttpClient = new HttpClient();
+        VersionInfo = AppVersionInfo.Current;
+        UpdateChecker = new GitHubUpdateChecker(HttpClient, VersionInfo);
         Providers = BuildProviders(settings);
         Scheduler = new RefreshScheduler(Providers, Store);
     }
@@ -27,6 +29,8 @@ public sealed class AppServices : IDisposable
     public AppSettings Settings { get; }
     public SnapshotStore Store { get; }
     public HttpClient HttpClient { get; }
+    public AppVersionInfo VersionInfo { get; }
+    public IUpdateChecker UpdateChecker { get; }
     public IReadOnlyList<IUsageProvider> Providers { get; }
     public RefreshScheduler Scheduler { get; }
 

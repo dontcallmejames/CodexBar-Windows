@@ -9,12 +9,23 @@ $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $versionFile = Join-Path $repoRoot "version.env"
 $version = "dev"
+$buildNumber = "0"
+$windowsPreviewNumber = ""
 if (Test-Path -LiteralPath $versionFile) {
     foreach ($line in Get-Content -LiteralPath $versionFile) {
         if ($line -match "^MARKETING_VERSION=(.+)$") {
             $version = $Matches[1]
         }
+        if ($line -match "^BUILD_NUMBER=(.+)$") {
+            $buildNumber = $Matches[1]
+        }
+        if ($line -match "^WINDOWS_PREVIEW_NUMBER=(.+)$") {
+            $windowsPreviewNumber = $Matches[1]
+        }
     }
+}
+if ([string]::IsNullOrWhiteSpace($windowsPreviewNumber)) {
+    $windowsPreviewNumber = $buildNumber
 }
 
 $distRoot = Join-Path $repoRoot "dist\windows"
@@ -40,6 +51,11 @@ New-Item -ItemType Directory -Path $distRoot -Force | Out-Null
     -c $Configuration `
     -r $Runtime `
     --self-contained true `
+    -p:Version=$version `
+    -p:InformationalVersion=$version `
+    -p:IncludeSourceRevisionInInformationalVersion=false `
+    -p:BuildNumber=$buildNumber `
+    -p:WindowsPreviewNumber=$windowsPreviewNumber `
     -o $publishDir `
     --verbosity minimal
 
