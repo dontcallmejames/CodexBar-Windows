@@ -25,6 +25,8 @@ public sealed class PublicReleaseDocsTests
         StringAssert.Contains(readme, "## Screenshot");
         StringAssert.Contains(readme, "installer");
         StringAssert.Contains(readme, "portable zip");
+        StringAssert.Contains(readme, "Test");
+        StringAssert.Contains(readme, "Help");
     }
 
     [TestMethod]

@@ -103,6 +103,32 @@ public sealed class AppServicesTests
     }
 
     [TestMethod]
+    public async Task TestProviderRefreshesOneProviderAndStoresResult()
+    {
+        var root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        try
+        {
+            var paths = WindowsAppPaths.ForTest(Path.Combine(root, "home"), Path.Combine(root, "appdata"));
+            using var services = new AppServices(paths, AppSettings.Default);
+
+            var snapshot = await services.TestProviderAsync(UsageProvider.Cursor, CancellationToken.None);
+
+            Assert.AreEqual(UsageProvider.Cursor, snapshot.Provider);
+            Assert.IsTrue(snapshot.IsStale);
+            StringAssert.Contains(snapshot.ErrorMessage!, "Cursor cookie");
+            Assert.AreSame(snapshot, services.Store.Get(UsageProvider.Cursor));
+            Assert.IsNull(services.Store.Get(UsageProvider.Codex));
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+            {
+                Directory.Delete(root, recursive: true);
+            }
+        }
+    }
+
+    [TestMethod]
     public void BuildsTrayDisplayFromMostUsedWindow()
     {
         var snapshots = new[]

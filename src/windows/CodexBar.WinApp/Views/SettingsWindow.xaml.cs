@@ -1,6 +1,7 @@
 using System.Windows;
 using CodexBar.Core.Settings;
 using CodexBar.Core.Paths;
+using CodexBar.Core.Models;
 using CodexBar.WinApp.Settings;
 using CodexBar.WinApp.ViewModels;
 
@@ -10,21 +11,31 @@ public partial class SettingsWindow : Window
 {
     private readonly ISettingsWriter settingsWriter;
 
-    public SettingsWindow(AppSettings settings, JsonSettingsStore store, IAppPaths? paths = null)
-        : this(settings, new JsonSettingsWriter(store), paths)
+    public SettingsWindow(
+        AppSettings settings,
+        JsonSettingsStore store,
+        IAppPaths? paths = null,
+        IReadOnlyList<UsageSnapshot>? snapshots = null)
+        : this(settings, new JsonSettingsWriter(store), paths, snapshots)
     {
     }
 
-    public SettingsWindow(AppSettings settings, ISettingsWriter settingsWriter, IAppPaths? paths = null)
+    public SettingsWindow(
+        AppSettings settings,
+        ISettingsWriter settingsWriter,
+        IAppPaths? paths = null,
+        IReadOnlyList<UsageSnapshot>? snapshots = null)
     {
         InitializeComponent();
         this.settingsWriter = settingsWriter;
-        DataContext = new SettingsViewModel(settings, paths);
+        DataContext = new SettingsViewModel(settings, paths, snapshots);
     }
 
     public event EventHandler<AppSettings>? SettingsSaved;
     public event EventHandler? BugReportRequested;
     public event EventHandler? UpdateCheckRequested;
+    public event EventHandler<UsageProvider>? TestProviderRequested;
+    public event EventHandler<UsageProvider>? ProviderHelpRequested;
 
     private async void Save_Click(object sender, RoutedEventArgs e)
     {
@@ -61,6 +72,34 @@ public partial class SettingsWindow : Window
     private void CheckUpdates_Click(object sender, RoutedEventArgs e)
     {
         UpdateCheckRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void TestProvider_Click(object sender, RoutedEventArgs e)
+    {
+        if (ProviderFromSender(sender) is { } provider)
+        {
+            TestProviderRequested?.Invoke(this, provider);
+        }
+    }
+
+    private void ProviderHelp_Click(object sender, RoutedEventArgs e)
+    {
+        if (ProviderFromSender(sender) is { } provider)
+        {
+            ProviderHelpRequested?.Invoke(this, provider);
+        }
+    }
+
+    private static UsageProvider? ProviderFromSender(object sender)
+    {
+        if (sender is not FrameworkElement { Tag: string tag })
+        {
+            return null;
+        }
+
+        return Enum.TryParse<UsageProvider>(tag, ignoreCase: true, out var provider)
+            ? provider
+            : null;
     }
 
     public static async Task<SettingsSaveResult> SaveSettingsAsync(

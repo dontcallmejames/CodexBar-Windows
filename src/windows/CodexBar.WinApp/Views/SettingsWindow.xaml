@@ -30,9 +30,11 @@
         <TextBlock Text="Accounts" FontSize="17" FontWeight="SemiBold" Margin="0,18,0,6" />
         <Grid Margin="0,0,0,8">
           <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="90" />
-            <ColumnDefinition Width="110" />
+            <ColumnDefinition Width="78" />
+            <ColumnDefinition Width="106" />
             <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="56" />
+            <ColumnDefinition Width="56" />
           </Grid.ColumnDefinitions>
           <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -42,16 +44,24 @@
           </Grid.RowDefinitions>
           <TextBlock Text="Codex" Grid.Row="0" Grid.Column="0" Margin="0,4" FontWeight="SemiBold" />
           <TextBlock Text="{Binding CodexAccountStatus}" Grid.Row="0" Grid.Column="1" Margin="0,4" />
-          <TextBlock Text="{Binding CodexCredentialPath}" Grid.Row="0" Grid.Column="2" Margin="0,4" Foreground="#666666" TextTrimming="CharacterEllipsis" />
+          <TextBlock Text="{Binding CodexAccountDetail}" Grid.Row="0" Grid.Column="2" Margin="0,4" Foreground="#666666" TextTrimming="CharacterEllipsis" />
+          <Button Content="Test" Tag="Codex" Grid.Row="0" Grid.Column="3" Margin="4,1" Click="TestProvider_Click" />
+          <Button Content="Help" Tag="Codex" Grid.Row="0" Grid.Column="4" Margin="4,1" Click="ProviderHelp_Click" />
           <TextBlock Text="Claude" Grid.Row="1" Grid.Column="0" Margin="0,4" FontWeight="SemiBold" />
           <TextBlock Text="{Binding ClaudeAccountStatus}" Grid.Row="1" Grid.Column="1" Margin="0,4" />
-          <TextBlock Text="{Binding ClaudeCredentialPath}" Grid.Row="1" Grid.Column="2" Margin="0,4" Foreground="#666666" TextTrimming="CharacterEllipsis" />
+          <TextBlock Text="{Binding ClaudeAccountDetail}" Grid.Row="1" Grid.Column="2" Margin="0,4" Foreground="#666666" TextTrimming="CharacterEllipsis" />
+          <Button Content="Test" Tag="Claude" Grid.Row="1" Grid.Column="3" Margin="4,1" Click="TestProvider_Click" />
+          <Button Content="Help" Tag="Claude" Grid.Row="1" Grid.Column="4" Margin="4,1" Click="ProviderHelp_Click" />
           <TextBlock Text="Cursor" Grid.Row="2" Grid.Column="0" Margin="0,4" FontWeight="SemiBold" />
           <TextBlock Text="{Binding CursorAccountStatus}" Grid.Row="2" Grid.Column="1" Margin="0,4" />
-          <TextBlock Text="Manual cookie header" Grid.Row="2" Grid.Column="2" Margin="0,4" Foreground="#666666" TextTrimming="CharacterEllipsis" />
+          <TextBlock Text="{Binding CursorAccountDetail}" Grid.Row="2" Grid.Column="2" Margin="0,4" Foreground="#666666" TextTrimming="CharacterEllipsis" />
+          <Button Content="Test" Tag="Cursor" Grid.Row="2" Grid.Column="3" Margin="4,1" Click="TestProvider_Click" />
+          <Button Content="Help" Tag="Cursor" Grid.Row="2" Grid.Column="4" Margin="4,1" Click="ProviderHelp_Click" />
           <TextBlock Text="Gemini" Grid.Row="3" Grid.Column="0" Margin="0,4" FontWeight="SemiBold" />
           <TextBlock Text="{Binding GeminiAccountStatus}" Grid.Row="3" Grid.Column="1" Margin="0,4" />
-          <TextBlock Text="{Binding GeminiCredentialPath}" Grid.Row="3" Grid.Column="2" Margin="0,4" Foreground="#666666" TextTrimming="CharacterEllipsis" />
+          <TextBlock Text="{Binding GeminiAccountDetail}" Grid.Row="3" Grid.Column="2" Margin="0,4" Foreground="#666666" TextTrimming="CharacterEllipsis" />
+          <Button Content="Test" Tag="Gemini" Grid.Row="3" Grid.Column="3" Margin="4,1" Click="TestProvider_Click" />
+          <Button Content="Help" Tag="Gemini" Grid.Row="3" Grid.Column="4" Margin="4,1" Click="ProviderHelp_Click" />
         </Grid>
 
         <TextBlock Text="Claude manual cookie header" Margin="0,12,0,4" />

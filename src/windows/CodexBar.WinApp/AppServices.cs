@@ -1,4 +1,5 @@
 using System.Net.Http;
+using CodexBar.Core.Models;
 using CodexBar.Core.Paths;
 using CodexBar.Core.Providers;
 using CodexBar.Core.Providers.Claude;
@@ -34,6 +35,36 @@ public sealed class AppServices : IDisposable
         HttpClient.Dispose();
     }
 
+    public async Task<UsageSnapshot> TestProviderAsync(UsageProvider provider, CancellationToken cancellationToken)
+    {
+        var usageProvider = Providers.FirstOrDefault(candidate => candidate.Provider == provider);
+        if (usageProvider is null)
+        {
+            var disabled = UsageSnapshot.MissingCredentials(
+                provider,
+                ProviderDisplayName(provider),
+                $"{ProviderDisplayName(provider)} is disabled in Settings.");
+            Store.Set(disabled);
+            return disabled;
+        }
+
+        try
+        {
+            var snapshot = await usageProvider.RefreshAsync(cancellationToken);
+            Store.Set(snapshot);
+            return snapshot;
+        }
+        catch (Exception error) when (error is not OperationCanceledException)
+        {
+            var previous = Store.Get(provider);
+            var snapshot = previous is null
+                ? UsageSnapshot.MissingCredentials(provider, ProviderDisplayName(provider), error.Message)
+                : previous with { IsStale = true, ErrorMessage = error.Message };
+            Store.Set(snapshot);
+            return snapshot;
+        }
+    }
+
     private IReadOnlyList<IUsageProvider> BuildProviders(AppSettings settings)
     {
         var providers = new List<IUsageProvider>();
@@ -59,4 +90,14 @@ public sealed class AppServices : IDisposable
 
         return providers;
     }
+
+    private static string ProviderDisplayName(UsageProvider provider) =>
+        provider switch
+        {
+            UsageProvider.Codex => "Codex",
+            UsageProvider.Claude => "Claude",
+            UsageProvider.Cursor => "Cursor",
+            UsageProvider.Gemini => "Gemini",
+            _ => provider.ToString()
+        };
 }
