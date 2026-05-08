@@ -28,7 +28,7 @@ public interface IUpdateChecker
 
 public sealed class GitHubUpdateChecker : IUpdateChecker
 {
-    private static readonly Uri LatestReleaseApiUri = new("https://api.github.com/repos/dontcallmejames/CodexBar-Windows/releases/latest");
+    private static readonly Uri ReleasesApiUri = new("https://api.github.com/repos/dontcallmejames/CodexBar-Windows/releases?per_page=20");
     private readonly HttpClient httpClient;
     private readonly AppVersionInfo versionInfo;
 
@@ -42,15 +42,21 @@ public sealed class GitHubUpdateChecker : IUpdateChecker
     {
         try
         {
-            using var request = new HttpRequestMessage(HttpMethod.Get, LatestReleaseApiUri);
+            using var request = new HttpRequestMessage(HttpMethod.Get, ReleasesApiUri);
             request.Headers.UserAgent.Add(new ProductInfoHeaderValue("CodexBar-Windows", versionInfo.DisplayVersion));
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
             using var response = await httpClient.SendAsync(request, cancellationToken);
             response.EnsureSuccessStatusCode();
             await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
             using var json = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
-            var tag = ReadString(json.RootElement, "tag_name");
-            var uriText = ReadString(json.RootElement, "html_url");
+            var release = FindLatestRelease(json.RootElement);
+            if (release is null)
+            {
+                return UpdateCheckResult.UpToDate(null);
+            }
+
+            var tag = ReadString(release.Value, "tag_name");
+            var uriText = ReadString(release.Value, "html_url");
             var releaseUri = string.IsNullOrWhiteSpace(uriText) ? ProviderLinks.ReleasesUri() : new Uri(uriText);
 
             return versionInfo.IsOlderThan(tag)
@@ -62,6 +68,33 @@ public sealed class GitHubUpdateChecker : IUpdateChecker
             return UpdateCheckResult.Failed(error.Message);
         }
     }
+
+    private static JsonElement? FindLatestRelease(JsonElement element)
+    {
+        if (element.ValueKind == JsonValueKind.Object)
+        {
+            return IsDraft(element) ? null : element;
+        }
+
+        if (element.ValueKind != JsonValueKind.Array)
+        {
+            return null;
+        }
+
+        foreach (var release in element.EnumerateArray())
+        {
+            if (release.ValueKind == JsonValueKind.Object && !IsDraft(release))
+            {
+                return release;
+            }
+        }
+
+        return null;
+    }
+
+    private static bool IsDraft(JsonElement element) =>
+        element.TryGetProperty("draft", out var draft) &&
+        draft.ValueKind == JsonValueKind.True;
 
     private static string? ReadString(JsonElement element, string propertyName) =>
         element.TryGetProperty(propertyName, out var value) && value.ValueKind == JsonValueKind.String
