@@ -142,6 +142,29 @@ public sealed class WpfShellTests
     }
 
     [TestMethod]
+    public void WiresPeriodicBackgroundUpdateTimerFromSettings()
+    {
+        var enabledInterval = CodexBar.WinApp.App.CalculateUpdateCheckInterval(checkForUpdatesAutomatically: true);
+        var disabledInterval = CodexBar.WinApp.App.CalculateUpdateCheckInterval(checkForUpdatesAutomatically: false);
+        var appCodePath = Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory,
+            "..",
+            "..",
+            "..",
+            "..",
+            "CodexBar.WinApp",
+            "App.xaml.cs"));
+        var appCode = File.ReadAllText(appCodePath);
+
+        Assert.AreEqual(TimeSpan.FromHours(24), enabledInterval);
+        Assert.IsNull(disabledInterval);
+        StringAssert.Contains(appCode, "StartUpdateCheckTimer(settings)");
+        StringAssert.Contains(appCode, "UpdateCheckTimer_Tick");
+        StringAssert.Contains(appCode, "CheckForUpdatesInBackgroundAsync");
+        StringAssert.Contains(appCode, "ShowUpdateAvailableNotification");
+    }
+
+    [TestMethod]
     public void WindowEventHandlersAreUnwiredOnClose()
     {
         var appCodePath = Path.GetFullPath(Path.Combine(

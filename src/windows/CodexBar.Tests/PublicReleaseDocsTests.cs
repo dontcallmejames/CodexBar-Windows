@@ -28,6 +28,7 @@ public sealed class PublicReleaseDocsTests
         StringAssert.Contains(readme, "installer");
         StringAssert.Contains(readme, "portable zip");
         StringAssert.Contains(readme, "Open Release");
+        StringAssert.Contains(readme, "checks GitHub Releases automatically");
         StringAssert.Contains(readme, "Test");
         StringAssert.Contains(readme, "Help");
     }
@@ -102,6 +103,7 @@ public sealed class PublicReleaseDocsTests
 
         StringAssert.Contains(windowsDoc, "No usage yet");
         StringAssert.Contains(windowsDoc, "Open Release");
+        StringAssert.Contains(windowsDoc, "Check for updates automatically");
         StringAssert.Contains(windowsDoc, "Known limitations");
         StringAssert.Contains(windowsDoc, "Gemini");
         StringAssert.Contains(windowsDoc, "Cursor");

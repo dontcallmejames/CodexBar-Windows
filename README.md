@@ -43,12 +43,12 @@ Requirements:
 4. Enable only the providers you use.
 5. Use each provider's Test button to verify credentials and see the latest provider-specific status.
 6. Use each provider's Help button to open the matching Windows setup notes.
-7. Use Settings > Check for Updates... to compare your build with the latest GitHub Release. When an update is found, Settings changes the action to Open Release.
+7. Keep Check for updates automatically enabled, or use Settings > Check for Updates... to compare your build with the latest GitHub Release. When an update is found, Settings changes the action to Open Release.
 8. Use Settings > Report a Bug... to copy a redacted diagnostic summary and open the GitHub bug form.
 
 ## Updates
 
-CodexBar checks GitHub Releases only when you ask it to. The app shows your current version, the latest release it found, and whether an update is available. It does not auto-install updates yet; use Open Release to download the installer or portable zip.
+CodexBar checks GitHub Releases automatically every 24 hours when enabled in Settings. You can also check manually at any time. The app shows your current version, the latest release it found, and whether an update is available. It does not auto-install updates; use Open Release to download the installer or portable zip.
 
 ## Provider Setup
 
@@ -74,7 +74,7 @@ The preview does not crawl your disk. It checks specific paths such as `%USERPRO
 ## Known Limitations
 
 - Windows support is a public preview.
-- Updates are manual: CodexBar can detect an update and open the release, but it does not download or install automatically.
+- Updates are manual to install: CodexBar can detect an update automatically and open the release, but it does not download or install updates.
 - Cursor support is manual-cookie only for this preview.
 - Gemini support requires Gemini CLI OAuth credentials; API key and Vertex AI modes are not supported in the preview.
 - A provider can show No usage yet when credentials are present but the provider returns no measurable usage windows.
