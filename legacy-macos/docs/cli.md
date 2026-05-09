@@ -13,7 +13,7 @@ Use it when you need usage numbers in scripts, CI, or dashboards without UI.
 
 ## Install
 - In the app: **Preferences → Advanced → Install CLI**. This symlinks `CodexBarCLI` to `/usr/local/bin/codexbar` and `/opt/homebrew/bin/codexbar`.
-- From the repo, after installing `CodexBar.app` in `/Applications`: `./bin/install-codexbar-cli.sh` (same symlink targets).
+- From the archived macOS source, after installing `CodexBar.app` in `/Applications`: `cd legacy-macos && ./bin/install-codexbar-cli.sh` (same symlink targets).
 - Manual: `ln -sf "/Applications/CodexBar.app/Contents/Helpers/CodexBarCLI" /usr/local/bin/codexbar`.
 
 ### Release tarball install (macOS/Linux)

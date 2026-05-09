@@ -35,5 +35,5 @@
 ## Agent Notes
 - The public product is the Windows app. Keep root-level docs, scripts, workflows, and release paths Windows-first.
 - Root `version.env` is the Windows preview version source. Do not move it into `legacy-macos`.
-- `.claude/`, `dist/`, `bin/`, and local generated output may exist in the worktree; do not remove or revert user/local artifacts unless explicitly requested.
+- `.claude/`, `dist/`, and local generated output may exist in the worktree; do not remove or revert user/local artifacts unless explicitly requested.
 - If the app itself changes, rebuild/package with the Windows scripts and make clear which binary was validated.
