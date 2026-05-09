@@ -30,7 +30,9 @@ dotnet test src\windows\CodexBar.Windows.sln
 dotnet run --project src\windows\CodexBar.WinApp\CodexBar.WinApp.csproj
 ```
 
-The app starts in the notification area. Click the CodexBar tray icon to open the popover.
+The app starts in the notification area. On a new install, CodexBar opens a compact setup window where users can enable providers, inspect credential status, and open provider setup help. Click Get Started to save provider choices, or Skip to keep the defaults and configure later.
+
+Click the CodexBar tray icon to open the popover.
 
 ## Report Bugs
 

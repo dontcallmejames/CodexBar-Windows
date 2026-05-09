@@ -18,6 +18,7 @@ public partial class App : System.Windows.Application
     private PopoverWindow? popover;
     private TaskbarDockWindow? taskbarDock;
     private SettingsWindow? settingsWindow;
+    private FirstRunWindow? firstRunWindow;
     private AboutWindow? aboutWindow;
     private IStartupRegistration? startupRegistration;
     private UpdateCheckResult? latestUpdateCheck;
@@ -35,6 +36,7 @@ public partial class App : System.Windows.Application
 
         var paths = new WindowsAppPaths();
         settingsStore = new JsonSettingsStore(paths.SettingsFile);
+        var settingsFileExists = File.Exists(paths.SettingsFile);
         var settings = await LoadSettingsOrDefaultAsync(paths, shutdown.Token);
         services = new AppServices(paths, settings);
         startupRegistration = new StartupRegistration(Environment.ProcessPath ?? Environment.GetCommandLineArgs()[0]);
@@ -59,6 +61,10 @@ public partial class App : System.Windows.Application
 
         StartRefreshTimer(settings);
         StartUpdateCheckTimer(settings);
+        if (ShouldShowFirstRunOnboarding(settingsFileExists))
+        {
+            ShowFirstRunOnboarding();
+        }
     }
 
     protected override void OnExit(System.Windows.ExitEventArgs e)
@@ -67,6 +73,7 @@ public partial class App : System.Windows.Application
         shutdown.Cancel();
         StopRefreshTimer();
         StopUpdateCheckTimer();
+        firstRunWindow?.Close();
         aboutWindow?.Close();
         settingsWindow?.Close();
         System.Windows.SystemParameters.StaticPropertyChanged -= SystemParameters_StaticPropertyChanged;
@@ -535,6 +542,68 @@ public partial class App : System.Windows.Application
         settingsWindow.Activate();
     }
 
+    private void ShowFirstRunOnboarding()
+    {
+        if (services is null || settingsStore is null)
+        {
+            return;
+        }
+
+        if (firstRunWindow?.IsVisible == true)
+        {
+            firstRunWindow.Activate();
+            return;
+        }
+
+        firstRunWindow = new FirstRunWindow(
+            services.Settings,
+            settingsStore,
+            services.Paths,
+            services.Store.All());
+        WireFirstRunWindowEvents(firstRunWindow);
+        PositionWindowNearApp(firstRunWindow);
+        firstRunWindow.Show();
+        firstRunWindow.Activate();
+    }
+
+    private void WireFirstRunWindowEvents(FirstRunWindow window)
+    {
+        window.OnboardingSaved += FirstRunWindow_OnboardingSaved;
+        window.OnboardingSkipped += FirstRunWindow_OnboardingSkipped;
+        window.ProviderHelpRequested += FirstRunWindow_ProviderHelpRequested;
+        window.Closed += FirstRunWindow_Closed;
+    }
+
+    private void UnwireFirstRunWindowEvents(FirstRunWindow window)
+    {
+        window.OnboardingSaved -= FirstRunWindow_OnboardingSaved;
+        window.OnboardingSkipped -= FirstRunWindow_OnboardingSkipped;
+        window.ProviderHelpRequested -= FirstRunWindow_ProviderHelpRequested;
+        window.Closed -= FirstRunWindow_Closed;
+    }
+
+    private void FirstRunWindow_OnboardingSaved(object? sender, AppSettings settings) =>
+        ApplySettings(settings);
+
+    private void FirstRunWindow_OnboardingSkipped(object? sender, AppSettings settings)
+    {
+    }
+
+    private void FirstRunWindow_ProviderHelpRequested(object? sender, UsageProvider provider) =>
+        ShowProviderHelp(provider);
+
+    private void FirstRunWindow_Closed(object? sender, EventArgs e)
+    {
+        if (sender is FirstRunWindow window)
+        {
+            UnwireFirstRunWindowEvents(window);
+            if (ReferenceEquals(firstRunWindow, window))
+            {
+                firstRunWindow = null;
+            }
+        }
+    }
+
     private void WireSettingsWindowEvents(SettingsWindow window)
     {
         window.SettingsSaved += SettingsWindow_SettingsSaved;
@@ -1000,4 +1069,7 @@ public partial class App : System.Windows.Application
             return AppSettings.Default;
         }
     }
+
+    public static bool ShouldShowFirstRunOnboarding(bool settingsFileExists) =>
+        !settingsFileExists;
 }

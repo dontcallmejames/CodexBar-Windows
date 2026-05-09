@@ -38,11 +38,11 @@ Requirements:
 ## First Run
 
 1. Start `CodexBar.WinApp.exe`.
-2. Click the CodexBar tray icon.
-3. Open Settings.
-4. Enable only the providers you use.
-5. Use each provider's Test button to verify credentials and see the latest provider-specific status.
-6. Use each provider's Help button to open the matching Windows setup notes.
+2. On a new install, use the Welcome to CodexBar setup window to enable the providers you want to track.
+3. Use the Help button beside any provider that needs credentials.
+4. Click Get Started to save your provider choices, or Skip to keep the defaults and configure later.
+5. Click the CodexBar tray icon to open the usage popover.
+6. Open Settings later to test credentials, change providers, enable the taskbar dock, or paste manual cookie headers.
 7. Keep Check for updates automatically enabled, or use Settings > Check for Updates... to compare your build with the latest GitHub Release. When an update is found, Settings changes the action to Open Release.
 8. Use Settings > Report a Bug... to copy a redacted diagnostic summary and open the GitHub bug form.
 
