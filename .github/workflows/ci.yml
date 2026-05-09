@@ -1,13 +1,15 @@
-name: CI
+name: Legacy Swift CI
 
 on:
-  push:
-    branches: ["*"]
-  pull_request:
+  workflow_dispatch:
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  group: legacy-swift-ci-${{ github.ref }}
   cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: legacy-macos
 
 jobs:
   lint-build-test:

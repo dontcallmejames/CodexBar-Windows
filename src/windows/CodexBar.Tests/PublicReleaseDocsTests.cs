@@ -104,20 +104,30 @@ public sealed class PublicReleaseDocsTests
     [TestMethod]
     public void ReadmeMarksMacOSArtifactsAsLegacy()
     {
-        var readme = File.ReadAllText(Path.GetFullPath(Path.Combine(
+        var repoRoot = Path.GetFullPath(Path.Combine(
             AppContext.BaseDirectory,
             "..",
             "..",
             "..",
             "..",
             "..",
-            "..",
-            "README.md")));
+            ".."));
+        var readme = File.ReadAllText(Path.Combine(repoRoot, "README.md"));
 
         StringAssert.Contains(readme, "Legacy macOS sources");
+        StringAssert.Contains(readme, "`legacy-macos/`");
         StringAssert.Contains(readme, "Package.swift");
         StringAssert.Contains(readme, "appcast.xml");
         StringAssert.Contains(readme, "Windows releases are built from `src/windows`");
+        Assert.IsTrue(Directory.Exists(Path.Combine(repoRoot, "legacy-macos")));
+        Assert.IsTrue(File.Exists(Path.Combine(repoRoot, "legacy-macos", "Package.swift")));
+        Assert.IsTrue(File.Exists(Path.Combine(repoRoot, "legacy-macos", "appcast.xml")));
+        Assert.IsTrue(File.Exists(Path.Combine(repoRoot, "legacy-macos", "codexbar.png")));
+        Assert.IsTrue(File.Exists(Path.Combine(repoRoot, "legacy-macos", "docs", "RELEASING.md")));
+        Assert.IsFalse(File.Exists(Path.Combine(repoRoot, "Package.swift")));
+        Assert.IsFalse(File.Exists(Path.Combine(repoRoot, "appcast.xml")));
+        Assert.IsFalse(File.Exists(Path.Combine(repoRoot, "codexbar.png")));
+        Assert.IsFalse(File.Exists(Path.Combine(repoRoot, "docs", "RELEASING.md")));
     }
 
     [TestMethod]
@@ -131,11 +141,63 @@ public sealed class PublicReleaseDocsTests
             "..",
             "..",
             "..",
+            "legacy-macos",
             "Scripts",
             "release.sh")));
 
         StringAssert.Contains(script, "CODEXBAR_RUN_LEGACY_MACOS_RELEASE");
         StringAssert.Contains(script, "Legacy macOS release script");
         StringAssert.Contains(script, "SPARKLE_LIB");
+    }
+
+    [TestMethod]
+    public void LegacySwiftAndUpstreamWorkflowsAreManualOnly()
+    {
+        var repoRoot = Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory,
+            "..",
+            "..",
+            "..",
+            "..",
+            "..",
+            ".."));
+        var legacyCi = File.ReadAllText(Path.Combine(repoRoot, ".github", "workflows", "ci.yml"));
+        var legacyCli = File.ReadAllText(Path.Combine(repoRoot, ".github", "workflows", "release-cli.yml"));
+        var upstreamMonitor = File.ReadAllText(Path.Combine(repoRoot, ".github", "workflows", "upstream-monitor.yml"));
+
+        StringAssert.Contains(legacyCi, "name: Legacy Swift CI");
+        StringAssert.Contains(legacyCi, "workflow_dispatch:");
+        StringAssert.Contains(legacyCi, "working-directory: legacy-macos");
+        Assert.IsFalse(legacyCi.Contains("pull_request:", StringComparison.Ordinal));
+        Assert.IsFalse(legacyCi.Contains("push:", StringComparison.Ordinal));
+
+        StringAssert.Contains(legacyCli, "name: Legacy CLI Release");
+        StringAssert.Contains(legacyCli, "workflow_dispatch:");
+        StringAssert.Contains(legacyCli, "working-directory: legacy-macos");
+        Assert.IsFalse(legacyCli.Contains("release:", StringComparison.Ordinal));
+
+        StringAssert.Contains(upstreamMonitor, "name: Legacy Upstream Monitor");
+        StringAssert.Contains(upstreamMonitor, "workflow_dispatch:");
+        StringAssert.Contains(upstreamMonitor, "legacy-macos/Scripts/review_upstream.sh");
+        StringAssert.Contains(upstreamMonitor, "legacy-macos/Scripts/analyze_quotio.sh");
+        Assert.IsFalse(upstreamMonitor.Contains("schedule:", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
+    public void RepositoryKeepsWorkflowAndShellScriptLineEndingsStable()
+    {
+        var attributes = File.ReadAllText(Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory,
+            "..",
+            "..",
+            "..",
+            "..",
+            "..",
+            "..",
+            ".gitattributes")));
+
+        StringAssert.Contains(attributes, "*.yml text eol=lf");
+        StringAssert.Contains(attributes, "*.yaml text eol=lf");
+        StringAssert.Contains(attributes, "*.sh text eol=lf");
     }
 }
