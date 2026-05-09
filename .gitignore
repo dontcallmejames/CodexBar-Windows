@@ -1,12 +1,12 @@
 # Xcode user/session
 xcuserdata/
-.swiftpm/xcode/xcshareddata/
+legacy-macos/.swiftpm/xcode/xcshareddata/
 .codexbar/config.json
 *.env
 *.local
 
 # Build products
-.build/
+legacy-macos/.build/
 DerivedData
 src/windows/**/bin/
 src/windows/**/obj/
