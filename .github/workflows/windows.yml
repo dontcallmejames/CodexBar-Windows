@@ -57,12 +57,9 @@ jobs:
         if: env.CODEXBAR_SIGNING_CERTIFICATE_BASE64 == ''
         shell: pwsh
         run: Write-Host "Skipping code signing because CODEXBAR_SIGNING_CERTIFICATE_BASE64 is not configured."
-      - name: Package
+      - name: Package signed assets
         shell: pwsh
-        run: ./Scripts/package-windows.ps1 -DotNet dotnet
-      - name: Package installer
-        shell: pwsh
-        run: ./Scripts/package-windows-installer.ps1 -DotNet dotnet -SkipPortablePackage
+        run: ./Scripts/package-windows-installer.ps1 -DotNet dotnet
       - name: Upload portable artifact
         uses: actions/upload-artifact@v5
         with:

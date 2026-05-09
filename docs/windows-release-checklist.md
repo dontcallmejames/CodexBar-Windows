@@ -52,7 +52,7 @@ git push origin v0.25.0-preview.1
    - `CodexBar-Windows-0.25-win-x64.installer.exe.sha256`
    - `CodexBar-Windows-0.25-win-x64.zip`
    - `CodexBar-Windows-0.25-win-x64.zip.sha256`
-5. If signing secrets were configured, download the installer and run `Get-AuthenticodeSignature` to confirm the signature status is `Valid`.
+5. If signing secrets were configured, download the installer and portable zip, then run `Get-AuthenticodeSignature` on `CodexBar.WinApp.exe` and the installer to confirm both signatures are `Valid`.
 
 ## Release Notes
 
