@@ -66,6 +66,7 @@ public sealed class PublicReleaseDocsTests
         var providerTemplate = File.ReadAllText(Path.Combine(repoRoot, ".github", "ISSUE_TEMPLATE", "provider_request.yml"));
         var pullRequestTemplate = File.ReadAllText(Path.Combine(repoRoot, ".github", "pull_request_template.md"));
         var releaseChecklist = File.ReadAllText(Path.Combine(repoRoot, "docs", "windows-release-checklist.md"));
+        var signingGuide = File.ReadAllText(Path.Combine(repoRoot, "docs", "windows-signing.md"));
 
         StringAssert.Contains(bugTemplate, "Provider");
         StringAssert.Contains(bugTemplate, "Portable zip");
@@ -78,6 +79,11 @@ public sealed class PublicReleaseDocsTests
         StringAssert.Contains(releaseChecklist, "GitHub Release");
         StringAssert.Contains(releaseChecklist, "CodexBar-Windows");
         StringAssert.Contains(releaseChecklist, ".installer.exe");
+        StringAssert.Contains(releaseChecklist, "Windows signing");
+        StringAssert.Contains(signingGuide, "CODEXBAR_SIGNING_CERTIFICATE_BASE64");
+        StringAssert.Contains(signingGuide, "CODEXBAR_SIGNING_CERTIFICATE_PASSWORD");
+        StringAssert.Contains(signingGuide, "signtool");
+        StringAssert.Contains(signingGuide, "SmartScreen");
     }
 
     [TestMethod]
