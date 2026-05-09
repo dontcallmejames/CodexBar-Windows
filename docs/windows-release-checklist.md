@@ -33,7 +33,8 @@ powershell -ExecutionPolicy Bypass -File .\Scripts\package-windows.ps1 -DotNet d
 powershell -ExecutionPolicy Bypass -File .\Scripts\package-windows-installer.ps1 -DotNet dotnet -SkipPortablePackage
 ```
 
-6. Smoke launch the portable app from a clean folder and confirm the tray icon, taskbar dock, settings window, and enabled providers open without crashing.
+6. Review [Windows signing](windows-signing.md). For signed releases, confirm `CODEXBAR_SIGNING_CERTIFICATE_BASE64` and `CODEXBAR_SIGNING_CERTIFICATE_PASSWORD` are configured in GitHub repository secrets.
+7. Smoke launch the portable app from a clean folder and confirm the tray icon, taskbar dock, settings window, and enabled providers open without crashing.
 
 ## Tag And Publish
 
@@ -51,6 +52,7 @@ git push origin v0.25.0-preview.1
    - `CodexBar-Windows-0.25-win-x64.installer.exe.sha256`
    - `CodexBar-Windows-0.25-win-x64.zip`
    - `CodexBar-Windows-0.25-win-x64.zip.sha256`
+5. If signing secrets were configured, download the installer and run `Get-AuthenticodeSignature` to confirm the signature status is `Valid`.
 
 ## Release Notes
 
