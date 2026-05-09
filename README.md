@@ -61,9 +61,9 @@ Windows-specific setup notes live in:
 
 ## Legacy macOS sources
 
-This repository was forked from the original macOS CodexBar project, so legacy macOS sources such as `Package.swift`, `Sources/`, `Tests/`, `Icon.icns`, `appcast.xml`, and Sparkle release scripts remain in the tree for upstream reference and current Swift CI compatibility. Windows releases are built from `src/windows`, `installer/windows`, and `.github/workflows/windows.yml`.
+This repository was forked from the original macOS CodexBar project. Legacy macOS sources and docs such as `Package.swift`, `Sources/`, `Tests/`, `Icon.icns`, `appcast.xml`, and Sparkle release scripts are archived under `legacy-macos/` for upstream reference. Windows releases are built from `src/windows`, `installer/windows`, `Scripts/package-windows.ps1`, `Scripts/package-windows-installer.ps1`, and `.github/workflows/windows.yml`.
 
-Do not use `Scripts/release.sh` for Windows releases. It is the legacy macOS/Sparkle release path and requires an explicit opt-in environment variable before it will run.
+Do not use `legacy-macos/Scripts/release.sh` for Windows releases. It is the legacy macOS/Sparkle release path and requires an explicit opt-in environment variable before it will run. Legacy Swift and upstream-sync workflows are manual-only.
 
 ## Privacy
 

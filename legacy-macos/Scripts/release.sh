@@ -4,7 +4,12 @@ set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 cd "$ROOT"
 
-source "$ROOT/version.env"
+VERSION_ENV="${LEGACY_MACOS_VERSION_ENV:-$ROOT/../version.env}"
+if [[ ! -f "$VERSION_ENV" ]]; then
+  echo "ERROR: version.env not found. Set LEGACY_MACOS_VERSION_ENV or keep the repository root version.env available." >&2
+  exit 1
+fi
+source "$VERSION_ENV"
 
 if [[ "${CODEXBAR_RUN_LEGACY_MACOS_RELEASE:-0}" != "1" ]]; then
   echo "ERROR: Legacy macOS release script. Windows releases use .github/workflows/windows.yml and GitHub release tags." >&2
