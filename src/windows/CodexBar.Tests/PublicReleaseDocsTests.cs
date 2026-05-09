@@ -132,10 +132,13 @@ public sealed class PublicReleaseDocsTests
         Assert.IsTrue(File.Exists(Path.Combine(repoRoot, "legacy-macos", "appcast.xml")));
         Assert.IsTrue(File.Exists(Path.Combine(repoRoot, "legacy-macos", "codexbar.png")));
         Assert.IsTrue(File.Exists(Path.Combine(repoRoot, "legacy-macos", "docs", "RELEASING.md")));
+        Assert.IsTrue(File.Exists(Path.Combine(repoRoot, "legacy-macos", "bin", "install-codexbar-cli.sh")));
+        Assert.IsTrue(File.Exists(Path.Combine(repoRoot, "legacy-macos", "bin", "docs-list")));
         Assert.IsFalse(File.Exists(Path.Combine(repoRoot, "Package.swift")));
         Assert.IsFalse(File.Exists(Path.Combine(repoRoot, "appcast.xml")));
         Assert.IsFalse(File.Exists(Path.Combine(repoRoot, "codexbar.png")));
         Assert.IsFalse(File.Exists(Path.Combine(repoRoot, "docs", "RELEASING.md")));
+        Assert.IsFalse(Directory.Exists(Path.Combine(repoRoot, "bin")));
     }
 
     [TestMethod]
