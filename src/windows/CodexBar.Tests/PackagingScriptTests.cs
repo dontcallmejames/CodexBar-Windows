@@ -29,6 +29,31 @@ public sealed class PackagingScriptTests
     }
 
     [TestMethod]
+    public void WindowsPackageScriptCanSignPublishedExecutableBeforePortableZip()
+    {
+        var scriptPath = Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory,
+            "..",
+            "..",
+            "..",
+            "..",
+            "..",
+            "..",
+            "Scripts",
+            "package-windows.ps1"));
+        var script = File.ReadAllText(scriptPath);
+
+        StringAssert.Contains(script, "SigningCertificatePath");
+        StringAssert.Contains(script, "Invoke-WindowsCodeSigning $appExecutablePath");
+        StringAssert.Contains(script, "CodexBar.WinApp.exe");
+
+        var signIndex = script.IndexOf("Invoke-WindowsCodeSigning $appExecutablePath", StringComparison.Ordinal);
+        var zipIndex = script.IndexOf("Compress-Archive", StringComparison.Ordinal);
+        Assert.IsTrue(signIndex >= 0, "The published executable should be signed.");
+        Assert.IsTrue(zipIndex > signIndex, "The portable zip must be created after executable signing.");
+    }
+
+    [TestMethod]
     public void WindowsWorkflowPackagesOnlyTagBuilds()
     {
         var workflowPath = Path.GetFullPath(Path.Combine(
@@ -125,6 +150,33 @@ public sealed class PackagingScriptTests
     }
 
     [TestMethod]
+    public void WindowsInstallerScriptSignsExecutableBeforeCompilingInstallerWhenSkippingPortablePackage()
+    {
+        var scriptPath = Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory,
+            "..",
+            "..",
+            "..",
+            "..",
+            "..",
+            "..",
+            "Scripts",
+            "package-windows-installer.ps1"));
+        var script = File.ReadAllText(scriptPath);
+
+        StringAssert.Contains(script, "$appExecutablePath = Join-Path $publishDir \"CodexBar.WinApp.exe\"");
+        StringAssert.Contains(script, "Invoke-WindowsCodeSigning $appExecutablePath");
+        StringAssert.Contains(script, "Invoke-WindowsCodeSigning $installerPath");
+
+        var executableSignIndex = script.IndexOf("Invoke-WindowsCodeSigning $appExecutablePath", StringComparison.Ordinal);
+        var innoIndex = script.IndexOf("& $iscc", StringComparison.Ordinal);
+        var installerSignIndex = script.IndexOf("Invoke-WindowsCodeSigning $installerPath", StringComparison.Ordinal);
+        Assert.IsTrue(executableSignIndex >= 0, "The published executable should be signed.");
+        Assert.IsTrue(innoIndex > executableSignIndex, "The executable must be signed before Inno Setup packages it.");
+        Assert.IsTrue(installerSignIndex > innoIndex, "The installer must be signed after Inno Setup creates it.");
+    }
+
+    [TestMethod]
     public void WindowsWorkflowPublishesInstallerAssetsForTags()
     {
         var workflowPath = Path.GetFullPath(Path.Combine(
@@ -144,6 +196,27 @@ public sealed class PackagingScriptTests
         StringAssert.Contains(workflow, "package-windows-installer.ps1");
         StringAssert.Contains(workflow, "dist/windows/*.installer.exe");
         StringAssert.Contains(workflow, "dist/windows/*.installer.exe.sha256");
+    }
+
+    [TestMethod]
+    public void WindowsWorkflowBuildsPortableZipThroughInstallerScriptSoExecutableIsSigned()
+    {
+        var workflowPath = Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory,
+            "..",
+            "..",
+            "..",
+            "..",
+            "..",
+            "..",
+            ".github",
+            "workflows",
+            "windows.yml"));
+        var workflow = File.ReadAllText(workflowPath);
+
+        StringAssert.Contains(workflow, "Package signed assets");
+        StringAssert.Contains(workflow, "./Scripts/package-windows-installer.ps1 -DotNet dotnet");
+        Assert.IsFalse(workflow.Contains("-SkipPortablePackage", StringComparison.Ordinal));
     }
 
     [TestMethod]
