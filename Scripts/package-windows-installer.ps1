@@ -132,14 +132,29 @@ function Invoke-WindowsCodeSigning {
 }
 
 if (-not $SkipPortablePackage) {
-    & (Join-Path $repoRoot "Scripts\package-windows.ps1") `
-        -Configuration $Configuration `
-        -Runtime $Runtime `
-        -DotNet $DotNet
+    $packageArguments = @(
+        "-Configuration", $Configuration,
+        "-Runtime", $Runtime,
+        "-DotNet", $DotNet,
+        "-SignTool", $SignTool,
+        "-TimestampUrl", $TimestampUrl
+    )
+    if (-not [string]::IsNullOrWhiteSpace($SigningCertificatePath)) {
+        $packageArguments += @("-SigningCertificatePath", $SigningCertificatePath)
+    }
+    if (-not [string]::IsNullOrWhiteSpace($SigningCertificatePassword)) {
+        $packageArguments += @("-SigningCertificatePassword", $SigningCertificatePassword)
+    }
+    if ($SkipSigning) {
+        $packageArguments += "-SkipSigning"
+    }
+
+    & (Join-Path $repoRoot "Scripts\package-windows.ps1") @packageArguments
 }
 
 $distRoot = Join-Path $repoRoot "dist\windows"
 $publishDir = Join-Path $distRoot "CodexBar-Windows-$version-$Runtime"
+$appExecutablePath = Join-Path $publishDir "CodexBar.WinApp.exe"
 $installerPath = Join-Path $distRoot "CodexBar-Windows-$version-$Runtime.installer.exe"
 $checksumPath = Join-Path $distRoot "CodexBar-Windows-$version-$Runtime.installer.exe.sha256"
 $issPath = Join-Path $repoRoot "installer\windows\CodexBar.iss"
@@ -153,6 +168,10 @@ if (Test-Path -LiteralPath $installerPath) {
 }
 if (Test-Path -LiteralPath $checksumPath) {
     Remove-Item -LiteralPath $checksumPath -Force
+}
+
+if ($SkipPortablePackage) {
+    Invoke-WindowsCodeSigning $appExecutablePath
 }
 
 & $iscc `
