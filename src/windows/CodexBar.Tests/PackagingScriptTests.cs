@@ -101,6 +101,30 @@ public sealed class PackagingScriptTests
     }
 
     [TestMethod]
+    public void WindowsInstallerScriptSupportsOptionalCodeSigning()
+    {
+        var scriptPath = Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory,
+            "..",
+            "..",
+            "..",
+            "..",
+            "..",
+            "..",
+            "Scripts",
+            "package-windows-installer.ps1"));
+        var script = File.ReadAllText(scriptPath);
+
+        StringAssert.Contains(script, "SigningCertificatePath");
+        StringAssert.Contains(script, "CODEXBAR_SIGNING_CERTIFICATE_PATH");
+        StringAssert.Contains(script, "CODEXBAR_SIGNING_CERTIFICATE_PASSWORD");
+        StringAssert.Contains(script, "TimestampUrl");
+        StringAssert.Contains(script, "signtool.exe");
+        StringAssert.Contains(script, "Invoke-WindowsCodeSigning");
+        StringAssert.Contains(script, "Signing skipped");
+    }
+
+    [TestMethod]
     public void WindowsWorkflowPublishesInstallerAssetsForTags()
     {
         var workflowPath = Path.GetFullPath(Path.Combine(
@@ -120,5 +144,29 @@ public sealed class PackagingScriptTests
         StringAssert.Contains(workflow, "package-windows-installer.ps1");
         StringAssert.Contains(workflow, "dist/windows/*.installer.exe");
         StringAssert.Contains(workflow, "dist/windows/*.installer.exe.sha256");
+    }
+
+    [TestMethod]
+    public void WindowsWorkflowDecodesSigningCertificateOnlyWhenSecretExists()
+    {
+        var workflowPath = Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory,
+            "..",
+            "..",
+            "..",
+            "..",
+            "..",
+            "..",
+            ".github",
+            "workflows",
+            "windows.yml"));
+        var workflow = File.ReadAllText(workflowPath);
+
+        StringAssert.Contains(workflow, "CODEXBAR_SIGNING_CERTIFICATE_BASE64");
+        StringAssert.Contains(workflow, "CODEXBAR_SIGNING_CERTIFICATE_PASSWORD");
+        StringAssert.Contains(workflow, "Decode signing certificate");
+        StringAssert.Contains(workflow, "if: env.CODEXBAR_SIGNING_CERTIFICATE_BASE64 != ''");
+        StringAssert.Contains(workflow, "CODEXBAR_SIGNING_CERTIFICATE_PATH");
+        StringAssert.Contains(workflow, "Skipping code signing");
     }
 }
