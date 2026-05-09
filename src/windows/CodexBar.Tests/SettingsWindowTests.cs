@@ -89,10 +89,12 @@ public sealed class SettingsWindowTests
 
         viewModel.CodexEnabled = false;
         viewModel.RefreshMinutes = 12;
+        viewModel.CheckForUpdatesAutomatically = false;
         viewModel.ClaudeManualCookieHeader = "sessionKey=abc";
 
         CollectionAssert.Contains(changed, nameof(SettingsViewModel.CodexEnabled));
         CollectionAssert.Contains(changed, nameof(SettingsViewModel.RefreshMinutes));
+        CollectionAssert.Contains(changed, nameof(SettingsViewModel.CheckForUpdatesAutomatically));
         CollectionAssert.Contains(changed, nameof(SettingsViewModel.ClaudeManualCookieHeader));
     }
 
@@ -261,6 +263,8 @@ public sealed class SettingsWindowTests
         var settingsCode = File.ReadAllText(settingsCodePath);
 
         StringAssert.Contains(settingsXaml, "UpdateActionText");
+        StringAssert.Contains(settingsXaml, "Check for updates automatically");
+        StringAssert.Contains(settingsXaml, "CheckForUpdatesAutomatically");
         StringAssert.Contains(settingsXaml, "Click=\"CheckUpdates_Click\"");
         StringAssert.Contains(settingsCode, "UpdateCheckRequested");
         StringAssert.Contains(settingsCode, "CheckUpdates_Click");

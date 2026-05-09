@@ -17,6 +17,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     private bool showUsageAsUsed;
     private bool dockOverviewNearTaskbar;
     private bool launchAtStartup;
+    private bool checkForUpdatesAutomatically;
     private int refreshMinutes;
     private string codexSource = string.Empty;
     private string claudeSource = string.Empty;
@@ -43,6 +44,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         showUsageAsUsed = settings.ShowUsageAsUsed;
         dockOverviewNearTaskbar = settings.DockOverviewNearTaskbar;
         launchAtStartup = settings.LaunchAtStartup;
+        checkForUpdatesAutomatically = settings.CheckForUpdatesAutomatically;
         refreshMinutes = settings.RefreshMinutes;
         codexSource = settings.CodexSource;
         claudeSource = settings.ClaudeSource;
@@ -100,6 +102,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     public bool ShowUsageAsUsed { get => showUsageAsUsed; set => SetField(ref showUsageAsUsed, value); }
     public bool DockOverviewNearTaskbar { get => dockOverviewNearTaskbar; set => SetField(ref dockOverviewNearTaskbar, value); }
     public bool LaunchAtStartup { get => launchAtStartup; set => SetField(ref launchAtStartup, value); }
+    public bool CheckForUpdatesAutomatically { get => checkForUpdatesAutomatically; set => SetField(ref checkForUpdatesAutomatically, value); }
     public int RefreshMinutes { get => refreshMinutes; set => SetField(ref refreshMinutes, value); }
     public string CodexSource { get => codexSource; set => SetField(ref codexSource, value); }
     public string ClaudeSource { get => claudeSource; set => SetField(ref claudeSource, value); }
@@ -132,6 +135,7 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
         ShowUsageAsUsed,
         DockOverviewNearTaskbar,
         LaunchAtStartup,
+        CheckForUpdatesAutomatically,
         RefreshMinutes,
         CodexSource,
         ClaudeSource,
