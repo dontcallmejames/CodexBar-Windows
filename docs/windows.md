@@ -36,7 +36,7 @@ The app starts in the notification area. Click the CodexBar tray icon to open th
 
 Use each provider's Test button in Settings to refresh only that provider and show the current credential status. Use the matching Help button to open that provider's Windows setup notes.
 
-Use Settings > Check for Updates... to compare the current app version with the latest GitHub Release. Settings shows the current version, latest release, and update status. When an update is available, the action changes to Open Release. CodexBar does not auto-install updates.
+Keep Check for updates automatically enabled to let CodexBar check GitHub Releases every 24 hours. You can also use Settings > Check for Updates... to compare the current app version with the latest GitHub Release. Settings shows the current version, latest release, and update status. When an update is available, the action changes to Open Release. CodexBar does not auto-install updates.
 
 Use Settings > Report a Bug... to copy a redacted diagnostic summary and open the GitHub bug report form. The summary includes app version, Windows version, update status, enabled providers, provider freshness, and latest visible provider errors, including recent Test results. It does not include tokens, cookies, OAuth files, or credential contents.
 
@@ -60,7 +60,7 @@ For Codex, confirm the Codex CLI is signed in and that `%CODEX_HOME%\auth.json` 
 
 ## Known limitations
 
-- Updates are manual; Open Release takes you to GitHub to download the installer or portable zip.
+- Updates are manual to install; Open Release takes you to GitHub to download the installer or portable zip.
 - Cursor support depends on a manual browser cookie header.
 - Gemini support is Gemini CLI OAuth only.
 - Provider dashboards and private usage APIs can change without notice.

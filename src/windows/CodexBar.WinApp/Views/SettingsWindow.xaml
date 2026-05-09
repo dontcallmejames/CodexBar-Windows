@@ -38,6 +38,7 @@
         <CheckBox Content="Show usage as used" IsChecked="{Binding ShowUsageAsUsed}" Margin="0,6" />
         <CheckBox Content="Show taskbar dock" IsChecked="{Binding DockOverviewNearTaskbar}" Margin="0,6" />
         <CheckBox Content="Start CodexBar with Windows" IsChecked="{Binding LaunchAtStartup}" Margin="0,6" />
+        <CheckBox Content="Check for updates automatically" IsChecked="{Binding CheckForUpdatesAutomatically}" Margin="0,6" />
 
         <TextBlock Text="Accounts" FontSize="17" FontWeight="SemiBold" Margin="0,18,0,6" />
         <Grid Margin="0,0,0,8">

@@ -63,7 +63,7 @@ Include these points in the first preview release notes:
 - Includes preview support for Cursor manual cookies and Gemini CLI OAuth.
 - Includes a translucent tray popover and optional taskbar dock.
 - Installer is the recommended path; portable zip remains available for no-install testing.
-- Settings includes Check for Updates..., which opens the latest GitHub Release.
+- Settings includes automatic update checks, Check for Updates..., and Open Release for the latest GitHub Release.
 - Provider credentials stay on the user's Windows profile. Any future telemetry must be opt-in and documented before release.
 
 ## After Publishing

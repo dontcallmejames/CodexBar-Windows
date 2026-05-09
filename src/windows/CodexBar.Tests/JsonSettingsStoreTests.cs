@@ -18,6 +18,7 @@ public sealed class JsonSettingsStoreTests
         Assert.IsTrue(settings.MergeTrayIcon);
         Assert.AreEqual(5, settings.RefreshMinutes);
         Assert.IsFalse(settings.LaunchAtStartup);
+        Assert.IsTrue(settings.CheckForUpdatesAutomatically);
     }
 
     [TestMethod]
@@ -67,6 +68,7 @@ public sealed class JsonSettingsStoreTests
         Assert.AreEqual("auto", settings.CodexSource);
         Assert.AreEqual("auto", settings.ClaudeSource);
         Assert.IsFalse(settings.LaunchAtStartup);
+        Assert.IsTrue(settings.CheckForUpdatesAutomatically);
     }
 
     [TestMethod]
@@ -120,5 +122,18 @@ public sealed class JsonSettingsStoreTests
         var loaded = await store.LoadAsync(CancellationToken.None);
 
         Assert.IsTrue(loaded.LaunchAtStartup);
+    }
+
+    [TestMethod]
+    public async Task SavesAndLoadsAutomaticUpdateChecks()
+    {
+        var path = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "config.json");
+        var store = new JsonSettingsStore(path);
+        var settings = AppSettings.Default with { CheckForUpdatesAutomatically = false };
+
+        await store.SaveAsync(settings, CancellationToken.None);
+        var loaded = await store.LoadAsync(CancellationToken.None);
+
+        Assert.IsFalse(loaded.CheckForUpdatesAutomatically);
     }
 }

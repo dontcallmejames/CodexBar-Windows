@@ -22,9 +22,12 @@ public partial class App : System.Windows.Application
     private IStartupRegistration? startupRegistration;
     private UpdateCheckResult? latestUpdateCheck;
     private System.Windows.Threading.DispatcherTimer? refreshTimer;
+    private System.Windows.Threading.DispatcherTimer? updateCheckTimer;
     private Action<System.Windows.Window>? positionPopover;
     private bool isRefreshing;
+    private bool isCheckingUpdates;
     private bool isShuttingDown;
+    private string? lastNotifiedUpdateTag;
 
     protected override async void OnStartup(System.Windows.StartupEventArgs e)
     {
@@ -55,6 +58,7 @@ public partial class App : System.Windows.Application
         }
 
         StartRefreshTimer(settings);
+        StartUpdateCheckTimer(settings);
     }
 
     protected override void OnExit(System.Windows.ExitEventArgs e)
@@ -62,6 +66,7 @@ public partial class App : System.Windows.Application
         isShuttingDown = true;
         shutdown.Cancel();
         StopRefreshTimer();
+        StopUpdateCheckTimer();
         aboutWindow?.Close();
         settingsWindow?.Close();
         System.Windows.SystemParameters.StaticPropertyChanged -= SystemParameters_StaticPropertyChanged;
@@ -234,6 +239,9 @@ public partial class App : System.Windows.Application
     public static TimeSpan CalculateRefreshInterval(int refreshMinutes) =>
         TimeSpan.FromMinutes(Math.Max(1, refreshMinutes));
 
+    public static TimeSpan? CalculateUpdateCheckInterval(bool checkForUpdatesAutomatically) =>
+        checkForUpdatesAutomatically ? TimeSpan.FromHours(24) : null;
+
     private void StartRefreshTimer(AppSettings settings)
     {
         StopRefreshTimer();
@@ -255,6 +263,93 @@ public partial class App : System.Windows.Application
         refreshTimer.Stop();
         refreshTimer.Tick -= RefreshTimer_Tick;
         refreshTimer = null;
+    }
+
+    private void StartUpdateCheckTimer(AppSettings settings)
+    {
+        StopUpdateCheckTimer();
+        var interval = CalculateUpdateCheckInterval(settings.CheckForUpdatesAutomatically);
+        if (interval is null)
+        {
+            return;
+        }
+
+        updateCheckTimer = new System.Windows.Threading.DispatcherTimer
+        {
+            Interval = interval.Value
+        };
+        updateCheckTimer.Tick += UpdateCheckTimer_Tick;
+        updateCheckTimer.Start();
+        _ = CheckForUpdatesInBackgroundAsync();
+    }
+
+    private void StopUpdateCheckTimer()
+    {
+        if (updateCheckTimer is null)
+        {
+            return;
+        }
+
+        updateCheckTimer.Stop();
+        updateCheckTimer.Tick -= UpdateCheckTimer_Tick;
+        updateCheckTimer = null;
+    }
+
+    private async void UpdateCheckTimer_Tick(object? sender, EventArgs e)
+    {
+        await CheckForUpdatesInBackgroundAsync();
+    }
+
+    private async Task CheckForUpdatesInBackgroundAsync()
+    {
+        if (services is null || !services.Settings.CheckForUpdatesAutomatically || isCheckingUpdates)
+        {
+            return;
+        }
+
+        isCheckingUpdates = true;
+        var activeServices = services;
+        try
+        {
+            var result = await activeServices.UpdateChecker.CheckAsync(shutdown.Token);
+            if (!ReferenceEquals(services, activeServices) || isShuttingDown)
+            {
+                return;
+            }
+
+            latestUpdateCheck = result;
+            UpdateSettingsWindow();
+            if (result.UpdateAvailable && result.LatestTag is { Length: > 0 })
+            {
+                ShowUpdateAvailableNotification(result);
+            }
+        }
+        catch (OperationCanceledException) when (shutdown.IsCancellationRequested)
+        {
+        }
+        catch (Exception error) when (error is not OperationCanceledException)
+        {
+            latestUpdateCheck = UpdateCheckResult.Failed(error.Message);
+            UpdateSettingsWindow();
+        }
+        finally
+        {
+            isCheckingUpdates = false;
+        }
+    }
+
+    private void ShowUpdateAvailableNotification(UpdateCheckResult result)
+    {
+        if (tray is null || result.LatestTag == lastNotifiedUpdateTag)
+        {
+            return;
+        }
+
+        lastNotifiedUpdateTag = result.LatestTag;
+        tray.ShowNotification(
+            "CodexBar update available",
+            $"{result.LatestTag} is available. Open Settings to download it.",
+            System.Windows.Forms.ToolTipIcon.Info);
     }
 
     private async void RefreshTimer_Tick(object? sender, EventArgs e)
@@ -668,6 +763,7 @@ public partial class App : System.Windows.Application
         services = new AppServices(paths, settings);
         ApplyStartupRegistration(settings);
         StartRefreshTimer(settings);
+        StartUpdateCheckTimer(settings);
         var activeServices = services;
         var snapshots = EnsureEnabledProviderSnapshots(
             FilterSnapshotsForSettings(previousStore.All(), settings),
