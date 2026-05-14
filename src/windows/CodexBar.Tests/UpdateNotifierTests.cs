@@ -15,7 +15,7 @@ public sealed class UpdateNotifierTests
             Result = UpdateCheckResult.Available("v0.26", new Uri("https://example.com/v0.26"))
         };
         var notifications = new List<UpdateCheckResult>();
-        var notifier = new UpdateNotifier(checker, r => notifications.Add(r));
+        var notifier = new UpdateNotifier(checker, r => notifications.Add(r), CancellationToken.None);
 
         await notifier.CheckNowAsync(default);
         await notifier.CheckNowAsync(default);
@@ -28,7 +28,7 @@ public sealed class UpdateNotifierTests
     {
         var checker = new FakeUpdateChecker();
         var notifications = new List<UpdateCheckResult>();
-        var notifier = new UpdateNotifier(checker, r => notifications.Add(r));
+        var notifier = new UpdateNotifier(checker, r => notifications.Add(r), CancellationToken.None);
 
         checker.Result = UpdateCheckResult.Available("v0.26", new Uri("https://example.com/v0.26"));
         await notifier.CheckNowAsync(default);
@@ -43,7 +43,7 @@ public sealed class UpdateNotifierTests
     {
         var expected = UpdateCheckResult.Available("v0.26", new Uri("https://example.com/v0.26"));
         var checker = new FakeUpdateChecker { Result = expected };
-        var notifier = new UpdateNotifier(checker, _ => { });
+        var notifier = new UpdateNotifier(checker, _ => { }, CancellationToken.None);
 
         await notifier.CheckNowAsync(default);
 
@@ -58,17 +58,36 @@ public sealed class UpdateNotifierTests
             Result = UpdateCheckResult.UpToDate("v0.26")
         };
         var notifications = new List<UpdateCheckResult>();
-        var notifier = new UpdateNotifier(checker, r => notifications.Add(r));
+        var notifier = new UpdateNotifier(checker, r => notifications.Add(r), CancellationToken.None);
 
         await notifier.CheckNowAsync(default);
 
         Assert.AreEqual(0, notifications.Count);
     }
 
+    [TestMethod]
+    public async Task Dispose_WhileCheckInFlight_DoesNotThrowOnSemaphore()
+    {
+        var checker = new FakeUpdateChecker
+        {
+            Result = UpdateCheckResult.UpToDate("v0.26"),
+            Delay = TimeSpan.FromMilliseconds(200)
+        };
+        var notifier = new UpdateNotifier(checker, _ => { }, CancellationToken.None);
+        var inflight = notifier.CheckNowAsync(CancellationToken.None);
+        // Immediately dispose — should wait for the in-flight call and not throw
+        notifier.Dispose();
+        await inflight; // should complete without ObjectDisposedException
+    }
+
     private sealed class FakeUpdateChecker : IUpdateChecker
     {
         public UpdateCheckResult? Result;
-        public Task<UpdateCheckResult> CheckAsync(CancellationToken ct) =>
-            Task.FromResult(Result ?? UpdateCheckResult.UpToDate(null));
+        public TimeSpan Delay;
+        public async Task<UpdateCheckResult> CheckAsync(CancellationToken ct)
+        {
+            if (Delay > TimeSpan.Zero) await Task.Delay(Delay, ct);
+            return Result ?? UpdateCheckResult.UpToDate(null);
+        }
     }
 }
