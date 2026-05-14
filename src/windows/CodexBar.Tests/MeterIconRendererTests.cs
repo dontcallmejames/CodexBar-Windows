@@ -49,7 +49,7 @@ public sealed class MeterIconRendererTests
     [TestMethod]
     public void TrayHostStaysHiddenUntilFirstUpdate()
     {
-        using var host = new TrayIconHost(() => { }, () => { }, () => { });
+        using var host = new TrayIconHost(() => { }, () => { }, () => { }, () => { });
         var notifyIcon = GetNotifyIcon(host);
 
         Assert.IsFalse(notifyIcon.Visible);

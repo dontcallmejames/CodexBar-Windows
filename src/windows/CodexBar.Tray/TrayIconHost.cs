@@ -11,9 +11,9 @@ public sealed class TrayIconHost : IDisposable
     private readonly ContextMenuStrip contextMenu;
     private Icon? currentIcon;
 
-    public TrayIconHost(Action onLeftClick, Action onSettingsClick, Action onQuitClick)
+    public TrayIconHost(Action onLeftClick, Action onSettingsClick, Action onAboutClick, Action onQuitClick)
     {
-        contextMenu = BuildMenu(onSettingsClick, onQuitClick);
+        contextMenu = BuildMenu(onSettingsClick, onAboutClick, onQuitClick);
         notifyIcon = new NotifyIcon
         {
             Text = "CodexBar",
@@ -55,10 +55,12 @@ public sealed class TrayIconHost : IDisposable
         currentIcon?.Dispose();
     }
 
-    private static ContextMenuStrip BuildMenu(Action onSettingsClick, Action onQuitClick)
+    private static ContextMenuStrip BuildMenu(Action onSettingsClick, Action onAboutClick, Action onQuitClick)
     {
         var menu = new ContextMenuStrip();
         menu.Items.Add("Settings...", null, (_, _) => onSettingsClick());
+        menu.Items.Add("About CodexBar", null, (_, _) => onAboutClick());
+        menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Quit", null, (_, _) => onQuitClick());
         return menu;
     }
