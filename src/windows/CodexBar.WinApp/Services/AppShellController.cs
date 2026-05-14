@@ -53,6 +53,7 @@ public sealed class AppShellController : IDisposable
         trayIconHost = new TrayIconHost(
             onLeftClick: windowCoordinator.ShowPopover,
             onSettingsClick: windowCoordinator.ShowSettings,
+            onAboutClick: () => windowCoordinator.ShowAbout(),
             onQuitClick: () => System.Windows.Application.Current.Shutdown());
 
         trayController = new TrayController(trayIconHost);
@@ -156,6 +157,14 @@ public sealed class AppShellController : IDisposable
         foreach (var snapshot in snapshots)
         {
             services.Store.Set(snapshot);
+        }
+
+        foreach (var provider in Enum.GetValues<UsageProvider>())
+        {
+            if (!IsProviderEnabled(settings, provider))
+            {
+                services.Store.Remove(provider);
+            }
         }
 
         ApplySnapshotsToTray();
@@ -265,6 +274,16 @@ public sealed class AppShellController : IDisposable
             return AppSettings.Default;
         }
     }
+
+    private static bool IsProviderEnabled(AppSettings settings, UsageProvider provider) =>
+        provider switch
+        {
+            UsageProvider.Codex => settings.CodexEnabled,
+            UsageProvider.Claude => settings.ClaudeEnabled,
+            UsageProvider.Cursor => settings.CursorEnabled,
+            UsageProvider.Gemini => settings.GeminiEnabled,
+            _ => true
+        };
 
     private static IEnumerable<UsageProvider> EnabledProviders(AppSettings settings)
     {

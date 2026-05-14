@@ -23,6 +23,14 @@ public sealed class SnapshotStore
         }
     }
 
+    public void Remove(UsageProvider provider)
+    {
+        lock (gate)
+        {
+            snapshots.Remove(provider);
+        }
+    }
+
     public IReadOnlyList<UsageSnapshot> All()
     {
         lock (gate)
