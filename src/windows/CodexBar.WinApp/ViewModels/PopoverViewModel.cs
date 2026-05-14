@@ -1,4 +1,5 @@
 using CodexBar.Core.Models;
+using CodexBar.Core.Refresh;
 using System.ComponentModel;
 using System.Globalization;
 using System.Runtime.CompilerServices;
@@ -17,10 +18,12 @@ public sealed class PopoverViewModel : INotifyPropertyChanged
     private string costTodayText = string.Empty;
     private string costLast30DaysText = string.Empty;
     private string statusMessage = string.Empty;
+    private string liveIndicatorText = string.Empty;
     private bool hasMetrics;
     private bool hasStatusMessage;
     private bool hasCostSection;
     private readonly DateTimeOffset now;
+    private readonly ProviderRefreshStateRegistry? refreshStates;
 
     public PopoverViewModel(
         IReadOnlyList<UsageSnapshot> snapshots,
@@ -32,11 +35,13 @@ public sealed class PopoverViewModel : INotifyPropertyChanged
         Action? quit = null,
         Action? addAccount = null,
         Action? openStatusPage = null,
-        DateTimeOffset? now = null)
+        DateTimeOffset? now = null,
+        ProviderRefreshStateRegistry? refreshStates = null)
     {
         Snapshots = snapshots;
         ShowUsageAsUsed = showUsageAsUsed;
         this.now = now ?? DateTimeOffset.Now;
+        this.refreshStates = refreshStates;
         SelectProviderCommand = new ParameterCommand(parameter =>
         {
             if (parameter is UsageProvider provider)
@@ -147,6 +152,12 @@ public sealed class PopoverViewModel : INotifyPropertyChanged
         private set => SetField(ref hasMetrics, value);
     }
 
+    public string LiveIndicatorText
+    {
+        get => liveIndicatorText;
+        private set => SetField(ref liveIndicatorText, value);
+    }
+
     public ICommand SelectProviderCommand { get; }
     public ICommand AddAccountCommand { get; }
     public ICommand UsageDashboardCommand { get; }
@@ -187,7 +198,32 @@ public sealed class PopoverViewModel : INotifyPropertyChanged
             selectedSnapshot?.TodayTokens is not null ||
             selectedSnapshot?.Last30DaysCostUsd is not null ||
             selectedSnapshot?.Last30DaysTokens is not null;
+        UpdateLiveIndicator();
     }
+
+    private void UpdateLiveIndicator()
+    {
+        if (refreshStates is null)
+        {
+            LiveIndicatorText = string.Empty;
+            return;
+        }
+        var last = refreshStates.Get(ActiveProvider).LastSuccess;
+        if (last is null)
+        {
+            LiveIndicatorText = "Live • Refreshing…";
+            return;
+        }
+        var diff = now - last.Value;
+        LiveIndicatorText = $"Live • updated {HumanizeDiff(diff)} ago";
+    }
+
+    private static string HumanizeDiff(TimeSpan diff) => diff switch
+    {
+        { TotalSeconds: < 60 } => $"{Math.Max(0, (int)diff.TotalSeconds)}s",
+        { TotalMinutes: < 60 } => $"{(int)diff.TotalMinutes}m",
+        _ => $"{(int)diff.TotalHours}h",
+    };
 
     private static string FormatPercent(RateWindow? window, bool showUsageAsUsed)
     {
