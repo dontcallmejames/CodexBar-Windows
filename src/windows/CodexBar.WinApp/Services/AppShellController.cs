@@ -17,7 +17,7 @@ public sealed class AppShellController : IDisposable
     private readonly string settingsFilePath;
     private readonly IStartupRegistration startupRegistration;
     private readonly TrayIconHost trayIconHost;
-    private AppServices services;
+    private readonly AppServices services;
     private RefreshOrchestrator refreshOrchestrator;
     private readonly UpdateNotifier updateNotifier;
     private readonly TrayController trayController;
@@ -135,15 +135,15 @@ public sealed class AppShellController : IDisposable
 
     private void ApplySettings(AppSettings settings)
     {
-        var paths = services.Paths;
-        var previousStore = services.Store;
+        var previousSnapshots = services.Store.All();
 
         refreshOrchestrator.Stop();
         refreshOrchestrator.Refreshed -= OnRefreshed;
         refreshOrchestrator.Dispose();
 
-        services.Dispose();
-        services = new AppServices(paths, settings);
+        // Reconfigure in-place: preserves HttpClient, UpdateChecker, RefreshStates, and Store
+        // so AdaptiveBackoff history survives and WindowCoordinator/UpdateNotifier keep valid refs.
+        services.ReconfigureProviders(settings);
 
         refreshOrchestrator = BuildRefreshOrchestrator();
         refreshOrchestrator.Refreshed += OnRefreshed;
@@ -151,7 +151,7 @@ public sealed class AppShellController : IDisposable
         ApplyStartupRegistration(settings);
 
         var snapshots = EnsureEnabledProviderSnapshots(
-            FilterSnapshotsForSettings(previousStore.All(), settings),
+            FilterSnapshotsForSettings(previousSnapshots, settings),
             settings);
         foreach (var snapshot in snapshots)
         {
@@ -168,23 +168,22 @@ public sealed class AppShellController : IDisposable
         if (updateInterval is not null)
         {
             updateNotifier.Start(updateInterval.Value);
+            _ = updateNotifier.CheckNowAsync(shutdown.Token);
         }
 
-        _ = RefreshServicesAsync(services);
+        _ = RefreshServicesAsync();
     }
 
-    private async Task RefreshServicesAsync(AppServices activeServices)
+    private async Task RefreshServicesAsync()
     {
         try
         {
-            await activeServices.Scheduler.RefreshAllAsync(shutdown.Token);
+            await services.Scheduler.RefreshAllAsync(shutdown.Token);
         }
         catch (OperationCanceledException) when (shutdown.IsCancellationRequested)
         {
             return;
         }
-
-        if (!ReferenceEquals(services, activeServices)) return;
 
         ApplySnapshotsToTray();
         windowCoordinator.OnSnapshotsChanged();
@@ -192,7 +191,7 @@ public sealed class AppShellController : IDisposable
 
     private async void RefreshNow()
     {
-        await RefreshServicesAsync(services);
+        await RefreshServicesAsync();
     }
 
     private void ApplyStartupRegistration(AppSettings settings)
