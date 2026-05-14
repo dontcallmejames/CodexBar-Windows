@@ -3,6 +3,7 @@ using System.Text.Json;
 using CodexBar.Core.Models;
 using CodexBar.Core.Paths;
 using CodexBar.Core.Providers;
+using CodexBar.Core.Refresh;
 
 namespace CodexBar.Core.Providers.Claude;
 
@@ -119,30 +120,19 @@ public sealed class ClaudeProvider : IUsageProvider
 
     private static void ThrowIfRateLimited(HttpResponseMessage response)
     {
-        if (response.StatusCode != System.Net.HttpStatusCode.TooManyRequests)
+        if (response.StatusCode is not (System.Net.HttpStatusCode.TooManyRequests or System.Net.HttpStatusCode.ServiceUnavailable))
         {
             return;
         }
 
-        var retryText = response.Headers.RetryAfter?.Delta is { } delta
-            ? $" Retry in {FormatRetryAfter(delta)}."
-            : string.Empty;
-        throw new InvalidOperationException($"Claude subscription usage is temporarily unavailable.{retryText}");
-    }
+        TimeSpan? retryAfter = response.Headers.RetryAfter?.Delta
+            ?? (response.Headers.RetryAfter?.Date is { } date
+                ? date - DateTimeOffset.Now
+                : null);
 
-    private static string FormatRetryAfter(TimeSpan delta)
-    {
-        if (delta.TotalMinutes < 1)
-        {
-            return $"{Math.Max(1, (int)Math.Ceiling(delta.TotalSeconds))}s";
-        }
-
-        if (delta.TotalHours < 1)
-        {
-            return $"{(int)Math.Ceiling(delta.TotalMinutes)}m";
-        }
-
-        return $"{(int)Math.Ceiling(delta.TotalHours)}h";
+        throw new RateLimitException(
+            $"Claude API rate-limited with status {(int)response.StatusCode}.",
+            retryAfter);
     }
 
     private async Task<UsageSnapshot> RefreshWebAsync(string cookieHeader, CancellationToken cancellationToken)
