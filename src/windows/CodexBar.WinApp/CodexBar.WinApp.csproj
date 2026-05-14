@@ -22,12 +22,6 @@
     </AssemblyAttribute>
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.0" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="9.0.0" />
-  </ItemGroup>
-  <ItemGroup>
     <ProjectReference Include="..\CodexBar.Core\CodexBar.Core.csproj" />
     <ProjectReference Include="..\CodexBar.Tray\CodexBar.Tray.csproj" />
   </ItemGroup>
