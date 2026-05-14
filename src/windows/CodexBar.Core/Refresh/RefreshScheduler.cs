@@ -3,7 +3,7 @@ using CodexBar.Core.Providers;
 
 namespace CodexBar.Core.Refresh;
 
-public sealed class RefreshScheduler
+public sealed class RefreshScheduler : IRefreshScheduler
 {
     private readonly IReadOnlyList<IUsageProvider> providers;
     private readonly SnapshotStore store;
