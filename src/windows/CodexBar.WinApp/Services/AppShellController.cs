@@ -39,7 +39,8 @@ public sealed class AppShellController : IDisposable
 
         updateNotifier = new UpdateNotifier(
             services.UpdateChecker,
-            ShowUpdateAvailableNotification);
+            ShowUpdateAvailableNotification,
+            shutdown.Token);
 
         windowCoordinator = new WindowCoordinator(
             services,
@@ -65,7 +66,8 @@ public sealed class AppShellController : IDisposable
     private RefreshOrchestrator BuildRefreshOrchestrator() =>
         new RefreshOrchestrator(
             services.Scheduler,
-            () => WindowCoordinator.CalculateRefreshInterval(services.Settings.RefreshMinutes));
+            () => WindowCoordinator.CalculateRefreshInterval(services.Settings.RefreshMinutes),
+            shutdown.Token);
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
