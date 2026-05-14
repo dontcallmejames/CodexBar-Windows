@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Windows.Media;
+using CodexBar.WinApp.Services;
 using CodexBar.WinApp.Views;
 using MediaColor = System.Windows.Media.Color;
 
@@ -45,7 +46,7 @@ public sealed class WpfShellTests
     [TestMethod]
     public void CalculatesPopoverPositionNearBottomRightTray()
     {
-        var position = CodexBar.WinApp.App.CalculatePopoverPosition(
+        var position = WindowCoordinator.CalculatePopoverPosition(
             width: 430,
             height: 360,
             workArea: new System.Windows.Rect(0, 0, 1920, 1040),
@@ -60,7 +61,7 @@ public sealed class WpfShellTests
     [TestMethod]
     public void CalculatesPopoverMaxHeightFromTrayAnchor()
     {
-        var maxHeight = CodexBar.WinApp.App.CalculatePopoverMaxHeight(
+        var maxHeight = WindowCoordinator.CalculatePopoverMaxHeight(
             workArea: new System.Windows.Rect(0, 0, 1920, 1040),
             cursorPosition: new System.Drawing.Point(1900, 1030));
 
@@ -70,7 +71,7 @@ public sealed class WpfShellTests
     [TestMethod]
     public void CalculatesPopoverPositionWhenWindowConsumesAvailableHeight()
     {
-        var position = CodexBar.WinApp.App.CalculatePopoverPosition(
+        var position = WindowCoordinator.CalculatePopoverPosition(
             width: 372,
             height: 1002,
             workArea: new System.Windows.Rect(0, 0, 1920, 1040),
@@ -86,12 +87,12 @@ public sealed class WpfShellTests
         var workArea = new System.Windows.Rect(0, 0, 1920, 1040);
         var cursorPosition = new System.Drawing.Point(1900, 1030);
 
-        var shortPosition = CodexBar.WinApp.App.CalculatePopoverPosition(
+        var shortPosition = WindowCoordinator.CalculatePopoverPosition(
             width: 372,
             height: 420,
             workArea,
             cursorPosition);
-        var expandedPosition = CodexBar.WinApp.App.CalculatePopoverPosition(
+        var expandedPosition = WindowCoordinator.CalculatePopoverPosition(
             width: 372,
             height: 780,
             workArea,
@@ -115,15 +116,15 @@ public sealed class WpfShellTests
         var appCode = File.ReadAllText(appCodePath);
 
         StringAssert.Contains(appCode, "var cursorPosition = System.Windows.Forms.Cursor.Position;");
-        StringAssert.Contains(appCode, "window => PositionPopoverNearCursor(window, cursorPosition)");
+        StringAssert.Contains(appCode, "window => WindowCoordinator.PositionPopoverNearCursor(window, cursorPosition)");
         Assert.IsFalse(appCode.Contains("ShowPopoverWindow(UsageProvider.Codex, PositionPopoverNearCursor)", StringComparison.Ordinal));
     }
 
     [TestMethod]
     public void WiresPeriodicRefreshTimerFromSettings()
     {
-        var interval = CodexBar.WinApp.App.CalculateRefreshInterval(refreshMinutes: 5);
-        var minimum = CodexBar.WinApp.App.CalculateRefreshInterval(refreshMinutes: 0);
+        var interval = WindowCoordinator.CalculateRefreshInterval(refreshMinutes: 5);
+        var minimum = WindowCoordinator.CalculateRefreshInterval(refreshMinutes: 0);
         var appCodePath = Path.GetFullPath(Path.Combine(
             AppContext.BaseDirectory,
             "..",
@@ -144,8 +145,8 @@ public sealed class WpfShellTests
     [TestMethod]
     public void WiresPeriodicBackgroundUpdateTimerFromSettings()
     {
-        var enabledInterval = CodexBar.WinApp.App.CalculateUpdateCheckInterval(checkForUpdatesAutomatically: true);
-        var disabledInterval = CodexBar.WinApp.App.CalculateUpdateCheckInterval(checkForUpdatesAutomatically: false);
+        var enabledInterval = WindowCoordinator.CalculateUpdateCheckInterval(checkForUpdatesAutomatically: true);
+        var disabledInterval = WindowCoordinator.CalculateUpdateCheckInterval(checkForUpdatesAutomatically: false);
         var appCodePath = Path.GetFullPath(Path.Combine(
             AppContext.BaseDirectory,
             "..",
@@ -218,7 +219,7 @@ public sealed class WpfShellTests
     [TestMethod]
     public void CalculatesTaskbarDockPositionNearBottomRight()
     {
-        var position = CodexBar.WinApp.App.CalculateTaskbarDockPosition(
+        var position = WindowCoordinator.CalculateTaskbarDockPosition(
             width: 320,
             height: 64,
             workArea: new System.Windows.Rect(0, 0, 2560, 1040));
@@ -230,7 +231,7 @@ public sealed class WpfShellTests
     [TestMethod]
     public void CalculatesTaskbarDockPositionWithMinimumMarginsWhenWorkAreaIsTooSmall()
     {
-        var position = CodexBar.WinApp.App.CalculateTaskbarDockPosition(
+        var position = WindowCoordinator.CalculateTaskbarDockPosition(
             width: 600,
             height: 220,
             workArea: new System.Windows.Rect(100, 50, 500, 180));
@@ -242,7 +243,7 @@ public sealed class WpfShellTests
     [TestMethod]
     public void CalculatesPopoverPositionAboveTaskbarDock()
     {
-        var position = CodexBar.WinApp.App.CalculatePopoverPositionNearDock(
+        var position = WindowCoordinator.CalculatePopoverPositionNearDock(
             width: 372,
             height: 500,
             workArea: new System.Windows.Rect(0, 0, 2560, 1040),
@@ -257,7 +258,7 @@ public sealed class WpfShellTests
     [TestMethod]
     public void CalculatesPopoverMaxHeightFromTaskbarDockAnchor()
     {
-        var maxHeight = CodexBar.WinApp.App.CalculatePopoverMaxHeightNearDock(
+        var maxHeight = WindowCoordinator.CalculatePopoverMaxHeightNearDock(
             workArea: new System.Windows.Rect(0, 0, 2560, 1040),
             dockTop: 964);
 
