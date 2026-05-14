@@ -77,7 +77,7 @@
                                 <ProgressBar
                                     Maximum="100"
                                     Value="{x:Bind PercentValue}"
-                                    Foreground="{ThemeResource SystemAccentColorBrush}" />
+                                    Foreground="{ThemeResource AccentFillColorDefaultBrush}" />
                                 <TextBlock
                                     Style="{StaticResource CaptionTextBlockStyle}"
                                     Opacity="0.65"
