@@ -2,6 +2,7 @@ using CodexBar.Core.Models;
 using CodexBar.Core.Paths;
 using CodexBar.Core.Settings;
 using CodexBar.WinApp;
+using CodexBar.WinApp.Services;
 
 namespace CodexBar.Tests;
 
@@ -174,7 +175,7 @@ public sealed class AppServicesTests
                 false)
         };
 
-        var display = App.BuildTrayDisplay(snapshots);
+        var display = TrayController.SelectDisplay(snapshots, showUsageAsUsed: false);
 
         Assert.AreEqual(95, display.Percent);
         Assert.IsFalse(display.IsStale);
@@ -192,7 +193,7 @@ public sealed class AppServicesTests
         };
         var settings = AppSettings.Default with { ClaudeEnabled = false, GeminiEnabled = false };
 
-        var filtered = App.FilterSnapshotsForSettings(snapshots, settings);
+        var filtered = AppShellController.FilterSnapshotsForSettings(snapshots, settings);
 
         Assert.AreEqual(2, filtered.Count);
         Assert.AreEqual(UsageProvider.Codex, filtered[0].Provider);
@@ -208,7 +209,7 @@ public sealed class AppServicesTests
             Snapshot(UsageProvider.Claude)
         };
 
-        var seeded = App.EnsureEnabledProviderSnapshots(snapshots, AppSettings.Default);
+        var seeded = AppShellController.EnsureEnabledProviderSnapshots(snapshots, AppSettings.Default);
 
         CollectionAssert.AreEqual(
             new[] { UsageProvider.Codex, UsageProvider.Claude, UsageProvider.Cursor, UsageProvider.Gemini },
@@ -227,7 +228,7 @@ public sealed class AppServicesTests
             Directory.CreateDirectory(Path.GetDirectoryName(paths.SettingsFile)!);
             await File.WriteAllTextAsync(paths.SettingsFile, "{ definitely not json");
 
-            var settings = await App.LoadSettingsOrDefaultAsync(paths, CancellationToken.None);
+            var settings = await AppShellController.LoadSettingsOrDefaultAsync(paths, CancellationToken.None);
 
             Assert.AreEqual(AppSettings.Default, settings);
         }
