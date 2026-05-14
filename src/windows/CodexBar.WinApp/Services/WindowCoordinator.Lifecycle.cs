@@ -438,7 +438,7 @@ public sealed partial class WindowCoordinator : IDisposable
             anchorHeight = 1;
         }
 
-        var position = App.CalculateSettingsPosition(width, height, anchorLeft, anchorTop, anchorWidth, anchorHeight, workArea);
+        var position = WindowCoordinator.CalculateSettingsPosition(width, height, anchorLeft, anchorTop, anchorWidth, anchorHeight, workArea);
         window.WindowStartupLocation = System.Windows.WindowStartupLocation.Manual;
         window.Left = position.Left;
         window.Top = position.Top;

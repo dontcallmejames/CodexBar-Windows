@@ -191,7 +191,7 @@ public sealed class WpfShellTests
     [TestMethod]
     public void CalculatesSettingsPositionNextToPopoverWhenSpaceAllows()
     {
-        var position = CodexBar.WinApp.App.CalculateSettingsPosition(
+        var position = WindowCoordinator.CalculateSettingsPosition(
             settingsWidth: 560,
             settingsHeight: 620,
             anchorLeft: 1400,
@@ -207,7 +207,7 @@ public sealed class WpfShellTests
     [TestMethod]
     public void CalculatesSettingsPositionToLeftWhenRightSideWouldOverflow()
     {
-        var position = CodexBar.WinApp.App.CalculateSettingsPosition(
+        var position = WindowCoordinator.CalculateSettingsPosition(
             settingsWidth: 560,
             settingsHeight: 620,
             anchorLeft: 2120,
