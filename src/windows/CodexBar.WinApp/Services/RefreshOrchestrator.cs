@@ -31,12 +31,6 @@ public sealed class RefreshOrchestrator : IDisposable
         timer = null;
     }
 
-    public void RestartWithCurrentInterval()
-    {
-        if (timer is null) return;
-        timer.Interval = intervalProvider();
-    }
-
     public async Task RefreshNowAsync(CancellationToken cancellationToken)
     {
         if (!await gate.WaitAsync(0, cancellationToken))
