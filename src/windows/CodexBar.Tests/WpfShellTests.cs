@@ -105,19 +105,20 @@ public sealed class WpfShellTests
     [TestMethod]
     public void TrayPopoverCapturesCursorAnchorOnceForResizeRepositioning()
     {
-        var appCodePath = Path.GetFullPath(Path.Combine(
+        var lifecycleCodePath = Path.GetFullPath(Path.Combine(
             AppContext.BaseDirectory,
             "..",
             "..",
             "..",
             "..",
             "CodexBar.WinApp",
-            "App.xaml.cs"));
-        var appCode = File.ReadAllText(appCodePath);
+            "Services",
+            "WindowCoordinator.Lifecycle.cs"));
+        var lifecycleCode = File.ReadAllText(lifecycleCodePath);
 
-        StringAssert.Contains(appCode, "var cursorPosition = System.Windows.Forms.Cursor.Position;");
-        StringAssert.Contains(appCode, "window => WindowCoordinator.PositionPopoverNearCursor(window, cursorPosition)");
-        Assert.IsFalse(appCode.Contains("ShowPopoverWindow(UsageProvider.Codex, PositionPopoverNearCursor)", StringComparison.Ordinal));
+        StringAssert.Contains(lifecycleCode, "var cursorPosition = System.Windows.Forms.Cursor.Position;");
+        StringAssert.Contains(lifecycleCode, "window => ApplyPopoverPositionNearCursor(window, cursorPosition)");
+        Assert.IsFalse(lifecycleCode.Contains("ShowPopoverWindow(UsageProvider.Codex, ApplyPopoverPositionNearCursor)", StringComparison.Ordinal));
     }
 
     [TestMethod]
@@ -168,20 +169,21 @@ public sealed class WpfShellTests
     [TestMethod]
     public void WindowEventHandlersAreUnwiredOnClose()
     {
-        var appCodePath = Path.GetFullPath(Path.Combine(
+        var lifecycleCodePath = Path.GetFullPath(Path.Combine(
             AppContext.BaseDirectory,
             "..",
             "..",
             "..",
             "..",
             "CodexBar.WinApp",
-            "App.xaml.cs"));
-        var appCode = File.ReadAllText(appCodePath);
+            "Services",
+            "WindowCoordinator.Lifecycle.cs"));
+        var lifecycleCode = File.ReadAllText(lifecycleCodePath);
 
-        StringAssert.Contains(appCode, "UnwirePopoverWindowEvents");
-        StringAssert.Contains(appCode, "UnwireSettingsWindowEvents");
-        StringAssert.Contains(appCode, "window.SizeChanged -= Popover_SizeChanged");
-        StringAssert.Contains(appCode, "window.SettingsSaved -= SettingsWindow_SettingsSaved");
+        StringAssert.Contains(lifecycleCode, "UnwirePopoverWindowEvents");
+        StringAssert.Contains(lifecycleCode, "UnwireSettingsWindowEvents");
+        StringAssert.Contains(lifecycleCode, "window.SizeChanged -= Popover_SizeChanged");
+        StringAssert.Contains(lifecycleCode, "window.SettingsSaved -= SettingsWindow_SettingsSaved");
     }
 
     [TestMethod]

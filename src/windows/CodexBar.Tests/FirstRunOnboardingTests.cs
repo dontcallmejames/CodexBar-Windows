@@ -149,10 +149,21 @@ public sealed class FirstRunOnboardingTests
             "App.xaml.cs"));
         var appCode = File.ReadAllText(appCodePath);
 
+        var lifecycleCodePath = Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory,
+            "..",
+            "..",
+            "..",
+            "..",
+            "CodexBar.WinApp",
+            "Services",
+            "WindowCoordinator.Lifecycle.cs"));
+        var lifecycleCode = File.ReadAllText(lifecycleCodePath);
+
         StringAssert.Contains(appCode, "ShouldShowFirstRunOnboarding(settingsFileExists)");
         StringAssert.Contains(appCode, "ShowFirstRunOnboarding");
-        StringAssert.Contains(appCode, "PositionWindowNearApp(firstRunWindow)");
-        StringAssert.Contains(appCode, "FirstRunWindow_OnboardingSaved");
-        StringAssert.Contains(appCode, "FirstRunWindow_OnboardingSkipped");
+        StringAssert.Contains(lifecycleCode, "PositionWindowNearApp(firstRunWindow)");
+        StringAssert.Contains(lifecycleCode, "FirstRunWindow_OnboardingSaved");
+        StringAssert.Contains(lifecycleCode, "FirstRunWindow_OnboardingSkipped");
     }
 }
