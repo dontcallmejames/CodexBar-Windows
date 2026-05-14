@@ -25,7 +25,8 @@ public sealed class AppServices : IDisposable
         VersionInfo = AppVersionInfo.Current;
         UpdateChecker = new GitHubUpdateChecker(HttpClient, VersionInfo);
         Providers = BuildProviders(settings);
-        Scheduler = new RefreshScheduler(Providers, Store);
+        RefreshStates = new ProviderRefreshStateRegistry();
+        Scheduler = new RefreshScheduler(Providers, Store, RefreshStates);
     }
 
     public IAppPaths Paths { get; }
@@ -35,6 +36,7 @@ public sealed class AppServices : IDisposable
     public AppVersionInfo VersionInfo { get; }
     public IUpdateChecker UpdateChecker { get; }
     public IReadOnlyList<IUsageProvider> Providers { get; }
+    public ProviderRefreshStateRegistry RefreshStates { get; }
     public RefreshScheduler Scheduler { get; }
 
     public void Dispose()
