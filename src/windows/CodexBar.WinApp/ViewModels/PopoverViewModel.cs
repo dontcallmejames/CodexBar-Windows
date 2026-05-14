@@ -304,9 +304,14 @@ public sealed class PopoverViewModel : INotifyPropertyChanged
     private static string FormatUpdatedText(DateTimeOffset updatedAt, DateTimeOffset now)
     {
         var delta = now - updatedAt;
-        if (delta.TotalMinutes < 1)
+        if (delta.TotalSeconds < 5)
         {
             return "just now";
+        }
+
+        if (delta.TotalMinutes < 1)
+        {
+            return $"{(int)Math.Floor(delta.TotalSeconds)}s ago";
         }
 
         if (delta.TotalHours < 1)
