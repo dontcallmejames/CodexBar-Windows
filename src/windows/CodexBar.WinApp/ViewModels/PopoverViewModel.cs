@@ -22,7 +22,7 @@ public sealed class PopoverViewModel : INotifyPropertyChanged
     private bool hasMetrics;
     private bool hasStatusMessage;
     private bool hasCostSection;
-    private readonly DateTimeOffset now;
+    private readonly DateTimeOffset? now;
     private readonly ProviderRefreshStateRegistry? refreshStates;
 
     public PopoverViewModel(
@@ -40,7 +40,7 @@ public sealed class PopoverViewModel : INotifyPropertyChanged
     {
         Snapshots = snapshots;
         ShowUsageAsUsed = showUsageAsUsed;
-        this.now = now ?? DateTimeOffset.Now;
+        this.now = now;
         this.refreshStates = refreshStates;
         SelectProviderCommand = new ParameterCommand(parameter =>
         {
@@ -190,7 +190,7 @@ public sealed class PopoverViewModel : INotifyPropertyChanged
         Metrics = BuildMetrics(selectedSnapshot);
         StatusMessage = BuildStatusMessage(selectedSnapshot);
         HasStatusMessage = !string.IsNullOrWhiteSpace(StatusMessage);
-        UpdatedText = selectedSnapshot is null ? string.Empty : $"Updated {FormatUpdatedText(selectedSnapshot.UpdatedAt, now)}";
+        UpdatedText = selectedSnapshot is null ? string.Empty : $"Updated {FormatUpdatedText(selectedSnapshot.UpdatedAt, now ?? DateTimeOffset.Now)}";
         PlanText = selectedSnapshot?.Plan ?? string.Empty;
         CostTodayText = FormatCostLine("Today", selectedSnapshot?.TodayCostUsd, selectedSnapshot?.TodayTokens);
         CostLast30DaysText = FormatCostLine("Last 30 days", selectedSnapshot?.Last30DaysCostUsd, selectedSnapshot?.Last30DaysTokens);
@@ -198,6 +198,11 @@ public sealed class PopoverViewModel : INotifyPropertyChanged
             selectedSnapshot?.TodayTokens is not null ||
             selectedSnapshot?.Last30DaysCostUsd is not null ||
             selectedSnapshot?.Last30DaysTokens is not null;
+        UpdateLiveIndicator();
+    }
+
+    public void RefreshLiveIndicator()
+    {
         UpdateLiveIndicator();
     }
 
@@ -214,7 +219,8 @@ public sealed class PopoverViewModel : INotifyPropertyChanged
             LiveIndicatorText = "Live • Refreshing…";
             return;
         }
-        var diff = now - last.Value;
+        var currentTime = now ?? DateTimeOffset.Now;
+        var diff = currentTime - last.Value;
         LiveIndicatorText = $"Live • updated {HumanizeDiff(diff)} ago";
     }
 
@@ -248,11 +254,12 @@ public sealed class PopoverViewModel : INotifyPropertyChanged
             return Array.Empty<PopoverMetricViewModel>();
         }
 
+        var currentTime = now ?? DateTimeOffset.Now;
         return snapshot.Windows.Select(window => new PopoverMetricViewModel(
             window.Title,
             FormatPercentValue(window, ShowUsageAsUsed),
             $"{FormatPercent(window, ShowUsageAsUsed)} {(ShowUsageAsUsed ? "used" : "left")}",
-            window.ResetsAt is null ? string.Empty : $"Resets {FormatRelative(window.ResetsAt.Value, now)}",
+            window.ResetsAt is null ? string.Empty : $"Resets {FormatRelative(window.ResetsAt.Value, currentTime)}",
             ProgressColor(snapshot.Provider))).ToArray();
     }
 
