@@ -455,16 +455,6 @@ public sealed partial class WindowCoordinator : IDisposable
     private void ShowActiveProviderStatusPage() =>
         OpenUri(ProviderLinks.StatusUri(ActivePopoverProvider()));
 
-    internal static void ShowUsageDashboard()
-    {
-        OpenUri(ProviderLinks.DashboardUri(UsageProvider.Codex));
-    }
-
-    internal static void ShowStatusPage()
-    {
-        OpenUri(ProviderLinks.StatusUri(UsageProvider.Codex));
-    }
-
     internal static void OpenUri(Uri uri)
     {
         Process.Start(new ProcessStartInfo(uri.AbsoluteUri)
