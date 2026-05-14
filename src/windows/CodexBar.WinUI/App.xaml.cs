@@ -46,8 +46,12 @@ public partial class App : Application
 
             tray = new TrayIconHost(
                 onLeftClick: () => uiDispatcher.TryEnqueue(TogglePopover),
-                onSettingsClick: () => { },
-                onAboutClick: () => { },
+                onSettingsClick: () => tray?.ShowNotification(
+                    "Settings",
+                    "Settings window is not yet implemented in the WinUI 3 spike. Use the WPF build for now."),
+                onAboutClick: () => tray?.ShowNotification(
+                    "About CodexBar",
+                    "CodexBar WinUI 3 preview (Phase 2 spike). Powered by .NET 9 + Windows App SDK 1.6."),
                 onQuitClick: () => uiDispatcher.TryEnqueue(() => Application.Current.Exit()));
 
             // Show a minimal initial icon — Update() makes it visible.
