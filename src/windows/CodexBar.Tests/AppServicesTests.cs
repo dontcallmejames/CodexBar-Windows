@@ -2,6 +2,7 @@ using CodexBar.Core.Models;
 using CodexBar.Core.Paths;
 using CodexBar.Core.Settings;
 using CodexBar.WinApp;
+using CodexBar.WinApp.Services;
 
 namespace CodexBar.Tests;
 
@@ -174,7 +175,7 @@ public sealed class AppServicesTests
                 false)
         };
 
-        var display = App.BuildTrayDisplay(snapshots);
+        var display = TrayController.SelectDisplay(snapshots, showUsageAsUsed: false);
 
         Assert.AreEqual(95, display.Percent);
         Assert.IsFalse(display.IsStale);
@@ -192,7 +193,7 @@ public sealed class AppServicesTests
         };
         var settings = AppSettings.Default with { ClaudeEnabled = false, GeminiEnabled = false };
 
-        var filtered = App.FilterSnapshotsForSettings(snapshots, settings);
+        var filtered = AppShellController.FilterSnapshotsForSettings(snapshots, settings);
 
         Assert.AreEqual(2, filtered.Count);
         Assert.AreEqual(UsageProvider.Codex, filtered[0].Provider);
@@ -208,7 +209,7 @@ public sealed class AppServicesTests
             Snapshot(UsageProvider.Claude)
         };
 
-        var seeded = App.EnsureEnabledProviderSnapshots(snapshots, AppSettings.Default);
+        var seeded = AppShellController.EnsureEnabledProviderSnapshots(snapshots, AppSettings.Default);
 
         CollectionAssert.AreEqual(
             new[] { UsageProvider.Codex, UsageProvider.Claude, UsageProvider.Cursor, UsageProvider.Gemini },
@@ -227,7 +228,7 @@ public sealed class AppServicesTests
             Directory.CreateDirectory(Path.GetDirectoryName(paths.SettingsFile)!);
             await File.WriteAllTextAsync(paths.SettingsFile, "{ definitely not json");
 
-            var settings = await App.LoadSettingsOrDefaultAsync(paths, CancellationToken.None);
+            var settings = await AppShellController.LoadSettingsOrDefaultAsync(paths, CancellationToken.None);
 
             Assert.AreEqual(AppSettings.Default, settings);
         }
@@ -238,6 +239,162 @@ public sealed class AppServicesTests
                 Directory.Delete(root, recursive: true);
             }
         }
+    }
+
+    // --- ReconfigureProviders ---
+
+    [TestMethod]
+    public void ReconfigureProviders_PreservesLongLivedInstances()
+    {
+        var root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        try
+        {
+            var paths = WindowsAppPaths.ForTest(Path.Combine(root, "home"), Path.Combine(root, "appdata"));
+            using var services = new AppServices(paths, AppSettings.Default);
+
+            var httpClientBefore = services.HttpClient;
+            var checkerBefore = services.UpdateChecker;
+            var refreshStatesBefore = services.RefreshStates;
+            var storeBefore = services.Store;
+
+            services.ReconfigureProviders(AppSettings.Default with { CursorEnabled = false });
+
+            Assert.AreSame(httpClientBefore, services.HttpClient, "HttpClient must be the same instance");
+            Assert.AreSame(checkerBefore, services.UpdateChecker, "UpdateChecker must be the same instance");
+            Assert.AreSame(refreshStatesBefore, services.RefreshStates, "RefreshStates must be the same instance");
+            Assert.AreSame(storeBefore, services.Store, "Store must be the same instance");
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void ReconfigureProviders_SwapsProviderListToMatchNewSettings()
+    {
+        var root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        try
+        {
+            var paths = WindowsAppPaths.ForTest(Path.Combine(root, "home"), Path.Combine(root, "appdata"));
+            using var services = new AppServices(paths, AppSettings.Default);
+
+            // All four enabled initially
+            CollectionAssert.AreEqual(
+                new[] { UsageProvider.Codex, UsageProvider.Claude, UsageProvider.Cursor, UsageProvider.Gemini },
+                services.Providers.Select(p => p.Provider).ToArray());
+
+            services.ReconfigureProviders(AppSettings.Default with
+            {
+                ClaudeEnabled = false,
+                CursorEnabled = false,
+                GeminiEnabled = false
+            });
+
+            CollectionAssert.AreEqual(
+                new[] { UsageProvider.Codex },
+                services.Providers.Select(p => p.Provider).ToArray());
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void ReconfigureProviders_PreservesBackoffStateAcrossSettingsChange()
+    {
+        var root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        try
+        {
+            var paths = WindowsAppPaths.ForTest(Path.Combine(root, "home"), Path.Combine(root, "appdata"));
+            using var services = new AppServices(paths, AppSettings.Default);
+
+            // Record a failure (triggers AdaptiveBackoff and sets NextAllowedAt)
+            services.RefreshStates.RecordFailure(UsageProvider.Claude, "429 Too Many Requests");
+
+            var nextAllowedBefore = services.RefreshStates.Get(UsageProvider.Claude).NextAllowedAt;
+            Assert.IsNotNull(nextAllowedBefore, "Precondition: failure should set NextAllowedAt");
+
+            // Simulate a settings save
+            services.ReconfigureProviders(AppSettings.Default with { RefreshMinutes = 10 });
+
+            var nextAllowedAfter = services.RefreshStates.Get(UsageProvider.Claude).NextAllowedAt;
+            Assert.AreEqual(nextAllowedBefore, nextAllowedAfter,
+                "Backoff window must survive ReconfigureProviders");
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void SnapshotStore_Remove_DropsProviderFromAll()
+    {
+        var store = new CodexBar.Core.Refresh.SnapshotStore();
+        store.Set(Snapshot(UsageProvider.Codex));
+        store.Set(Snapshot(UsageProvider.Claude));
+        store.Set(Snapshot(UsageProvider.Cursor));
+        store.Set(Snapshot(UsageProvider.Gemini));
+
+        store.Remove(UsageProvider.Claude);
+
+        var all = store.All();
+        Assert.AreEqual(3, all.Count);
+        Assert.IsFalse(all.Any(s => s.Provider == UsageProvider.Claude));
+        Assert.IsNull(store.Get(UsageProvider.Claude));
+    }
+
+    [TestMethod]
+    public void SnapshotStore_Remove_IsIdempotentWhenProviderAbsent()
+    {
+        var store = new CodexBar.Core.Refresh.SnapshotStore();
+        store.Set(Snapshot(UsageProvider.Codex));
+
+        // Should not throw
+        store.Remove(UsageProvider.Claude);
+
+        Assert.AreEqual(1, store.All().Count);
+    }
+
+    [TestMethod]
+    public void ApplySettings_RemovesDisabledProviderSnapshots()
+    {
+        var allProviders = new[] { UsageProvider.Codex, UsageProvider.Claude, UsageProvider.Cursor, UsageProvider.Gemini };
+
+        // Seed snapshots for all 4 providers and filter+remove as ApplySettings does
+        var store = new CodexBar.Core.Refresh.SnapshotStore();
+        foreach (var p in allProviders)
+        {
+            store.Set(Snapshot(p));
+        }
+
+        var settings = AppSettings.Default with { ClaudeEnabled = false };
+
+        // Simulate the remove step from ApplySettings
+        foreach (var provider in Enum.GetValues<UsageProvider>())
+        {
+            var enabled = provider switch
+            {
+                UsageProvider.Codex => settings.CodexEnabled,
+                UsageProvider.Claude => settings.ClaudeEnabled,
+                UsageProvider.Cursor => settings.CursorEnabled,
+                UsageProvider.Gemini => settings.GeminiEnabled,
+                _ => true
+            };
+            if (!enabled)
+            {
+                store.Remove(provider);
+            }
+        }
+
+        var remaining = store.All();
+        Assert.AreEqual(3, remaining.Count);
+        Assert.IsFalse(remaining.Any(s => s.Provider == UsageProvider.Claude));
+        Assert.IsNotNull(store.Get(UsageProvider.Codex));
+        Assert.IsNotNull(store.Get(UsageProvider.Cursor));
+        Assert.IsNotNull(store.Get(UsageProvider.Gemini));
     }
 
     private static UsageSnapshot Snapshot(UsageProvider provider) =>

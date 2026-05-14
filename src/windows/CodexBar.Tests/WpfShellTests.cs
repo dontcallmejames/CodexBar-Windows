@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Windows.Media;
+using CodexBar.WinApp.Services;
 using CodexBar.WinApp.Views;
 using MediaColor = System.Windows.Media.Color;
 
@@ -45,7 +46,7 @@ public sealed class WpfShellTests
     [TestMethod]
     public void CalculatesPopoverPositionNearBottomRightTray()
     {
-        var position = CodexBar.WinApp.App.CalculatePopoverPosition(
+        var position = WindowCoordinator.CalculatePopoverPosition(
             width: 430,
             height: 360,
             workArea: new System.Windows.Rect(0, 0, 1920, 1040),
@@ -60,7 +61,7 @@ public sealed class WpfShellTests
     [TestMethod]
     public void CalculatesPopoverMaxHeightFromTrayAnchor()
     {
-        var maxHeight = CodexBar.WinApp.App.CalculatePopoverMaxHeight(
+        var maxHeight = WindowCoordinator.CalculatePopoverMaxHeight(
             workArea: new System.Windows.Rect(0, 0, 1920, 1040),
             cursorPosition: new System.Drawing.Point(1900, 1030));
 
@@ -70,7 +71,7 @@ public sealed class WpfShellTests
     [TestMethod]
     public void CalculatesPopoverPositionWhenWindowConsumesAvailableHeight()
     {
-        var position = CodexBar.WinApp.App.CalculatePopoverPosition(
+        var position = WindowCoordinator.CalculatePopoverPosition(
             width: 372,
             height: 1002,
             workArea: new System.Windows.Rect(0, 0, 1920, 1040),
@@ -86,12 +87,12 @@ public sealed class WpfShellTests
         var workArea = new System.Windows.Rect(0, 0, 1920, 1040);
         var cursorPosition = new System.Drawing.Point(1900, 1030);
 
-        var shortPosition = CodexBar.WinApp.App.CalculatePopoverPosition(
+        var shortPosition = WindowCoordinator.CalculatePopoverPosition(
             width: 372,
             height: 420,
             workArea,
             cursorPosition);
-        var expandedPosition = CodexBar.WinApp.App.CalculatePopoverPosition(
+        var expandedPosition = WindowCoordinator.CalculatePopoverPosition(
             width: 372,
             height: 780,
             workArea,
@@ -104,89 +105,93 @@ public sealed class WpfShellTests
     [TestMethod]
     public void TrayPopoverCapturesCursorAnchorOnceForResizeRepositioning()
     {
-        var appCodePath = Path.GetFullPath(Path.Combine(
+        var lifecycleCodePath = Path.GetFullPath(Path.Combine(
             AppContext.BaseDirectory,
             "..",
             "..",
             "..",
             "..",
             "CodexBar.WinApp",
-            "App.xaml.cs"));
-        var appCode = File.ReadAllText(appCodePath);
+            "Services",
+            "WindowCoordinator.Lifecycle.cs"));
+        var lifecycleCode = File.ReadAllText(lifecycleCodePath);
 
-        StringAssert.Contains(appCode, "var cursorPosition = System.Windows.Forms.Cursor.Position;");
-        StringAssert.Contains(appCode, "window => PositionPopoverNearCursor(window, cursorPosition)");
-        Assert.IsFalse(appCode.Contains("ShowPopoverWindow(UsageProvider.Codex, PositionPopoverNearCursor)", StringComparison.Ordinal));
+        StringAssert.Contains(lifecycleCode, "var cursorPosition = System.Windows.Forms.Cursor.Position;");
+        StringAssert.Contains(lifecycleCode, "window => ApplyPopoverPositionNearCursor(window, cursorPosition)");
+        Assert.IsFalse(lifecycleCode.Contains("ShowPopoverWindow(UsageProvider.Codex, ApplyPopoverPositionNearCursor)", StringComparison.Ordinal));
     }
 
     [TestMethod]
     public void WiresPeriodicRefreshTimerFromSettings()
     {
-        var interval = CodexBar.WinApp.App.CalculateRefreshInterval(refreshMinutes: 5);
-        var minimum = CodexBar.WinApp.App.CalculateRefreshInterval(refreshMinutes: 0);
-        var appCodePath = Path.GetFullPath(Path.Combine(
+        var interval = WindowCoordinator.CalculateRefreshInterval(refreshMinutes: 5);
+        var minimum = WindowCoordinator.CalculateRefreshInterval(refreshMinutes: 0);
+        var controllerCodePath = Path.GetFullPath(Path.Combine(
             AppContext.BaseDirectory,
             "..",
             "..",
             "..",
             "..",
             "CodexBar.WinApp",
-            "App.xaml.cs"));
-        var appCode = File.ReadAllText(appCodePath);
+            "Services",
+            "AppShellController.cs"));
+        var controllerCode = File.ReadAllText(controllerCodePath);
 
         Assert.AreEqual(TimeSpan.FromMinutes(5), interval);
         Assert.AreEqual(TimeSpan.FromMinutes(1), minimum);
-        StringAssert.Contains(appCode, "DispatcherTimer");
-        StringAssert.Contains(appCode, "StartRefreshTimer(settings)");
-        StringAssert.Contains(appCode, "RefreshTimer_Tick");
+        StringAssert.Contains(controllerCode, "RefreshOrchestrator");
+        StringAssert.Contains(controllerCode, "refreshOrchestrator.Start()");
+        StringAssert.Contains(controllerCode, "OnRefreshed");
     }
 
     [TestMethod]
     public void WiresPeriodicBackgroundUpdateTimerFromSettings()
     {
-        var enabledInterval = CodexBar.WinApp.App.CalculateUpdateCheckInterval(checkForUpdatesAutomatically: true);
-        var disabledInterval = CodexBar.WinApp.App.CalculateUpdateCheckInterval(checkForUpdatesAutomatically: false);
-        var appCodePath = Path.GetFullPath(Path.Combine(
+        var enabledInterval = WindowCoordinator.CalculateUpdateCheckInterval(checkForUpdatesAutomatically: true);
+        var disabledInterval = WindowCoordinator.CalculateUpdateCheckInterval(checkForUpdatesAutomatically: false);
+        var controllerCodePath = Path.GetFullPath(Path.Combine(
             AppContext.BaseDirectory,
             "..",
             "..",
             "..",
             "..",
             "CodexBar.WinApp",
-            "App.xaml.cs"));
-        var appCode = File.ReadAllText(appCodePath);
+            "Services",
+            "AppShellController.cs"));
+        var controllerCode = File.ReadAllText(controllerCodePath);
 
         Assert.AreEqual(TimeSpan.FromHours(24), enabledInterval);
         Assert.IsNull(disabledInterval);
-        StringAssert.Contains(appCode, "StartUpdateCheckTimer(settings)");
-        StringAssert.Contains(appCode, "UpdateCheckTimer_Tick");
-        StringAssert.Contains(appCode, "CheckForUpdatesInBackgroundAsync");
-        StringAssert.Contains(appCode, "ShowUpdateAvailableNotification");
+        StringAssert.Contains(controllerCode, "UpdateNotifier");
+        StringAssert.Contains(controllerCode, "updateNotifier.Start(");
+        StringAssert.Contains(controllerCode, "CheckNowAsync");
+        StringAssert.Contains(controllerCode, "ShowUpdateAvailableNotification");
     }
 
     [TestMethod]
     public void WindowEventHandlersAreUnwiredOnClose()
     {
-        var appCodePath = Path.GetFullPath(Path.Combine(
+        var lifecycleCodePath = Path.GetFullPath(Path.Combine(
             AppContext.BaseDirectory,
             "..",
             "..",
             "..",
             "..",
             "CodexBar.WinApp",
-            "App.xaml.cs"));
-        var appCode = File.ReadAllText(appCodePath);
+            "Services",
+            "WindowCoordinator.Lifecycle.cs"));
+        var lifecycleCode = File.ReadAllText(lifecycleCodePath);
 
-        StringAssert.Contains(appCode, "UnwirePopoverWindowEvents");
-        StringAssert.Contains(appCode, "UnwireSettingsWindowEvents");
-        StringAssert.Contains(appCode, "window.SizeChanged -= Popover_SizeChanged");
-        StringAssert.Contains(appCode, "window.SettingsSaved -= SettingsWindow_SettingsSaved");
+        StringAssert.Contains(lifecycleCode, "UnwirePopoverWindowEvents");
+        StringAssert.Contains(lifecycleCode, "UnwireSettingsWindowEvents");
+        StringAssert.Contains(lifecycleCode, "window.SizeChanged -= Popover_SizeChanged");
+        StringAssert.Contains(lifecycleCode, "window.SettingsSaved -= SettingsWindow_SettingsSaved");
     }
 
     [TestMethod]
     public void CalculatesSettingsPositionNextToPopoverWhenSpaceAllows()
     {
-        var position = CodexBar.WinApp.App.CalculateSettingsPosition(
+        var position = WindowCoordinator.CalculateSettingsPosition(
             settingsWidth: 560,
             settingsHeight: 620,
             anchorLeft: 1400,
@@ -202,7 +207,7 @@ public sealed class WpfShellTests
     [TestMethod]
     public void CalculatesSettingsPositionToLeftWhenRightSideWouldOverflow()
     {
-        var position = CodexBar.WinApp.App.CalculateSettingsPosition(
+        var position = WindowCoordinator.CalculateSettingsPosition(
             settingsWidth: 560,
             settingsHeight: 620,
             anchorLeft: 2120,
@@ -218,7 +223,7 @@ public sealed class WpfShellTests
     [TestMethod]
     public void CalculatesTaskbarDockPositionNearBottomRight()
     {
-        var position = CodexBar.WinApp.App.CalculateTaskbarDockPosition(
+        var position = WindowCoordinator.CalculateTaskbarDockPosition(
             width: 320,
             height: 64,
             workArea: new System.Windows.Rect(0, 0, 2560, 1040));
@@ -230,7 +235,7 @@ public sealed class WpfShellTests
     [TestMethod]
     public void CalculatesTaskbarDockPositionWithMinimumMarginsWhenWorkAreaIsTooSmall()
     {
-        var position = CodexBar.WinApp.App.CalculateTaskbarDockPosition(
+        var position = WindowCoordinator.CalculateTaskbarDockPosition(
             width: 600,
             height: 220,
             workArea: new System.Windows.Rect(100, 50, 500, 180));
@@ -242,7 +247,7 @@ public sealed class WpfShellTests
     [TestMethod]
     public void CalculatesPopoverPositionAboveTaskbarDock()
     {
-        var position = CodexBar.WinApp.App.CalculatePopoverPositionNearDock(
+        var position = WindowCoordinator.CalculatePopoverPositionNearDock(
             width: 372,
             height: 500,
             workArea: new System.Windows.Rect(0, 0, 2560, 1040),
@@ -257,7 +262,7 @@ public sealed class WpfShellTests
     [TestMethod]
     public void CalculatesPopoverMaxHeightFromTaskbarDockAnchor()
     {
-        var maxHeight = CodexBar.WinApp.App.CalculatePopoverMaxHeightNearDock(
+        var maxHeight = WindowCoordinator.CalculatePopoverMaxHeightNearDock(
             workArea: new System.Windows.Rect(0, 0, 2560, 1040),
             dockTop: 964);
 
@@ -281,7 +286,7 @@ public sealed class WpfShellTests
 
         StringAssert.Contains(aboutXaml, "WindowStartupLocation=\"Manual\"");
         StringAssert.Contains(aboutXaml, "Width=\"320\"");
-        StringAssert.Contains(aboutXaml, "Height=\"230\"");
+        StringAssert.Contains(aboutXaml, "SizeToContent=\"Height\"");
     }
 
     [TestMethod]

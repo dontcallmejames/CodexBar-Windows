@@ -1,4 +1,5 @@
 using CodexBar.Core.Models;
+using CodexBar.Core.Refresh;
 using System.ComponentModel;
 using System.Globalization;
 using System.Runtime.CompilerServices;
@@ -17,10 +18,12 @@ public sealed class PopoverViewModel : INotifyPropertyChanged
     private string costTodayText = string.Empty;
     private string costLast30DaysText = string.Empty;
     private string statusMessage = string.Empty;
+    private string liveIndicatorText = string.Empty;
     private bool hasMetrics;
     private bool hasStatusMessage;
     private bool hasCostSection;
-    private readonly DateTimeOffset now;
+    private readonly DateTimeOffset? now;
+    private readonly ProviderRefreshStateRegistry? refreshStates;
 
     public PopoverViewModel(
         IReadOnlyList<UsageSnapshot> snapshots,
@@ -32,11 +35,13 @@ public sealed class PopoverViewModel : INotifyPropertyChanged
         Action? quit = null,
         Action? addAccount = null,
         Action? openStatusPage = null,
-        DateTimeOffset? now = null)
+        DateTimeOffset? now = null,
+        ProviderRefreshStateRegistry? refreshStates = null)
     {
         Snapshots = snapshots;
         ShowUsageAsUsed = showUsageAsUsed;
-        this.now = now ?? DateTimeOffset.Now;
+        this.now = now;
+        this.refreshStates = refreshStates;
         SelectProviderCommand = new ParameterCommand(parameter =>
         {
             if (parameter is UsageProvider provider)
@@ -147,6 +152,12 @@ public sealed class PopoverViewModel : INotifyPropertyChanged
         private set => SetField(ref hasMetrics, value);
     }
 
+    public string LiveIndicatorText
+    {
+        get => liveIndicatorText;
+        private set => SetField(ref liveIndicatorText, value);
+    }
+
     public ICommand SelectProviderCommand { get; }
     public ICommand AddAccountCommand { get; }
     public ICommand UsageDashboardCommand { get; }
@@ -179,7 +190,7 @@ public sealed class PopoverViewModel : INotifyPropertyChanged
         Metrics = BuildMetrics(selectedSnapshot);
         StatusMessage = BuildStatusMessage(selectedSnapshot);
         HasStatusMessage = !string.IsNullOrWhiteSpace(StatusMessage);
-        UpdatedText = selectedSnapshot is null ? string.Empty : $"Updated {FormatUpdatedText(selectedSnapshot.UpdatedAt, now)}";
+        UpdatedText = selectedSnapshot is null ? string.Empty : $"Updated {FormatUpdatedText(selectedSnapshot.UpdatedAt, now ?? DateTimeOffset.Now)}";
         PlanText = selectedSnapshot?.Plan ?? string.Empty;
         CostTodayText = FormatCostLine("Today", selectedSnapshot?.TodayCostUsd, selectedSnapshot?.TodayTokens);
         CostLast30DaysText = FormatCostLine("Last 30 days", selectedSnapshot?.Last30DaysCostUsd, selectedSnapshot?.Last30DaysTokens);
@@ -187,7 +198,49 @@ public sealed class PopoverViewModel : INotifyPropertyChanged
             selectedSnapshot?.TodayTokens is not null ||
             selectedSnapshot?.Last30DaysCostUsd is not null ||
             selectedSnapshot?.Last30DaysTokens is not null;
+        UpdateLiveIndicator();
     }
+
+    public void RefreshLiveIndicator()
+    {
+        UpdateLiveIndicator();
+        RefreshUpdatedText();
+    }
+
+    private void RefreshUpdatedText()
+    {
+        if (activeSnapshot is null)
+        {
+            UpdatedText = string.Empty;
+            return;
+        }
+        UpdatedText = $"Updated {FormatUpdatedText(activeSnapshot.UpdatedAt, now ?? DateTimeOffset.Now)}";
+    }
+
+    private void UpdateLiveIndicator()
+    {
+        if (refreshStates is null)
+        {
+            LiveIndicatorText = string.Empty;
+            return;
+        }
+        var last = refreshStates.Get(ActiveProvider).LastSuccess;
+        if (last is null)
+        {
+            LiveIndicatorText = "Live • Refreshing…";
+            return;
+        }
+        var currentTime = now ?? DateTimeOffset.Now;
+        var diff = currentTime - last.Value;
+        LiveIndicatorText = $"Live • updated {HumanizeDiff(diff)} ago";
+    }
+
+    private static string HumanizeDiff(TimeSpan diff) => diff switch
+    {
+        { TotalSeconds: < 60 } => $"{Math.Max(0, (int)diff.TotalSeconds)}s",
+        { TotalMinutes: < 60 } => $"{(int)diff.TotalMinutes}m",
+        _ => $"{(int)diff.TotalHours}h",
+    };
 
     private static string FormatPercent(RateWindow? window, bool showUsageAsUsed)
     {
@@ -212,11 +265,12 @@ public sealed class PopoverViewModel : INotifyPropertyChanged
             return Array.Empty<PopoverMetricViewModel>();
         }
 
+        var currentTime = now ?? DateTimeOffset.Now;
         return snapshot.Windows.Select(window => new PopoverMetricViewModel(
             window.Title,
             FormatPercentValue(window, ShowUsageAsUsed),
             $"{FormatPercent(window, ShowUsageAsUsed)} {(ShowUsageAsUsed ? "used" : "left")}",
-            window.ResetsAt is null ? string.Empty : $"Resets {FormatRelative(window.ResetsAt.Value, now)}",
+            window.ResetsAt is null ? string.Empty : $"Resets {FormatRelative(window.ResetsAt.Value, currentTime)}",
             ProgressColor(snapshot.Provider))).ToArray();
     }
 
@@ -250,9 +304,14 @@ public sealed class PopoverViewModel : INotifyPropertyChanged
     private static string FormatUpdatedText(DateTimeOffset updatedAt, DateTimeOffset now)
     {
         var delta = now - updatedAt;
-        if (delta.TotalMinutes < 1)
+        if (delta.TotalSeconds < 5)
         {
             return "just now";
+        }
+
+        if (delta.TotalMinutes < 1)
+        {
+            return $"{(int)Math.Floor(delta.TotalSeconds)}s ago";
         }
 
         if (delta.TotalHours < 1)

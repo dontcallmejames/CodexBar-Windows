@@ -1,4 +1,5 @@
 using CodexBar.WinApp;
+using CodexBar.WinApp.Services;
 using System.Net;
 using System.Text;
 
@@ -68,6 +69,73 @@ public sealed class UpdateCheckerTests
         Assert.IsFalse(result.UpdateAvailable);
         Assert.AreEqual("Update check failed. Open Releases to check manually.", result.StatusText);
         StringAssert.Contains(result.ErrorMessage, "404");
+    }
+
+    // --- UpdateNotifier immediate-check behaviour (mirrors ApplySettings fix) ---
+
+    [TestMethod]
+    public async Task UpdateNotifier_CheckNowAsync_FiresImmediatelyAfterStart()
+    {
+        // Simulates the ApplySettings path: Start(interval) then CheckNowAsync.
+        // Verifies the checker is called and LatestResult is populated.
+        int checkCount = 0;
+        var fakeChecker = new FakeUpdateChecker(() =>
+        {
+            checkCount++;
+            return Task.FromResult(new UpdateCheckResult(
+                UpdateAvailable: false,
+                LatestTag: "v1.0.0",
+                ReleaseUri: null,
+                StatusText: "Up to date",
+                ErrorMessage: null));
+        });
+
+        using var notifier = new UpdateNotifier(
+            fakeChecker,
+            _ => { },
+            CancellationToken.None);
+
+        // Start a 24h timer (won't tick during the test) then fire an immediate check
+        notifier.Start(TimeSpan.FromHours(24));
+        await notifier.CheckNowAsync(CancellationToken.None);
+
+        Assert.AreEqual(1, checkCount, "Checker should have been called exactly once by the immediate CheckNowAsync");
+        Assert.IsNotNull(notifier.LatestResult);
+        Assert.IsFalse(notifier.LatestResult!.UpdateAvailable);
+    }
+
+    [TestMethod]
+    public async Task UpdateNotifier_CheckNowAsync_CanBeCalledBeforeStart()
+    {
+        // Verifies CheckNowAsync works even when Start hasn't been called yet
+        // (edge case: toggling setting on from disabled state).
+        int checkCount = 0;
+        var fakeChecker = new FakeUpdateChecker(() =>
+        {
+            checkCount++;
+            return Task.FromResult(new UpdateCheckResult(
+                UpdateAvailable: false,
+                LatestTag: "v1.0.0",
+                ReleaseUri: null,
+                StatusText: "Up to date",
+                ErrorMessage: null));
+        });
+
+        using var notifier = new UpdateNotifier(
+            fakeChecker,
+            _ => { },
+            CancellationToken.None);
+
+        await notifier.CheckNowAsync(CancellationToken.None);
+
+        Assert.AreEqual(1, checkCount);
+    }
+
+    private sealed class FakeUpdateChecker : IUpdateChecker
+    {
+        private readonly Func<Task<UpdateCheckResult>> check;
+        public FakeUpdateChecker(Func<Task<UpdateCheckResult>> check) => this.check = check;
+        public Task<UpdateCheckResult> CheckAsync(CancellationToken cancellationToken) => check();
     }
 
     private sealed class StaticJsonHandler : HttpMessageHandler
