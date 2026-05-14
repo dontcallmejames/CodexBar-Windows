@@ -107,4 +107,31 @@ public sealed partial class WindowCoordinator
 
     public static TimeSpan? CalculateUpdateCheckInterval(bool checkForUpdatesAutomatically) =>
         checkForUpdatesAutomatically ? TimeSpan.FromHours(24) : null;
+
+    /// <summary>
+    /// Calculates the screen position for the settings/first-run window relative to an anchor.
+    /// </summary>
+    public static (double Left, double Top) CalculateSettingsPosition(
+        double settingsWidth,
+        double settingsHeight,
+        double anchorLeft,
+        double anchorTop,
+        double anchorWidth,
+        double anchorHeight,
+        System.Windows.Rect workArea)
+    {
+        const double margin = 16;
+        const double gap = 12;
+        var rightCandidate = anchorLeft + anchorWidth + gap;
+        var leftCandidate = anchorLeft - settingsWidth - gap;
+        var maxLeft = workArea.Right - settingsWidth - margin;
+        var left = rightCandidate <= maxLeft ? rightCandidate : leftCandidate;
+        var anchorCenter = anchorTop + (anchorHeight / 2);
+        var top = anchorCenter - (settingsHeight / 2);
+        var maxTop = workArea.Bottom - settingsHeight - margin;
+
+        return (
+            Math.Clamp(left, workArea.Left + margin, maxLeft),
+            Math.Clamp(top, workArea.Top + margin, maxTop));
+    }
 }
