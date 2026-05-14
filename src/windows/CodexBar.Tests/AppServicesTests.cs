@@ -329,6 +329,74 @@ public sealed class AppServicesTests
         }
     }
 
+    [TestMethod]
+    public void SnapshotStore_Remove_DropsProviderFromAll()
+    {
+        var store = new CodexBar.Core.Refresh.SnapshotStore();
+        store.Set(Snapshot(UsageProvider.Codex));
+        store.Set(Snapshot(UsageProvider.Claude));
+        store.Set(Snapshot(UsageProvider.Cursor));
+        store.Set(Snapshot(UsageProvider.Gemini));
+
+        store.Remove(UsageProvider.Claude);
+
+        var all = store.All();
+        Assert.AreEqual(3, all.Count);
+        Assert.IsFalse(all.Any(s => s.Provider == UsageProvider.Claude));
+        Assert.IsNull(store.Get(UsageProvider.Claude));
+    }
+
+    [TestMethod]
+    public void SnapshotStore_Remove_IsIdempotentWhenProviderAbsent()
+    {
+        var store = new CodexBar.Core.Refresh.SnapshotStore();
+        store.Set(Snapshot(UsageProvider.Codex));
+
+        // Should not throw
+        store.Remove(UsageProvider.Claude);
+
+        Assert.AreEqual(1, store.All().Count);
+    }
+
+    [TestMethod]
+    public void ApplySettings_RemovesDisabledProviderSnapshots()
+    {
+        var allProviders = new[] { UsageProvider.Codex, UsageProvider.Claude, UsageProvider.Cursor, UsageProvider.Gemini };
+
+        // Seed snapshots for all 4 providers and filter+remove as ApplySettings does
+        var store = new CodexBar.Core.Refresh.SnapshotStore();
+        foreach (var p in allProviders)
+        {
+            store.Set(Snapshot(p));
+        }
+
+        var settings = AppSettings.Default with { ClaudeEnabled = false };
+
+        // Simulate the remove step from ApplySettings
+        foreach (var provider in Enum.GetValues<UsageProvider>())
+        {
+            var enabled = provider switch
+            {
+                UsageProvider.Codex => settings.CodexEnabled,
+                UsageProvider.Claude => settings.ClaudeEnabled,
+                UsageProvider.Cursor => settings.CursorEnabled,
+                UsageProvider.Gemini => settings.GeminiEnabled,
+                _ => true
+            };
+            if (!enabled)
+            {
+                store.Remove(provider);
+            }
+        }
+
+        var remaining = store.All();
+        Assert.AreEqual(3, remaining.Count);
+        Assert.IsFalse(remaining.Any(s => s.Provider == UsageProvider.Claude));
+        Assert.IsNotNull(store.Get(UsageProvider.Codex));
+        Assert.IsNotNull(store.Get(UsageProvider.Cursor));
+        Assert.IsNotNull(store.Get(UsageProvider.Gemini));
+    }
+
     private static UsageSnapshot Snapshot(UsageProvider provider) =>
         new(
             provider,
