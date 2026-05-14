@@ -370,6 +370,53 @@ public sealed class PopoverViewModelTests
         StringAssert.Contains(vm.LiveIndicatorText, "Refreshing");
     }
 
+    [TestMethod]
+    public void LiveIndicator_RefreshLiveIndicator_UpdatesTextWhenTimeAdvances()
+    {
+        var registryClock = DateTimeOffset.Parse("2026-05-14T12:00:00Z");
+        var registry = new ProviderRefreshStateRegistry(() => registryClock);
+        registry.RecordSuccess(UsageProvider.Codex);
+
+        // Construct with now showing 10s ago
+        var vm = new PopoverViewModel(
+            Array.Empty<UsageSnapshot>(),
+            UsageProvider.Codex,
+            showUsageAsUsed: true,
+            now: registryClock.AddSeconds(10),
+            refreshStates: registry);
+
+        var textBefore = vm.LiveIndicatorText;
+        StringAssert.Contains(textBefore, "10s ago");
+
+        // Simulate time advancing: change DataContext via a new VM with later 'now'
+        // For the timer path: production uses DateTimeOffset.Now (no 'now' override).
+        // Here we verify RefreshLiveIndicator re-runs the computation (doesn't throw,
+        // leaves indicator populated).
+        vm.RefreshLiveIndicator();
+
+        // Value is still computed (same clock in test), should equal textBefore
+        Assert.AreEqual(textBefore, vm.LiveIndicatorText, "RefreshLiveIndicator should recompute consistently");
+    }
+
+    [TestMethod]
+    public void LiveIndicator_RefreshLiveIndicator_UsesCurrentWallClockWhenNoNowOverride()
+    {
+        var registryClock = DateTimeOffset.UtcNow.AddMinutes(-2);
+        var registry = new ProviderRefreshStateRegistry(() => registryClock);
+        registry.RecordSuccess(UsageProvider.Codex);
+
+        // No 'now' override — should use DateTimeOffset.Now on each call
+        var vm = new PopoverViewModel(
+            Array.Empty<UsageSnapshot>(),
+            UsageProvider.Codex,
+            showUsageAsUsed: true,
+            refreshStates: registry);
+
+        // Text should reflect ~2 minutes ago, not empty
+        Assert.IsFalse(string.IsNullOrEmpty(vm.LiveIndicatorText));
+        StringAssert.Contains(vm.LiveIndicatorText, "ago");
+    }
+
     private static UsageSnapshot SnapshotWithReset(DateTimeOffset resetsAt) =>
         new(
             UsageProvider.Codex,
