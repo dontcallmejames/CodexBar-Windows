@@ -241,6 +241,94 @@ public sealed class AppServicesTests
         }
     }
 
+    // --- ReconfigureProviders ---
+
+    [TestMethod]
+    public void ReconfigureProviders_PreservesLongLivedInstances()
+    {
+        var root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        try
+        {
+            var paths = WindowsAppPaths.ForTest(Path.Combine(root, "home"), Path.Combine(root, "appdata"));
+            using var services = new AppServices(paths, AppSettings.Default);
+
+            var httpClientBefore = services.HttpClient;
+            var checkerBefore = services.UpdateChecker;
+            var refreshStatesBefore = services.RefreshStates;
+            var storeBefore = services.Store;
+
+            services.ReconfigureProviders(AppSettings.Default with { CursorEnabled = false });
+
+            Assert.AreSame(httpClientBefore, services.HttpClient, "HttpClient must be the same instance");
+            Assert.AreSame(checkerBefore, services.UpdateChecker, "UpdateChecker must be the same instance");
+            Assert.AreSame(refreshStatesBefore, services.RefreshStates, "RefreshStates must be the same instance");
+            Assert.AreSame(storeBefore, services.Store, "Store must be the same instance");
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void ReconfigureProviders_SwapsProviderListToMatchNewSettings()
+    {
+        var root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        try
+        {
+            var paths = WindowsAppPaths.ForTest(Path.Combine(root, "home"), Path.Combine(root, "appdata"));
+            using var services = new AppServices(paths, AppSettings.Default);
+
+            // All four enabled initially
+            CollectionAssert.AreEqual(
+                new[] { UsageProvider.Codex, UsageProvider.Claude, UsageProvider.Cursor, UsageProvider.Gemini },
+                services.Providers.Select(p => p.Provider).ToArray());
+
+            services.ReconfigureProviders(AppSettings.Default with
+            {
+                ClaudeEnabled = false,
+                CursorEnabled = false,
+                GeminiEnabled = false
+            });
+
+            CollectionAssert.AreEqual(
+                new[] { UsageProvider.Codex },
+                services.Providers.Select(p => p.Provider).ToArray());
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void ReconfigureProviders_PreservesBackoffStateAcrossSettingsChange()
+    {
+        var root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        try
+        {
+            var paths = WindowsAppPaths.ForTest(Path.Combine(root, "home"), Path.Combine(root, "appdata"));
+            using var services = new AppServices(paths, AppSettings.Default);
+
+            // Record a failure (triggers AdaptiveBackoff and sets NextAllowedAt)
+            services.RefreshStates.RecordFailure(UsageProvider.Claude, "429 Too Many Requests");
+
+            var nextAllowedBefore = services.RefreshStates.Get(UsageProvider.Claude).NextAllowedAt;
+            Assert.IsNotNull(nextAllowedBefore, "Precondition: failure should set NextAllowedAt");
+
+            // Simulate a settings save
+            services.ReconfigureProviders(AppSettings.Default with { RefreshMinutes = 10 });
+
+            var nextAllowedAfter = services.RefreshStates.Get(UsageProvider.Claude).NextAllowedAt;
+            Assert.AreEqual(nextAllowedBefore, nextAllowedAfter,
+                "Backoff window must survive ReconfigureProviders");
+        }
+        finally
+        {
+            if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+        }
+    }
+
     private static UsageSnapshot Snapshot(UsageProvider provider) =>
         new(
             provider,
