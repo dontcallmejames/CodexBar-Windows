@@ -1,3 +1,4 @@
+using System;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Data;
@@ -10,10 +11,25 @@ namespace CodexBar.WinApp.Views;
 
 public partial class PopoverWindow : Window
 {
+    private readonly System.Windows.Threading.DispatcherTimer indicatorTimer;
+
     public PopoverWindow(PopoverViewModel viewModel)
     {
         InitializeComponent();
         DataContext = viewModel;
+        indicatorTimer = new System.Windows.Threading.DispatcherTimer
+        {
+            Interval = TimeSpan.FromSeconds(5)
+        };
+        indicatorTimer.Tick += (_, _) =>
+        {
+            if (DataContext is PopoverViewModel vm)
+            {
+                vm.RefreshLiveIndicator();
+            }
+        };
+        Loaded += (_, _) => indicatorTimer.Start();
+        Closed += (_, _) => indicatorTimer.Stop();
     }
 }
 

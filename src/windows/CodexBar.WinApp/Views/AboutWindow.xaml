@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="About CodexBar"
         Width="320"
-        Height="230"
+        SizeToContent="Height"
         ResizeMode="NoResize"
         WindowStartupLocation="Manual">
   <Grid Margin="18">
