@@ -188,42 +188,58 @@ public sealed partial class WindowCoordinator : IDisposable
 
     public void ShowSettings()
     {
-        if (settingsWindow?.IsVisible == true)
+        try
         {
-            settingsWindow.Activate();
-            return;
-        }
+            if (settingsWindow?.IsVisible == true)
+            {
+                settingsWindow.Activate();
+                return;
+            }
 
-        settingsWindow = new SettingsWindow(
-            services.Settings,
-            settingsStore,
-            services.Paths,
-            services.Store.All(),
-            services.VersionInfo,
-            LatestUpdateCheck);
-        WireSettingsWindowEvents(settingsWindow);
-        PositionWindowNearApp(settingsWindow);
-        settingsWindow.Show();
-        settingsWindow.Activate();
+            settingsWindow = new SettingsWindow(
+                services.Settings,
+                settingsStore,
+                services.Paths,
+                services.Store.All(),
+                services.VersionInfo,
+                LatestUpdateCheck);
+            WireSettingsWindowEvents(settingsWindow);
+            PositionWindowNearApp(settingsWindow);
+            settingsWindow.Show();
+            settingsWindow.Activate();
+        }
+        catch (Exception ex)
+        {
+            LogWindowError(nameof(ShowSettings), ex);
+            settingsWindow = null;
+        }
     }
 
     public void ShowFirstRunOnboarding()
     {
-        if (firstRunWindow?.IsVisible == true)
+        try
         {
-            firstRunWindow.Activate();
-            return;
-        }
+            if (firstRunWindow?.IsVisible == true)
+            {
+                firstRunWindow.Activate();
+                return;
+            }
 
-        firstRunWindow = new FirstRunWindow(
-            services.Settings,
-            settingsStore,
-            services.Paths,
-            services.Store.All());
-        WireFirstRunWindowEvents(firstRunWindow);
-        PositionWindowNearApp(firstRunWindow);
-        firstRunWindow.Show();
-        firstRunWindow.Activate();
+            firstRunWindow = new FirstRunWindow(
+                services.Settings,
+                settingsStore,
+                services.Paths,
+                services.Store.All());
+            WireFirstRunWindowEvents(firstRunWindow);
+            PositionWindowNearApp(firstRunWindow);
+            firstRunWindow.Show();
+            firstRunWindow.Activate();
+        }
+        catch (Exception ex)
+        {
+            LogWindowError(nameof(ShowFirstRunOnboarding), ex);
+            firstRunWindow = null;
+        }
     }
 
     private void WireFirstRunWindowEvents(FirstRunWindow window)
@@ -313,17 +329,36 @@ public sealed partial class WindowCoordinator : IDisposable
 
     public void ShowAbout()
     {
-        if (aboutWindow?.IsVisible == true)
+        try
         {
-            aboutWindow.Activate();
-            return;
-        }
+            if (aboutWindow?.IsVisible == true)
+            {
+                aboutWindow.Activate();
+                return;
+            }
 
-        aboutWindow = new AboutWindow();
-        aboutWindow.Closed += (_, _) => aboutWindow = null;
-        PositionWindowNearApp(aboutWindow);
-        aboutWindow.Show();
-        aboutWindow.Activate();
+            aboutWindow = new AboutWindow();
+            aboutWindow.Closed += (_, _) => aboutWindow = null;
+            PositionWindowNearApp(aboutWindow);
+            aboutWindow.Show();
+            aboutWindow.Activate();
+        }
+        catch (Exception ex)
+        {
+            LogWindowError(nameof(ShowAbout), ex);
+            aboutWindow = null;
+        }
+    }
+
+    private static void LogWindowError(string source, Exception error)
+    {
+        try
+        {
+            var path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "codexbar-crash.log");
+            var stamp = DateTimeOffset.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
+            System.IO.File.AppendAllText(path, $"[{stamp}] WindowCoordinator.{source}: {error}\n\n");
+        }
+        catch { }
     }
 
     public void UpdateTaskbarDock()
