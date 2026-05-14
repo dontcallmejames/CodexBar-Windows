@@ -66,7 +66,8 @@ public sealed partial class WindowCoordinator : IDisposable
             showAbout: ShowAbout,
             quit: quit,
             addAccount: ShowSettings,
-            openStatusPage: ShowActiveProviderStatusPage);
+            openStatusPage: ShowActiveProviderStatusPage,
+            refreshStates: services.RefreshStates);
         popover = new PopoverWindow(viewModel);
         this.positionPopover = positionPopover;
         WirePopoverWindowEvents(popover);
@@ -380,7 +381,8 @@ public sealed partial class WindowCoordinator : IDisposable
             showAbout: ShowAbout,
             quit: quit,
             addAccount: ShowSettings,
-            openStatusPage: ShowActiveProviderStatusPage);
+            openStatusPage: ShowActiveProviderStatusPage,
+            refreshStates: services.RefreshStates);
     }
 
     public void UpdateSettingsWindow()

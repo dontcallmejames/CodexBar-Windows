@@ -1,4 +1,5 @@
 using CodexBar.Core.Models;
+using CodexBar.Core.Refresh;
 using CodexBar.WinApp.ViewModels;
 
 namespace CodexBar.Tests;
@@ -299,6 +300,74 @@ public sealed class PopoverViewModelTests
         CollectionAssert.AreEqual(
             new[] { "dashboard", "settings", "about", "quit" },
             invocations);
+    }
+
+    [TestMethod]
+    public void LiveIndicator_ShowsRelativeTime_FromRegistry()
+    {
+        var registryClock = DateTimeOffset.Parse("2026-05-14T12:00:00Z");
+        var registry = new ProviderRefreshStateRegistry(() => registryClock);
+        registry.RecordSuccess(UsageProvider.Codex);
+
+        var vm = new PopoverViewModel(
+            Array.Empty<UsageSnapshot>(),
+            UsageProvider.Codex,
+            showUsageAsUsed: true,
+            now: registryClock.AddSeconds(12),
+            refreshStates: registry);
+
+        StringAssert.Contains(vm.LiveIndicatorText, "12s ago");
+    }
+
+    [TestMethod]
+    public void LiveIndicator_NoSuccessYet_ShowsRefreshing()
+    {
+        var registry = new ProviderRefreshStateRegistry(() => DateTimeOffset.UnixEpoch);
+
+        var vm = new PopoverViewModel(
+            Array.Empty<UsageSnapshot>(),
+            UsageProvider.Codex,
+            showUsageAsUsed: true,
+            refreshStates: registry);
+
+        StringAssert.Contains(vm.LiveIndicatorText, "Refreshing");
+    }
+
+    [TestMethod]
+    public void LiveIndicator_UpdatesWhenProviderSwitched()
+    {
+        var registryClock = DateTimeOffset.Parse("2026-05-14T12:00:00Z");
+        var registry = new ProviderRefreshStateRegistry(() => registryClock);
+        registry.RecordSuccess(UsageProvider.Codex);
+
+        var snapshots = new[]
+        {
+            new UsageSnapshot(
+                UsageProvider.Codex,
+                "Codex",
+                registryClock,
+                new[] { new RateWindow("session", "Session", 20, null, null) },
+                null, null, null, null, null, null, null, "test", null, false),
+            new UsageSnapshot(
+                UsageProvider.Claude,
+                "Claude",
+                registryClock,
+                new[] { new RateWindow("session", "Session", 30, null, null) },
+                null, null, null, null, null, null, null, "test", null, false)
+        };
+
+        var vm = new PopoverViewModel(
+            snapshots,
+            UsageProvider.Codex,
+            showUsageAsUsed: true,
+            now: registryClock.AddSeconds(5),
+            refreshStates: registry);
+
+        StringAssert.Contains(vm.LiveIndicatorText, "5s ago");
+
+        vm.SelectProvider(UsageProvider.Claude);
+
+        StringAssert.Contains(vm.LiveIndicatorText, "Refreshing");
     }
 
     private static UsageSnapshot SnapshotWithReset(DateTimeOffset resetsAt) =>
