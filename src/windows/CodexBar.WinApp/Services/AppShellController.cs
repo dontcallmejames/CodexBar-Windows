@@ -23,7 +23,6 @@ public sealed class AppShellController : IDisposable
     private readonly TrayController trayController;
     private readonly WindowCoordinator windowCoordinator;
     private bool started;
-    private string? lastNotifiedUpdateTag;
 
     public AppShellController(
         AppServices services,
@@ -126,8 +125,6 @@ public sealed class AppShellController : IDisposable
 
     private void ShowUpdateAvailableNotification(UpdateCheckResult result)
     {
-        if (result.LatestTag == lastNotifiedUpdateTag) return;
-        lastNotifiedUpdateTag = result.LatestTag;
         trayIconHost.ShowNotification(
             "CodexBar update available",
             $"{result.LatestTag} is available. Open Settings to download it.",
