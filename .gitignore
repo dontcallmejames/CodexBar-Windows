@@ -5,6 +5,9 @@ legacy-macos/.swiftpm/xcode/xcshareddata/
 *.env
 *.local
 
+# Claude Code per-machine state
+.claude/
+
 # Build products
 legacy-macos/.build/
 DerivedData
