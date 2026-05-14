@@ -2,6 +2,7 @@ using System.Net;
 using CodexBar.Core.Models;
 using CodexBar.Core.Paths;
 using CodexBar.Core.Providers.Claude;
+using CodexBar.Core.Refresh;
 
 namespace CodexBar.Tests;
 
@@ -120,7 +121,7 @@ public sealed class ClaudeProviderTests
     }
 
     [TestMethod]
-    public async Task OAuthThrottleThrowsSubscriptionRetryMessage()
+    public async Task OAuthThrottleThrowsRateLimitException()
     {
         var credentialsPath = await WriteCredentialsFileAsync("""
         {
@@ -137,11 +138,35 @@ public sealed class ClaudeProviderTests
         using var httpClient = new HttpClient(handler);
         var provider = new ClaudeProvider(httpClient, new TestAppPaths(credentialsPath));
 
-        var error = await Assert.ThrowsExactlyAsync<InvalidOperationException>(
+        var error = await Assert.ThrowsExactlyAsync<RateLimitException>(
             () => provider.RefreshAsync(CancellationToken.None));
 
-        StringAssert.Contains(error.Message, "Claude subscription usage is temporarily unavailable");
-        StringAssert.Contains(error.Message, "2m");
+        StringAssert.Contains(error.Message, "Claude API rate-limited");
+        Assert.AreEqual(TimeSpan.FromSeconds(120), error.RetryAfter);
+    }
+
+    [TestMethod]
+    public async Task RateLimited_ThrowsTypedExceptionWithRetryAfter()
+    {
+        var credentialsPath = await WriteCredentialsFileAsync("""
+        {
+          "claudeAiOauth": {
+            "accessToken": "access-123",
+            "refreshToken": "refresh-456",
+            "scopes": ["user:profile"]
+          }
+        }
+        """);
+        var response = new HttpResponseMessage(System.Net.HttpStatusCode.TooManyRequests);
+        response.Headers.TryAddWithoutValidation("Retry-After", "120");
+        using var handler = new QueueHandler(response);
+        using var httpClient = new HttpClient(handler);
+        var provider = new ClaudeProvider(httpClient, new TestAppPaths(credentialsPath));
+
+        var ex = await Assert.ThrowsExactlyAsync<RateLimitException>(
+            () => provider.RefreshAsync(CancellationToken.None));
+
+        Assert.AreEqual(TimeSpan.FromSeconds(120), ex.RetryAfter);
     }
 
     [TestMethod]
