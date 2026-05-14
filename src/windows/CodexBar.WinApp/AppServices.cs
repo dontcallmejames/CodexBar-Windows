@@ -30,14 +30,25 @@ public sealed class AppServices : IDisposable
     }
 
     public IAppPaths Paths { get; }
-    public AppSettings Settings { get; }
+    public AppSettings Settings { get; private set; }
     public SnapshotStore Store { get; }
     public HttpClient HttpClient { get; }
     public AppVersionInfo VersionInfo { get; }
     public IUpdateChecker UpdateChecker { get; }
-    public IReadOnlyList<IUsageProvider> Providers { get; }
+    public IReadOnlyList<IUsageProvider> Providers { get; private set; }
     public ProviderRefreshStateRegistry RefreshStates { get; }
-    public RefreshScheduler Scheduler { get; }
+    public RefreshScheduler Scheduler { get; private set; }
+
+    /// <summary>
+    /// Swaps the providers list and rebuilds the scheduler in-place, preserving HttpClient,
+    /// UpdateChecker, RefreshStates, and Store. This keeps AdaptiveBackoff history intact.
+    /// </summary>
+    public void ReconfigureProviders(AppSettings newSettings)
+    {
+        Settings = newSettings;
+        Providers = BuildProviders(newSettings);
+        Scheduler = new RefreshScheduler(Providers, Store, RefreshStates);
+    }
 
     public void Dispose()
     {
