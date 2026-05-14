@@ -126,21 +126,22 @@ public sealed class WpfShellTests
     {
         var interval = WindowCoordinator.CalculateRefreshInterval(refreshMinutes: 5);
         var minimum = WindowCoordinator.CalculateRefreshInterval(refreshMinutes: 0);
-        var appCodePath = Path.GetFullPath(Path.Combine(
+        var controllerCodePath = Path.GetFullPath(Path.Combine(
             AppContext.BaseDirectory,
             "..",
             "..",
             "..",
             "..",
             "CodexBar.WinApp",
-            "App.xaml.cs"));
-        var appCode = File.ReadAllText(appCodePath);
+            "Services",
+            "AppShellController.cs"));
+        var controllerCode = File.ReadAllText(controllerCodePath);
 
         Assert.AreEqual(TimeSpan.FromMinutes(5), interval);
         Assert.AreEqual(TimeSpan.FromMinutes(1), minimum);
-        StringAssert.Contains(appCode, "DispatcherTimer");
-        StringAssert.Contains(appCode, "StartRefreshTimer(settings)");
-        StringAssert.Contains(appCode, "RefreshTimer_Tick");
+        StringAssert.Contains(controllerCode, "RefreshOrchestrator");
+        StringAssert.Contains(controllerCode, "refreshOrchestrator.Start()");
+        StringAssert.Contains(controllerCode, "OnRefreshed");
     }
 
     [TestMethod]
@@ -148,22 +149,23 @@ public sealed class WpfShellTests
     {
         var enabledInterval = WindowCoordinator.CalculateUpdateCheckInterval(checkForUpdatesAutomatically: true);
         var disabledInterval = WindowCoordinator.CalculateUpdateCheckInterval(checkForUpdatesAutomatically: false);
-        var appCodePath = Path.GetFullPath(Path.Combine(
+        var controllerCodePath = Path.GetFullPath(Path.Combine(
             AppContext.BaseDirectory,
             "..",
             "..",
             "..",
             "..",
             "CodexBar.WinApp",
-            "App.xaml.cs"));
-        var appCode = File.ReadAllText(appCodePath);
+            "Services",
+            "AppShellController.cs"));
+        var controllerCode = File.ReadAllText(controllerCodePath);
 
         Assert.AreEqual(TimeSpan.FromHours(24), enabledInterval);
         Assert.IsNull(disabledInterval);
-        StringAssert.Contains(appCode, "StartUpdateCheckTimer(settings)");
-        StringAssert.Contains(appCode, "UpdateCheckTimer_Tick");
-        StringAssert.Contains(appCode, "CheckForUpdatesInBackgroundAsync");
-        StringAssert.Contains(appCode, "ShowUpdateAvailableNotification");
+        StringAssert.Contains(controllerCode, "UpdateNotifier");
+        StringAssert.Contains(controllerCode, "updateNotifier.Start(");
+        StringAssert.Contains(controllerCode, "CheckNowAsync");
+        StringAssert.Contains(controllerCode, "ShowUpdateAvailableNotification");
     }
 
     [TestMethod]

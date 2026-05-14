@@ -2,6 +2,7 @@ using CodexBar.Core.Models;
 using CodexBar.Core.Paths;
 using CodexBar.Core.Settings;
 using CodexBar.WinApp;
+using CodexBar.WinApp.Services;
 using CodexBar.WinApp.ViewModels;
 
 namespace CodexBar.Tests;
@@ -12,8 +13,8 @@ public sealed class FirstRunOnboardingTests
     [TestMethod]
     public void ShowsFirstRunOnboardingOnlyWhenSettingsFileIsMissing()
     {
-        Assert.IsTrue(App.ShouldShowFirstRunOnboarding(settingsFileExists: false));
-        Assert.IsFalse(App.ShouldShowFirstRunOnboarding(settingsFileExists: true));
+        Assert.IsTrue(AppShellController.ShouldShowFirstRunOnboarding(settingsFileExists: false));
+        Assert.IsFalse(AppShellController.ShouldShowFirstRunOnboarding(settingsFileExists: true));
     }
 
     [TestMethod]
@@ -139,15 +140,16 @@ public sealed class FirstRunOnboardingTests
     [TestMethod]
     public void AppWiresFirstRunOnboardingNearAppStartup()
     {
-        var appCodePath = Path.GetFullPath(Path.Combine(
+        var controllerCodePath = Path.GetFullPath(Path.Combine(
             AppContext.BaseDirectory,
             "..",
             "..",
             "..",
             "..",
             "CodexBar.WinApp",
-            "App.xaml.cs"));
-        var appCode = File.ReadAllText(appCodePath);
+            "Services",
+            "AppShellController.cs"));
+        var controllerCode = File.ReadAllText(controllerCodePath);
 
         var lifecycleCodePath = Path.GetFullPath(Path.Combine(
             AppContext.BaseDirectory,
@@ -160,8 +162,8 @@ public sealed class FirstRunOnboardingTests
             "WindowCoordinator.Lifecycle.cs"));
         var lifecycleCode = File.ReadAllText(lifecycleCodePath);
 
-        StringAssert.Contains(appCode, "ShouldShowFirstRunOnboarding(settingsFileExists)");
-        StringAssert.Contains(appCode, "ShowFirstRunOnboarding");
+        StringAssert.Contains(controllerCode, "ShouldShowFirstRunOnboarding(");
+        StringAssert.Contains(controllerCode, "ShowFirstRunOnboarding");
         StringAssert.Contains(lifecycleCode, "PositionWindowNearApp(firstRunWindow)");
         StringAssert.Contains(lifecycleCode, "FirstRunWindow_OnboardingSaved");
         StringAssert.Contains(lifecycleCode, "FirstRunWindow_OnboardingSkipped");
