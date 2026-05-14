@@ -7,23 +7,48 @@ public sealed class RefreshScheduler
 {
     private readonly IReadOnlyList<IUsageProvider> providers;
     private readonly SnapshotStore store;
+    private readonly ProviderRefreshStateRegistry registry;
+    private readonly Func<DateTimeOffset> clock;
 
-    public RefreshScheduler(IReadOnlyList<IUsageProvider> providers, SnapshotStore store)
+    public RefreshScheduler(
+        IReadOnlyList<IUsageProvider> providers,
+        SnapshotStore store,
+        ProviderRefreshStateRegistry? registry = null,
+        Func<DateTimeOffset>? clock = null)
     {
         this.providers = providers;
         this.store = store;
+        this.clock = clock ?? (() => DateTimeOffset.Now);
+        this.registry = registry ?? new ProviderRefreshStateRegistry(this.clock);
     }
+
+    public ProviderRefreshStateRegistry Registry => registry;
 
     public async Task RefreshAllAsync(CancellationToken cancellationToken)
     {
+        var now = clock();
         foreach (var provider in providers)
         {
+            if (!registry.Get(provider.Provider).IsDue(now))
+            {
+                continue;
+            }
+
+            registry.RecordAttempt(provider.Provider);
             try
             {
-                store.Set(await provider.RefreshAsync(cancellationToken));
+                var snapshot = await provider.RefreshAsync(cancellationToken);
+                store.Set(snapshot);
+                registry.RecordSuccess(provider.Provider);
+            }
+            catch (RateLimitException rl)
+            {
+                registry.RecordFailure(provider.Provider, rl.Message, rl.RetryAfter);
+                store.Set(FailedSnapshot(provider, rl.Message));
             }
             catch (Exception error) when (error is not OperationCanceledException)
             {
+                registry.RecordFailure(provider.Provider, error.Message);
                 store.Set(FailedSnapshot(provider, error.Message));
             }
         }
