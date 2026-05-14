@@ -146,7 +146,7 @@ public sealed class ClaudeProviderTests
     }
 
     [TestMethod]
-    public async Task RateLimited_ThrowsTypedExceptionWithRetryAfter()
+    public async Task ServiceUnavailable_ThrowsRateLimitExceptionWithRetryAfter()
     {
         var credentialsPath = await WriteCredentialsFileAsync("""
         {
@@ -157,8 +157,8 @@ public sealed class ClaudeProviderTests
           }
         }
         """);
-        var response = new HttpResponseMessage(System.Net.HttpStatusCode.TooManyRequests);
-        response.Headers.TryAddWithoutValidation("Retry-After", "120");
+        var response = new HttpResponseMessage(System.Net.HttpStatusCode.ServiceUnavailable);
+        response.Headers.TryAddWithoutValidation("Retry-After", "45");
         using var handler = new QueueHandler(response);
         using var httpClient = new HttpClient(handler);
         var provider = new ClaudeProvider(httpClient, new TestAppPaths(credentialsPath));
@@ -166,7 +166,8 @@ public sealed class ClaudeProviderTests
         var ex = await Assert.ThrowsExactlyAsync<RateLimitException>(
             () => provider.RefreshAsync(CancellationToken.None));
 
-        Assert.AreEqual(TimeSpan.FromSeconds(120), ex.RetryAfter);
+        Assert.AreEqual(TimeSpan.FromSeconds(45), ex.RetryAfter);
+        StringAssert.Contains(ex.Message, "503");
     }
 
     [TestMethod]
