@@ -204,6 +204,17 @@ public sealed class PopoverViewModel : INotifyPropertyChanged
     public void RefreshLiveIndicator()
     {
         UpdateLiveIndicator();
+        RefreshUpdatedText();
+    }
+
+    private void RefreshUpdatedText()
+    {
+        if (activeSnapshot is null)
+        {
+            UpdatedText = string.Empty;
+            return;
+        }
+        UpdatedText = $"Updated {FormatUpdatedText(activeSnapshot.UpdatedAt, now ?? DateTimeOffset.Now)}";
     }
 
     private void UpdateLiveIndicator()
