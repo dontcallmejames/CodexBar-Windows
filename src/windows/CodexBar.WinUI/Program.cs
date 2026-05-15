@@ -14,6 +14,11 @@ public static class Program
     public static int Main(string[] args)
     {
         WinRT.ComWrappersSupport.InitializeComWrappers();
+
+        // IMPORTANT: subscribe to NotificationInvoked BEFORE Register() — the SDK throws
+        // "Must register event handlers before calling Register()" otherwise.
+        Microsoft.Windows.AppNotifications.AppNotificationManager.Default.NotificationInvoked
+            += App.OnNotificationInvoked;
         Microsoft.Windows.AppNotifications.AppNotificationManager.Default.Register();
 
         // If another instance is already running, redirect activation to it and exit.

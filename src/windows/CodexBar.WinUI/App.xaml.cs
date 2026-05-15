@@ -53,7 +53,7 @@ public partial class App : Application
             tray.OnAboutClick = () => uiDispatcher.TryEnqueue(ShowAbout);
             tray.OnQuitClick = () => uiDispatcher.TryEnqueue(() => Application.Current.Exit());
             tray.Show();
-            Microsoft.Windows.AppNotifications.AppNotificationManager.Default.NotificationInvoked += OnNotificationInvoked;
+            // NotificationInvoked is subscribed in Program.Main before Register() — required by the SDK.
 
             // One-time tray icon render from any snapshots that may already exist.
             tray.Update(TraySelector.Build(shell.Store.All()));
@@ -200,7 +200,9 @@ public partial class App : Application
         return luminance < 128 ? CodexBarTheme.Dark : CodexBarTheme.Light;
     }
 
-    private void OnNotificationInvoked(
+    // Static because subscription happens in Program.Main before App is constructed
+    // (Windows AppNotification SDK requires handlers registered before Register()).
+    public static void OnNotificationInvoked(
         Microsoft.Windows.AppNotifications.AppNotificationManager sender,
         Microsoft.Windows.AppNotifications.AppNotificationActivatedEventArgs args)
     {
