@@ -17,9 +17,15 @@ public sealed partial class TaskbarDockWindow : Window
         ViewModel = viewModel;
         InitializeComponent();
 
-        ExtendsContentIntoTitleBar = true;
         AppWindow.IsShownInSwitchers = false;
-        AppWindow.Resize(new Windows.Graphics.SizeInt32(460, 84));
+        AppWindow.Resize(new Windows.Graphics.SizeInt32(340, 84));
+        if (AppWindow.Presenter is Microsoft.UI.Windowing.OverlappedPresenter presenter)
+        {
+            presenter.IsMaximizable = false;
+            presenter.IsMinimizable = false;
+            presenter.IsResizable = false;
+            presenter.SetBorderAndTitleBar(true, false);
+        }
 
         TrySetAcrylic();
 
