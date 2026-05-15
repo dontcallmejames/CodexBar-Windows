@@ -25,7 +25,7 @@ public sealed partial class PopoverWindow : Window
 
         ExtendsContentIntoTitleBar = true;
         AppWindow.IsShownInSwitchers = false;
-        AppWindow.Resize(new Windows.Graphics.SizeInt32(380, 480));
+        AppWindow.Resize(new Windows.Graphics.SizeInt32(440, 520));
 
         TrySetBackdrop();
         ApplyTheme(theme.Effective);
