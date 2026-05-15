@@ -132,21 +132,21 @@ function Invoke-WindowsCodeSigning {
 }
 
 if (-not $SkipPortablePackage) {
-    $packageArguments = @(
-        "-Configuration", $Configuration,
-        "-Runtime", $Runtime,
-        "-DotNet", $DotNet,
-        "-SignTool", $SignTool,
-        "-TimestampUrl", $TimestampUrl
-    )
+    $packageArguments = @{
+        Configuration = $Configuration
+        Runtime = $Runtime
+        DotNet = $DotNet
+        SignTool = $SignTool
+        TimestampUrl = $TimestampUrl
+    }
     if (-not [string]::IsNullOrWhiteSpace($SigningCertificatePath)) {
-        $packageArguments += @("-SigningCertificatePath", $SigningCertificatePath)
+        $packageArguments.SigningCertificatePath = $SigningCertificatePath
     }
     if (-not [string]::IsNullOrWhiteSpace($SigningCertificatePassword)) {
-        $packageArguments += @("-SigningCertificatePassword", $SigningCertificatePassword)
+        $packageArguments.SigningCertificatePassword = $SigningCertificatePassword
     }
     if ($SkipSigning) {
-        $packageArguments += "-SkipSigning"
+        $packageArguments.SkipSigning = $true
     }
 
     & (Join-Path $repoRoot "Scripts\package-windows.ps1") @packageArguments
