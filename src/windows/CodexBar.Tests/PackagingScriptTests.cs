@@ -45,7 +45,7 @@ public sealed class PackagingScriptTests
 
         StringAssert.Contains(script, "SigningCertificatePath");
         StringAssert.Contains(script, "Invoke-WindowsCodeSigning $appExecutablePath");
-        StringAssert.Contains(script, "CodexBar.WinApp.exe");
+        StringAssert.Contains(script, "CodexBar.WinUI.exe");
 
         var signIndex = script.IndexOf("Invoke-WindowsCodeSigning $appExecutablePath", StringComparison.Ordinal);
         var zipIndex = script.IndexOf("Compress-Archive", StringComparison.Ordinal);
@@ -121,7 +121,7 @@ public sealed class PackagingScriptTests
         StringAssert.Contains(script, "Get-FileHash");
         StringAssert.Contains(script, ".installer.exe.sha256");
         StringAssert.Contains(inno, "CodexBar for Windows");
-        StringAssert.Contains(inno, "CodexBar.WinApp.exe");
+        StringAssert.Contains(inno, "CodexBar.WinUI.exe");
         StringAssert.Contains(inno, "{group}\\CodexBar");
     }
 
@@ -164,7 +164,7 @@ public sealed class PackagingScriptTests
             "package-windows-installer.ps1"));
         var script = File.ReadAllText(scriptPath);
 
-        StringAssert.Contains(script, "$appExecutablePath = Join-Path $publishDir \"CodexBar.WinApp.exe\"");
+        StringAssert.Contains(script, "$appExecutablePath = Join-Path $publishDir \"CodexBar.WinUI.exe\"");
         StringAssert.Contains(script, "Invoke-WindowsCodeSigning $appExecutablePath");
         StringAssert.Contains(script, "Invoke-WindowsCodeSigning $installerPath");
 
