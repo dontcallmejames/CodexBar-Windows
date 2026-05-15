@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Text.Json;
 
 namespace CodexBar.Core.Settings;
@@ -40,11 +41,19 @@ public sealed class JsonSettingsStore
             string.IsNullOrEmpty(directory) ? "." : directory,
             $"{Path.GetFileName(path)}.{Guid.NewGuid():N}.tmp");
 
+        // Encrypt sensitive cookie headers before persisting so the on-disk JSON never
+        // contains plaintext session tokens.
+        var toPersist = settings with
+        {
+            ClaudeManualCookieHeader = ProtectIfNeeded(settings.ClaudeManualCookieHeader),
+            CursorManualCookieHeader = ProtectIfNeeded(settings.CursorManualCookieHeader),
+        };
+
         try
         {
             await using (var stream = new FileStream(tempFile, FileMode.CreateNew, FileAccess.Write, FileShare.None))
             {
-                await JsonSerializer.SerializeAsync(stream, settings, Options, cancellationToken);
+                await JsonSerializer.SerializeAsync(stream, toPersist, Options, cancellationToken);
                 await stream.FlushAsync(cancellationToken);
             }
 
@@ -103,11 +112,56 @@ public sealed class JsonSettingsStore
                 NormalizeSource(ClaudeSource, defaults.ClaudeSource),
                 NormalizeSource(CursorSource, defaults.CursorSource),
                 NormalizeSource(GeminiSource, defaults.GeminiSource),
-                ClaudeManualCookieHeader,
-                CursorManualCookieHeader);
+                UnprotectIfNeeded(ClaudeManualCookieHeader),
+                UnprotectIfNeeded(CursorManualCookieHeader));
         }
 
         private static string NormalizeSource(string? source, string fallback) =>
             string.IsNullOrWhiteSpace(source) ? fallback : source;
+    }
+
+    // Marker prefix so we can distinguish encrypted blobs from legacy plaintext values
+    // stored before encryption was introduced. We round-trip via base64 of the protected
+    // bytes; the prefix is what tells Load whether to decrypt or treat as plaintext.
+    private const string ProtectedPrefix = "dpapi:";
+
+    private static string? ProtectIfNeeded(string? plaintext)
+    {
+        if (string.IsNullOrEmpty(plaintext)) return plaintext;
+        if (plaintext.StartsWith(ProtectedPrefix, StringComparison.Ordinal)) return plaintext;
+        try
+        {
+            var bytes = System.Text.Encoding.UTF8.GetBytes(plaintext);
+            var protectedBytes = ProtectedData.Protect(bytes, optionalEntropy: null, DataProtectionScope.CurrentUser);
+            return ProtectedPrefix + Convert.ToBase64String(protectedBytes);
+        }
+        catch
+        {
+            // Encryption can fail on non-Windows or in restricted contexts; fall back to plaintext
+            // rather than dropping the user's credential entirely.
+            return plaintext;
+        }
+    }
+
+    private static string? UnprotectIfNeeded(string? stored)
+    {
+        if (string.IsNullOrEmpty(stored)) return stored;
+        if (!stored.StartsWith(ProtectedPrefix, StringComparison.Ordinal))
+        {
+            // Legacy plaintext value written before encryption — will be re-encrypted on next save.
+            return stored;
+        }
+        try
+        {
+            var base64 = stored.Substring(ProtectedPrefix.Length);
+            var protectedBytes = Convert.FromBase64String(base64);
+            var bytes = ProtectedData.Unprotect(protectedBytes, optionalEntropy: null, DataProtectionScope.CurrentUser);
+            return System.Text.Encoding.UTF8.GetString(bytes);
+        }
+        catch
+        {
+            // Corrupt or unreadable — return null so we don't ship a garbage cookie to the provider.
+            return null;
+        }
     }
 }

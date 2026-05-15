@@ -16,9 +16,11 @@
         <TextBlock Style="{StaticResource CaptionTextBlockStyle}"
                    Text="Inspired by Peter Steinberger's CodexBar"
                    TextWrapping="Wrap" Opacity="0.7" />
-        <HyperlinkButton Content="https://github.com/steipete/CodexBar"
+        <HyperlinkButton AutomationProperties.AutomationId="AboutGitHubLink"
+                        Content="https://github.com/steipete/CodexBar"
                         NavigateUri="https://github.com/steipete/CodexBar" />
-        <Button Content="OK"
+        <Button AutomationProperties.AutomationId="AboutOkButton"
+                Content="OK"
                 HorizontalAlignment="Right"
                 Margin="0,12,0,0"
                 Style="{StaticResource AccentButtonStyle}"

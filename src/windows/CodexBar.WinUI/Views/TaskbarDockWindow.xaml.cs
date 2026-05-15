@@ -37,12 +37,14 @@ public sealed partial class TaskbarDockWindow : Window
         };
     }
 
-    public void SetViewModel(TaskbarDockViewModel viewModel)
+    /// <summary>
+    /// Reconcile the existing VM's tile collection in place. We MUST NOT replace ViewModel
+    /// itself — the XAML's {x:Bind ViewModel.Tiles} binds to the original instance at
+    /// compile time and won't follow a reference swap.
+    /// </summary>
+    public void ReconcileFrom(System.Collections.Generic.IReadOnlyList<CodexBar.Core.Models.UsageSnapshot> snapshots, bool showUsageAsUsed)
     {
-        ViewModel = viewModel;
-        if (Content is FrameworkElement root)
-            root.DataContext = viewModel;
-        TilesRepeater.ItemsSource = viewModel.Tiles;
+        ViewModel.ReconcileFrom(snapshots, showUsageAsUsed);
     }
 
     private void TrySetAcrylic()

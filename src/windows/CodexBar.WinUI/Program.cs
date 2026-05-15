@@ -55,7 +55,13 @@ public static class Program
         }
 
         var activatedArgs = AppInstance.GetCurrent().GetActivatedEventArgs();
-        keyInstance.RedirectActivationToAsync(activatedArgs).AsTask().GetAwaiter().GetResult();
+        // Bound the wait so a stuck primary instance can't block this redirector forever.
+        // GetAwaiter().GetResult() would hang indefinitely; Wait(timeout) returns false on timeout.
+        var redirectTask = keyInstance.RedirectActivationToAsync(activatedArgs).AsTask();
+        if (!redirectTask.Wait(TimeSpan.FromSeconds(10)))
+        {
+            System.Diagnostics.Debug.WriteLine("CodexBar: RedirectActivationToAsync timed out after 10s. Exiting duplicate instance.");
+        }
         return true;
     }
 }

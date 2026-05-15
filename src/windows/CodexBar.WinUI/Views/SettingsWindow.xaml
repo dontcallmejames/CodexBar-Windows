@@ -18,58 +18,79 @@
 
                 <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="Providers" />
                 <ctk:SettingsCard Header="Codex">
-                    <ToggleSwitch IsOn="{x:Bind ViewModel.CodexEnabled, Mode=TwoWay}" />
+                    <ToggleSwitch AutomationProperties.AutomationId="SettingsCodexEnabledToggle"
+                                  IsOn="{x:Bind ViewModel.CodexEnabled, Mode=TwoWay}" />
                 </ctk:SettingsCard>
                 <ctk:SettingsCard Header="Claude">
-                    <ToggleSwitch IsOn="{x:Bind ViewModel.ClaudeEnabled, Mode=TwoWay}" />
+                    <ToggleSwitch AutomationProperties.AutomationId="SettingsClaudeEnabledToggle"
+                                  IsOn="{x:Bind ViewModel.ClaudeEnabled, Mode=TwoWay}" />
                 </ctk:SettingsCard>
                 <ctk:SettingsCard Header="Cursor">
-                    <ToggleSwitch IsOn="{x:Bind ViewModel.CursorEnabled, Mode=TwoWay}" />
+                    <ToggleSwitch AutomationProperties.AutomationId="SettingsCursorEnabledToggle"
+                                  IsOn="{x:Bind ViewModel.CursorEnabled, Mode=TwoWay}" />
                 </ctk:SettingsCard>
                 <ctk:SettingsCard Header="Gemini">
-                    <ToggleSwitch IsOn="{x:Bind ViewModel.GeminiEnabled, Mode=TwoWay}" />
+                    <ToggleSwitch AutomationProperties.AutomationId="SettingsGeminiEnabledToggle"
+                                  IsOn="{x:Bind ViewModel.GeminiEnabled, Mode=TwoWay}" />
                 </ctk:SettingsCard>
 
                 <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="Refresh" Margin="0,12,0,0" />
                 <ctk:SettingsCard Header="Refresh interval" Description="How often CodexBar queries each provider (in minutes).">
-                    <NumberBox Minimum="1" Maximum="60" Value="{x:Bind ViewModel.RefreshMinutes, Mode=TwoWay}" Width="100" SpinButtonPlacementMode="Compact" />
+                    <NumberBox x:Name="RefreshMinutesNumberBox"
+                               AutomationProperties.AutomationId="SettingsRefreshMinutesNumber"
+                               Minimum="1" Maximum="1440"
+                               Value="{x:Bind ViewModel.RefreshMinutes, Mode=TwoWay}"
+                               Width="100" SpinButtonPlacementMode="Compact" />
                 </ctk:SettingsCard>
 
                 <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="Display" Margin="0,12,0,0" />
                 <ctk:SettingsCard Header="Show taskbar dock" Description="Pin a compact overview near the taskbar.">
-                    <ToggleSwitch IsOn="{x:Bind ViewModel.DockOverviewNearTaskbar, Mode=TwoWay}" />
+                    <ToggleSwitch AutomationProperties.AutomationId="SettingsDockOverviewToggle"
+                                  IsOn="{x:Bind ViewModel.DockOverviewNearTaskbar, Mode=TwoWay}" />
                 </ctk:SettingsCard>
                 <ctk:SettingsCard Header="Show usage as used" Description="When off, shows remaining instead of used.">
-                    <ToggleSwitch IsOn="{x:Bind ViewModel.ShowUsageAsUsed, Mode=TwoWay}" />
+                    <ToggleSwitch AutomationProperties.AutomationId="SettingsShowUsageAsUsedToggle"
+                                  IsOn="{x:Bind ViewModel.ShowUsageAsUsed, Mode=TwoWay}" />
                 </ctk:SettingsCard>
 
                 <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="System" Margin="0,12,0,0" />
                 <ctk:SettingsCard Header="Launch at startup">
-                    <ToggleSwitch IsOn="{x:Bind ViewModel.LaunchAtStartup, Mode=TwoWay}" />
+                    <ToggleSwitch AutomationProperties.AutomationId="SettingsLaunchAtStartupToggle"
+                                  IsOn="{x:Bind ViewModel.LaunchAtStartup, Mode=TwoWay}" />
                 </ctk:SettingsCard>
                 <ctk:SettingsCard Header="Check for updates automatically" Description="Check GitHub releases every 24 hours.">
-                    <ToggleSwitch IsOn="{x:Bind ViewModel.CheckForUpdatesAutomatically, Mode=TwoWay}" />
+                    <ToggleSwitch AutomationProperties.AutomationId="SettingsCheckForUpdatesToggle"
+                                  IsOn="{x:Bind ViewModel.CheckForUpdatesAutomatically, Mode=TwoWay}" />
                 </ctk:SettingsCard>
 
                 <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="Advanced credentials" Margin="0,12,0,0" />
                 <ctk:SettingsCard Header="Cursor manual cookie" Description="Cookie: header from a signed-in Cursor browser request.">
-                    <TextBox Text="{x:Bind ViewModel.CursorManualCookieHeader, Mode=TwoWay}" Width="320" />
+                    <PasswordBox AutomationProperties.AutomationId="SettingsCursorCookieText"
+                                 Password="{x:Bind ViewModel.CursorManualCookieHeader, Mode=TwoWay}"
+                                 PasswordRevealMode="Peek"
+                                 Width="320" />
                 </ctk:SettingsCard>
                 <ctk:SettingsCard Header="Claude manual cookie" Description="Fallback when OAuth credentials are not available.">
-                    <TextBox Text="{x:Bind ViewModel.ClaudeManualCookieHeader, Mode=TwoWay}" Width="320" />
+                    <PasswordBox AutomationProperties.AutomationId="SettingsClaudeCookieText"
+                                 Password="{x:Bind ViewModel.ClaudeManualCookieHeader, Mode=TwoWay}"
+                                 PasswordRevealMode="Peek"
+                                 Width="320" />
                 </ctk:SettingsCard>
 
                 <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="Support" Margin="0,12,0,0" />
                 <ctk:SettingsCard Header="Report a bug" Description="Copies a redacted diagnostic summary to your clipboard and opens the GitHub issue form.">
-                    <Button Content="Report a Bug..." Command="{x:Bind ViewModel.OpenBugReportCommand}" />
+                    <Button AutomationProperties.AutomationId="SettingsReportBugButton"
+                            Content="Report a Bug..." Command="{x:Bind ViewModel.OpenBugReportCommand}" />
                 </ctk:SettingsCard>
 
             </StackPanel>
         </ScrollViewer>
 
         <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-            <Button Content="Cancel" Click="Cancel_Click" />
-            <Button Content="Save" Style="{StaticResource AccentButtonStyle}" Click="Save_Click" />
+            <Button AutomationProperties.AutomationId="SettingsCancelButton"
+                    Content="Cancel" Click="Cancel_Click" />
+            <Button AutomationProperties.AutomationId="SettingsSaveButton"
+                    Content="Save" Style="{StaticResource AccentButtonStyle}" Click="Save_Click" />
         </StackPanel>
     </Grid>
 </Window>

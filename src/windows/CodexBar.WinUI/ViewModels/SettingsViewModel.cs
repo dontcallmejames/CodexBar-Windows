@@ -19,7 +19,8 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private bool claudeEnabled;
     [ObservableProperty] private bool cursorEnabled;
     [ObservableProperty] private bool geminiEnabled;
-    [ObservableProperty] private int refreshMinutes;
+    // NumberBox.Value is double — back this with a double so the binding doesn't quietly fail.
+    [ObservableProperty] private double refreshMinutes;
     [ObservableProperty] private bool dockOverviewNearTaskbar;
     [ObservableProperty] private bool launchAtStartup;
     [ObservableProperty] private bool checkForUpdatesAutomatically;
@@ -68,7 +69,7 @@ public sealed partial class SettingsViewModel : ObservableObject
             Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(pkg);
 
             var uri = ProviderLinks.BugReportUri();
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true });
+            CodexBar.WinUI.Services.ExternalLauncher.OpenExternalUrl(uri);
         }
         catch
         {
@@ -86,11 +87,14 @@ public sealed partial class SettingsViewModel : ObservableObject
         DockOverviewNearTaskbar,
         LaunchAtStartup,
         CheckForUpdatesAutomatically,
-        RefreshMinutes,
+        ClampRefreshMinutes(),
         originalSettings.CodexSource,
         originalSettings.ClaudeSource,
         originalSettings.CursorSource,
         originalSettings.GeminiSource,
         string.IsNullOrWhiteSpace(ClaudeManualCookieHeader) ? null : ClaudeManualCookieHeader,
         string.IsNullOrWhiteSpace(CursorManualCookieHeader) ? null : CursorManualCookieHeader);
+
+    private int ClampRefreshMinutes() =>
+        (int)Math.Round(Math.Clamp(RefreshMinutes, 1, 1440));
 }
