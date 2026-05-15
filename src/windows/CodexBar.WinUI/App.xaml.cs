@@ -29,10 +29,29 @@ public partial class App : Application
     private Window? lifetimeAnchor;  // Activated then hidden — keeps app alive without visible UI.
     private Microsoft.UI.Dispatching.DispatcherQueue? uiDispatcher;
     private System.Threading.CancellationTokenSource? shutdownCts;
+    private UISettings? uiSettings;
 
     public App()
     {
         InitializeComponent();
+
+        // Catch unhandled exceptions from XAML/UI thread. Marking Handled=true keeps the app
+        // alive — without this any background-thread exception kills the process.
+        this.UnhandledException += (_, e) =>
+        {
+            try { WriteCrashLog("UnhandledException", e.Exception); } catch { /* ignore */ }
+            System.Diagnostics.Debug.WriteLine($"CodexBar UnhandledException: {e.Exception}");
+            e.Handled = true;
+        };
+
+        AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+        {
+            if (e.ExceptionObject is Exception ex)
+            {
+                try { WriteCrashLog("AppDomain.UnhandledException", ex); } catch { /* ignore */ }
+                System.Diagnostics.Debug.WriteLine($"CodexBar AppDomain.UnhandledException: {ex}");
+            }
+        };
     }
 
     protected override async void OnLaunched(LaunchActivatedEventArgs args)
@@ -104,8 +123,9 @@ public partial class App : Application
             }
 
             // Listen to live system theme changes (fires from background thread).
-            var ui = new UISettings();
-            ui.ColorValuesChanged += (_, _) =>
+            // Promoted to a field so the event subscription stays alive for the app's lifetime.
+            uiSettings = new UISettings();
+            uiSettings.ColorValuesChanged += (_, _) =>
                 uiDispatcher.TryEnqueue(() => themeListener?.Refresh());
         }
         catch (Exception ex)
@@ -202,7 +222,7 @@ public partial class App : Application
             else
             {
                 // Refresh data on each re-open so the popover doesn't show stale snapshots.
-                popover.RefreshFromStore(shell.Store.All(), shell.Settings.ShowUsageAsUsed, shell.RefreshStates);
+                popover.RefreshFromStore(shell.Store.All(), shell.Settings.ShowUsageAsUsed);
             }
 
             NativeMethods.GetCursorPos(out var pt);
@@ -245,15 +265,7 @@ public partial class App : Application
         {
             if (args.Arguments.TryGetValue("url", out var url))
             {
-                try
-                {
-                    System.Diagnostics.Process.Start(
-                        new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true });
-                }
-                catch (Exception ex)
-                {
-                    WriteCrashLog("OnNotificationInvoked", ex);
-                }
+                Services.ExternalLauncher.OpenExternalUrl(url);
             }
         }
     }
@@ -273,9 +285,7 @@ public partial class App : Application
     {
         if (popover?.ViewModel is null) return;
         var provider = popover.ViewModel.ActiveProvider;
-        var uri = uriFor(provider);
-        try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true }); }
-        catch { /* ignore */ }
+        Services.ExternalLauncher.OpenExternalUrl(uriFor(provider));
     }
 
     private void ShowSettings()
@@ -314,6 +324,13 @@ public partial class App : Application
         try { firstRunWindow?.Close(); firstRunWindow = null; } catch { /* ignore */ }
         try { dock?.Close(); dock = null; } catch { /* ignore */ }
         try { lifetimeAnchor?.Close(); lifetimeAnchor = null; } catch { /* ignore */ }
+
+        // Dispose long-lived services so their timers/HTTP clients shut down cleanly.
+        try { shutdownCts?.Cancel(); } catch { /* ignore */ }
+        try { tray?.Dispose(); tray = null; } catch { /* ignore */ }
+        try { shell?.Dispose(); shell = null; } catch { /* ignore */ }
+        try { shutdownCts?.Dispose(); shutdownCts = null; } catch { /* ignore */ }
+
         Application.Current.Exit();
     }
 

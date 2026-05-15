@@ -15,6 +15,8 @@ public sealed partial class PopoverWindow : Window
     private MicaController? micaController;
     private SystemBackdropConfiguration? backdropConfig;
     private Microsoft.UI.Dispatching.DispatcherQueueTimer? indicatorTimer;
+    private ThemeListener? themeListener;
+    private EventHandler? themeChangedHandler;
 
     public PopoverViewModel ViewModel { get; }
 
@@ -25,8 +27,7 @@ public sealed partial class PopoverWindow : Window
     /// </summary>
     public void RefreshFromStore(
         System.Collections.Generic.IReadOnlyList<UsageSnapshot> snapshots,
-        bool showUsageAsUsed,
-        CodexBar.Core.Refresh.ProviderRefreshStateRegistry refreshStates)
+        bool showUsageAsUsed)
     {
         ViewModel.UpdateSnapshots(snapshots, showUsageAsUsed);
     }
@@ -48,7 +49,9 @@ public sealed partial class PopoverWindow : Window
 
         TrySetBackdrop();
         ApplyTheme(theme.Effective);
-        theme.Changed += (_, _) => DispatcherQueue.TryEnqueue(() => ApplyTheme(theme.Effective));
+        themeListener = theme;
+        themeChangedHandler = (_, _) => DispatcherQueue.TryEnqueue(() => ApplyTheme(theme.Effective));
+        theme.Changed += themeChangedHandler;
 
         SetActiveProviderInUI(viewModel.ActiveProvider);
 
@@ -59,6 +62,12 @@ public sealed partial class PopoverWindow : Window
 
         Closed += (_, _) =>
         {
+            if (themeListener is not null && themeChangedHandler is not null)
+            {
+                themeListener.Changed -= themeChangedHandler;
+            }
+            themeListener = null;
+            themeChangedHandler = null;
             indicatorTimer?.Stop();
             indicatorTimer = null;
             acrylicController?.Dispose();
