@@ -100,7 +100,7 @@ public sealed class AppShell : IDisposable
 
         UpdateNotifier = new UpdateNotifier(
             new GitHubUpdateChecker(HttpClient, AppVersionInfo.Current),
-            result => { /* Task 13 wires AppNotification; for now, no-op */ },
+            UpdateNotificationPoster.Show,
             dispatcherQueue,
             shutdownToken);
     }
