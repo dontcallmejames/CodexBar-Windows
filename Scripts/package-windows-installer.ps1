@@ -154,7 +154,7 @@ if (-not $SkipPortablePackage) {
 
 $distRoot = Join-Path $repoRoot "dist\windows"
 $publishDir = Join-Path $distRoot "CodexBar-Windows-$version-$Runtime"
-$appExecutablePath = Join-Path $publishDir "CodexBar.WinApp.exe"
+$appExecutablePath = Join-Path $publishDir "CodexBar.WinUI.exe"
 $installerPath = Join-Path $distRoot "CodexBar-Windows-$version-$Runtime.installer.exe"
 $checksumPath = Join-Path $distRoot "CodexBar-Windows-$version-$Runtime.installer.exe.sha256"
 $issPath = Join-Path $repoRoot "installer\windows\CodexBar.iss"
