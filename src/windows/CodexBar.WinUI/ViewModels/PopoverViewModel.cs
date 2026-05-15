@@ -10,7 +10,7 @@ namespace CodexBar.WinUI.ViewModels;
 
 public sealed partial class PopoverViewModel : ObservableObject
 {
-    private readonly bool showUsageAsUsed;
+    private bool showUsageAsUsed;
     private readonly ProviderRefreshStateRegistry? refreshStates;
     private readonly DateTimeOffset? now;
     private readonly Action? openSettings;
@@ -28,7 +28,7 @@ public sealed partial class PopoverViewModel : ObservableObject
     [ObservableProperty] private string planText = string.Empty;
     [ObservableProperty] private string liveIndicatorText = string.Empty;
 
-    public IReadOnlyList<UsageSnapshot> Snapshots { get; }
+    public IReadOnlyList<UsageSnapshot> Snapshots { get; private set; }
 
     public PopoverViewModel(
         IReadOnlyList<UsageSnapshot> snapshots,
@@ -73,6 +73,20 @@ public sealed partial class PopoverViewModel : ObservableObject
 
     [RelayCommand]
     private void AddAccount() => openAddAccount?.Invoke();
+
+    /// <summary>
+    /// Replace the snapshot set in-place and re-select the active provider so the bound
+    /// XAML (which is x:Bind'd to THIS VM instance) refreshes without needing the VM
+    /// to be swapped out from under the bindings.
+    /// </summary>
+    public void UpdateSnapshots(IReadOnlyList<UsageSnapshot> snapshots, bool showUsageAsUsed)
+    {
+        Snapshots = snapshots;
+        this.showUsageAsUsed = showUsageAsUsed;
+        // Preserve the user's current tab selection if that provider is still present;
+        // otherwise SelectProvider will fall through to the first snapshot.
+        SelectProvider(ActiveProvider);
+    }
 
     public void SelectProvider(UsageProvider provider)
     {
