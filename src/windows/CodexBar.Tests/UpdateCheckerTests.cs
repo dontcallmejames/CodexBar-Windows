@@ -1,3 +1,4 @@
+using CodexBar.Core.Updates;
 using CodexBar.WinApp;
 using CodexBar.WinApp.Services;
 using System.Net;

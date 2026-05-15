@@ -1,4 +1,5 @@
 using CodexBar.Core.Models;
+using CodexBar.Core.Updates;
 using CodexBar.Core.Settings;
 using System.Reflection;
 

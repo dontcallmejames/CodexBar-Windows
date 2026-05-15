@@ -1,5 +1,6 @@
 using System.Net.Http;
 using CodexBar.Core.Models;
+using CodexBar.Core.Updates;
 using CodexBar.Core.Paths;
 using CodexBar.Core.Providers;
 using CodexBar.Core.Providers.Claude;

@@ -2,7 +2,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text.Json;
 
-namespace CodexBar.WinApp;
+namespace CodexBar.Core.Updates;
 
 public sealed record UpdateCheckResult(
     bool UpdateAvailable,
@@ -29,6 +29,7 @@ public interface IUpdateChecker
 public sealed class GitHubUpdateChecker : IUpdateChecker
 {
     private static readonly Uri ReleasesApiUri = new("https://api.github.com/repos/dontcallmejames/CodexBar-Windows/releases?per_page=20");
+    private static readonly Uri FallbackReleasesUri = new("https://github.com/dontcallmejames/CodexBar-Windows/releases");
     private readonly HttpClient httpClient;
     private readonly AppVersionInfo versionInfo;
 
@@ -61,7 +62,7 @@ public sealed class GitHubUpdateChecker : IUpdateChecker
 
             var tag = ReadString(release.Value, "tag_name");
             var uriText = ReadString(release.Value, "html_url");
-            var releaseUri = string.IsNullOrWhiteSpace(uriText) ? ProviderLinks.ReleasesUri() : new Uri(uriText);
+            var releaseUri = string.IsNullOrWhiteSpace(uriText) ? FallbackReleasesUri : new Uri(uriText);
 
             return versionInfo.IsOlderThan(tag)
                 ? UpdateCheckResult.Available(tag!, releaseUri)
