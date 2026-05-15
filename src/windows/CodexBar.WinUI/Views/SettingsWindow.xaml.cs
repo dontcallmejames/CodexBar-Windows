@@ -15,7 +15,6 @@ public sealed partial class SettingsWindow : Window
         ViewModel = viewModel;
         this.onSave = onSave;
         InitializeComponent();
-        ExtendsContentIntoTitleBar = true;
         AppWindow.IsShownInSwitchers = false;
         AppWindow.Resize(new Windows.Graphics.SizeInt32(540, 720));
         if (AppWindow.Presenter is Microsoft.UI.Windowing.OverlappedPresenter presenter)
