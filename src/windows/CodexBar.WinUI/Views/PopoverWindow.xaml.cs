@@ -11,6 +11,7 @@ namespace CodexBar.WinUI.Views;
 
 public sealed partial class PopoverWindow : Window
 {
+    private DesktopAcrylicController? acrylicController;
     private MicaController? micaController;
     private SystemBackdropConfiguration? backdropConfig;
     private Microsoft.UI.Dispatching.DispatcherQueueTimer? indicatorTimer;
@@ -26,7 +27,7 @@ public sealed partial class PopoverWindow : Window
         AppWindow.IsShownInSwitchers = false;
         AppWindow.Resize(new Windows.Graphics.SizeInt32(380, 480));
 
-        TrySetMica();
+        TrySetBackdrop();
         ApplyTheme(theme.Effective);
         theme.Changed += (_, _) => DispatcherQueue.TryEnqueue(() => ApplyTheme(theme.Effective));
 
@@ -41,26 +42,38 @@ public sealed partial class PopoverWindow : Window
         {
             indicatorTimer?.Stop();
             indicatorTimer = null;
+            acrylicController?.Dispose();
+            acrylicController = null;
             micaController?.Dispose();
             micaController = null;
             backdropConfig = null;
         };
     }
 
-    private void TrySetMica()
+    private void TrySetBackdrop()
     {
-        if (!MicaController.IsSupported())
-        {
-            return;
-        }
         backdropConfig = new SystemBackdropConfiguration
         {
             IsInputActive = true,
             Theme = SystemBackdropTheme.Default
         };
-        micaController = new MicaController { Kind = MicaKind.Base };
-        micaController.AddSystemBackdropTarget(this.As<Microsoft.UI.Composition.ICompositionSupportsSystemBackdrop>());
-        micaController.SetSystemBackdropConfiguration(backdropConfig);
+
+        // Prefer Desktop Acrylic — the translucent flyout material used by Start menu,
+        // taskbar overflow, etc. Fall back to Mica on systems where Acrylic isn't supported.
+        if (DesktopAcrylicController.IsSupported())
+        {
+            acrylicController = new DesktopAcrylicController { Kind = DesktopAcrylicKind.Default };
+            acrylicController.AddSystemBackdropTarget(this.As<Microsoft.UI.Composition.ICompositionSupportsSystemBackdrop>());
+            acrylicController.SetSystemBackdropConfiguration(backdropConfig);
+            return;
+        }
+
+        if (MicaController.IsSupported())
+        {
+            micaController = new MicaController { Kind = MicaKind.BaseAlt };
+            micaController.AddSystemBackdropTarget(this.As<Microsoft.UI.Composition.ICompositionSupportsSystemBackdrop>());
+            micaController.SetSystemBackdropConfiguration(backdropConfig);
+        }
     }
 
     private void ApplyTheme(CodexBarTheme effective)
