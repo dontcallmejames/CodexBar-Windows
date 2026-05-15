@@ -23,7 +23,6 @@ public sealed partial class PopoverWindow : Window
         ViewModel = viewModel;
         InitializeComponent();
 
-        ExtendsContentIntoTitleBar = true;
         AppWindow.IsShownInSwitchers = false;
         AppWindow.Resize(new Windows.Graphics.SizeInt32(440, 520));
         if (AppWindow.Presenter is Microsoft.UI.Windowing.OverlappedPresenter presenter)
