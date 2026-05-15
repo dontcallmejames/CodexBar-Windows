@@ -23,6 +23,7 @@ public partial class App : Application
     private PopoverWindow? popover;
     private SettingsWindow? settingsWindow;
     private AboutWindow? aboutWindow;
+    private FirstRunWindow? firstRunWindow;
     private Microsoft.UI.Dispatching.DispatcherQueue? uiDispatcher;
     private System.Threading.CancellationTokenSource? shutdownCts;
 
@@ -39,6 +40,8 @@ public partial class App : Application
         try
         {
             shutdownCts = new System.Threading.CancellationTokenSource();
+            var paths = new CodexBar.Core.Paths.WindowsAppPaths();
+            var settingsFileExisted = System.IO.File.Exists(paths.SettingsFile);
             shell = await AppHostBuilder.BuildAsync(uiDispatcher, shutdownCts.Token);
             themeListener = new ThemeListener(ProbeSystemTheme);
 
@@ -64,6 +67,11 @@ public partial class App : Application
             {
                 shell.UpdateNotifier.Start(TimeSpan.FromHours(24));
                 _ = shell.UpdateNotifier.CheckNowAsync(shutdownCts.Token);
+            }
+
+            if (!settingsFileExisted)
+            {
+                ShowFirstRun();
             }
 
             // Listen to live system theme changes (fires from background thread).
@@ -158,6 +166,32 @@ public partial class App : Application
         aboutWindow = new AboutWindow(new AboutViewModel(CodexBar.Core.Updates.AppVersionInfo.Current));
         aboutWindow.Closed += (_, _) => aboutWindow = null;
         aboutWindow.Activate();
+    }
+
+    private void ShowFirstRun()
+    {
+        if (firstRunWindow is not null) { firstRunWindow.Activate(); return; }
+        if (shell is null) return;
+
+        var vm = new FirstRunViewModel(shell.Settings);
+        firstRunWindow = new FirstRunWindow(
+            vm,
+            onGetStarted: async settings =>
+            {
+                try { await shell!.ApplySettingsAsync(settings); }
+                catch (Exception ex) { WriteCrashLog("FirstRun GetStarted", ex); }
+            },
+            onSkip: async () =>
+            {
+                try
+                {
+                    var store = new CodexBar.Core.Settings.JsonSettingsStore(shell!.Paths.SettingsFile);
+                    await store.SaveAsync(shell.Settings, default);
+                }
+                catch (Exception ex) { WriteCrashLog("FirstRun Skip", ex); }
+            });
+        firstRunWindow.Closed += (_, _) => firstRunWindow = null;
+        firstRunWindow.Activate();
     }
 
     private static class NativeMethods
