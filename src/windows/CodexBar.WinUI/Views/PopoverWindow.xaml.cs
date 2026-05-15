@@ -16,7 +16,34 @@ public sealed partial class PopoverWindow : Window
     private SystemBackdropConfiguration? backdropConfig;
     private Microsoft.UI.Dispatching.DispatcherQueueTimer? indicatorTimer;
 
-    public PopoverViewModel ViewModel { get; }
+    public PopoverViewModel ViewModel { get; private set; }
+
+    /// <summary>
+    /// Rebuilds the ViewModel from current snapshots, preserving the command callbacks
+    /// captured at construction time. Called when the popover is re-shown after Hide().
+    /// </summary>
+    public void RefreshFromStore(
+        System.Collections.Generic.IReadOnlyList<UsageSnapshot> snapshots,
+        bool showUsageAsUsed,
+        CodexBar.Core.Refresh.ProviderRefreshStateRegistry refreshStates)
+    {
+        // Build a new VM that mirrors the old one's callbacks, but with fresh snapshots.
+        ViewModel = new PopoverViewModel(
+            snapshots,
+            ViewModel.ActiveProvider,
+            showUsageAsUsed,
+            refreshStates: refreshStates,
+            openSettings: ViewModel.SettingsCommand.CanExecute(null) ? () => ViewModel.SettingsCommand.Execute(null) : null,
+            openAbout: ViewModel.AboutCommand.CanExecute(null) ? () => ViewModel.AboutCommand.Execute(null) : null,
+            quit: ViewModel.QuitCommand.CanExecute(null) ? () => ViewModel.QuitCommand.Execute(null) : null,
+            openDashboard: ViewModel.DashboardCommand.CanExecute(null) ? () => ViewModel.DashboardCommand.Execute(null) : null,
+            openStatusPage: ViewModel.StatusPageCommand.CanExecute(null) ? () => ViewModel.StatusPageCommand.Execute(null) : null,
+            openAddAccount: ViewModel.AddAccountCommand.CanExecute(null) ? () => ViewModel.AddAccountCommand.Execute(null) : null);
+        if (Content is FrameworkElement root)
+        {
+            root.DataContext = ViewModel;
+        }
+    }
 
     public PopoverWindow(PopoverViewModel viewModel, ThemeListener theme)
     {
@@ -30,7 +57,7 @@ public sealed partial class PopoverWindow : Window
             presenter.IsMaximizable = false;
             presenter.IsMinimizable = false;
             presenter.IsResizable = false;
-            presenter.SetBorderAndTitleBar(false, false);
+            presenter.SetBorderAndTitleBar(true, false);
         }
 
         TrySetBackdrop();
