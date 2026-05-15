@@ -13,6 +13,7 @@
     <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <Nullable>enable</Nullable>
+    <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
     <UseRidGraph>true</UseRidGraph>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
   </PropertyGroup>
