@@ -147,16 +147,13 @@ public partial class App : Application
                 return;
             }
 
-            var vm = new TaskbarDockViewModel(shell.Store.All(), shell.Settings.ShowUsageAsUsed);
-            if (!vm.HasTiles)
-            {
-                dock?.Close();
-                dock = null;
-                return;
-            }
+            var snapshots = shell.Store.All();
+            var showUsageAsUsed = shell.Settings.ShowUsageAsUsed;
 
             if (dock is null)
             {
+                var vm = new TaskbarDockViewModel(snapshots, showUsageAsUsed);
+                if (!vm.HasTiles) return;
                 dock = new TaskbarDockWindow(vm);
                 dock.Closed += (_, _) => dock = null;
                 PositionDock(dock);
@@ -164,7 +161,12 @@ public partial class App : Application
             }
             else
             {
-                dock.SetViewModel(vm);
+                dock.ReconcileFrom(snapshots, showUsageAsUsed);
+                if (!dock.ViewModel.HasTiles)
+                {
+                    dock.Close();
+                    dock = null;
+                }
             }
         }
         catch (Exception ex)

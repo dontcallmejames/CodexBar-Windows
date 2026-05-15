@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using CodexBar.Core.Models;
 
@@ -10,19 +11,41 @@ public sealed record TaskbarDockTileViewModel(
     string ProviderName,
     string PercentText,
     double ProgressPercent,
-    string ProgressColor,
     bool IsStale,
     bool IsEmpty);
 
 public sealed class TaskbarDockViewModel
 {
-    public IReadOnlyList<TaskbarDockTileViewModel> Tiles { get; }
+    public ObservableCollection<TaskbarDockTileViewModel> Tiles { get; } = new();
 
     public bool HasTiles => Tiles.Count > 0;
 
     public TaskbarDockViewModel(IReadOnlyList<UsageSnapshot> snapshots, bool showUsageAsUsed)
     {
-        Tiles = snapshots.Select(snapshot =>
+        foreach (var tile in BuildTiles(snapshots, showUsageAsUsed))
+        {
+            Tiles.Add(tile);
+        }
+    }
+
+    /// <summary>
+    /// Reconcile this VM's tile collection in place from the given snapshots. The window's
+    /// XAML binds to Tiles once; mutating the collection lets the ItemsRepeater react via
+    /// INotifyCollectionChanged without us swapping the ItemsSource imperatively.
+    /// </summary>
+    public void ReconcileFrom(IReadOnlyList<UsageSnapshot> snapshots, bool showUsageAsUsed)
+    {
+        Tiles.Clear();
+        foreach (var tile in BuildTiles(snapshots, showUsageAsUsed))
+        {
+            Tiles.Add(tile);
+        }
+    }
+
+    private static IEnumerable<TaskbarDockTileViewModel> BuildTiles(
+        IReadOnlyList<UsageSnapshot> snapshots, bool showUsageAsUsed)
+    {
+        return snapshots.Select(snapshot =>
         {
             var window = snapshot.Windows.FirstOrDefault();
             if (window is null)
@@ -32,7 +55,6 @@ public sealed class TaskbarDockViewModel
                     snapshot.DisplayName,
                     "--",
                     0,
-                    "#B8B2C8",
                     true,
                     true);
             }
@@ -44,19 +66,8 @@ public sealed class TaskbarDockViewModel
                 snapshot.DisplayName,
                 $"{percent:0}% {suffix}",
                 Math.Clamp(percent, 0, 100),
-                TileProgressColor(snapshot.Provider),
                 snapshot.IsStale,
                 false);
-        }).ToArray();
+        });
     }
-
-    private static string TileProgressColor(UsageProvider provider) =>
-        provider switch
-        {
-            UsageProvider.Codex => "#35D2C6",
-            UsageProvider.Claude => "#FF8C42",
-            UsageProvider.Cursor => "#7264B8",
-            UsageProvider.Gemini => "#2F82FF",
-            _ => "#35D2C6"
-        };
 }
