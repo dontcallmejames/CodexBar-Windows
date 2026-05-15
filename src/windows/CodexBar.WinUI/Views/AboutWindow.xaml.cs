@@ -11,7 +11,6 @@ public sealed partial class AboutWindow : Window
     {
         ViewModel = viewModel;
         InitializeComponent();
-        ExtendsContentIntoTitleBar = true;
         AppWindow.IsShownInSwitchers = false;
         AppWindow.Resize(new Windows.Graphics.SizeInt32(380, 340));
         if (AppWindow.Presenter is Microsoft.UI.Windowing.OverlappedPresenter presenter)

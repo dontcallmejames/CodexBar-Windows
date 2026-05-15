@@ -26,6 +26,7 @@ public partial class App : Application
     private SettingsWindow? settingsWindow;
     private AboutWindow? aboutWindow;
     private FirstRunWindow? firstRunWindow;
+    private Window? lifetimeAnchor;  // hidden window that keeps the app alive after popover closes
     private Microsoft.UI.Dispatching.DispatcherQueue? uiDispatcher;
     private System.Threading.CancellationTokenSource? shutdownCts;
 
@@ -44,6 +45,20 @@ public partial class App : Application
             shutdownCts = new System.Threading.CancellationTokenSource();
             var paths = new CodexBar.Core.Paths.WindowsAppPaths();
             var settingsFileExisted = System.IO.File.Exists(paths.SettingsFile);
+
+            // Hidden anchor window: WinUI 3 exits the process when the last XAML Window closes.
+            // The tray icon is a Win32 HWND that doesn't count, so we need at least one Window
+            // alive at all times. We never show this; only explicit Quit closes it.
+            lifetimeAnchor = new Window();
+            if (lifetimeAnchor.AppWindow is { } anchorAppWindow)
+            {
+                anchorAppWindow.IsShownInSwitchers = false;
+                if (anchorAppWindow.Presenter is Microsoft.UI.Windowing.OverlappedPresenter anchorPresenter)
+                {
+                    anchorPresenter.Minimize();
+                }
+            }
+
             shell = await AppHostBuilder.BuildAsync(uiDispatcher, shutdownCts.Token);
             themeListener = new ThemeListener(ProbeSystemTheme);
 
@@ -51,7 +66,7 @@ public partial class App : Application
             tray.LeftClick += (_, _) => uiDispatcher.TryEnqueue(TogglePopover);
             tray.OnSettingsClick = () => uiDispatcher.TryEnqueue(ShowSettings);
             tray.OnAboutClick = () => uiDispatcher.TryEnqueue(ShowAbout);
-            tray.OnQuitClick = () => uiDispatcher.TryEnqueue(() => Application.Current.Exit());
+            tray.OnQuitClick = () => uiDispatcher.TryEnqueue(QuitApp);
             tray.Show();
             // NotificationInvoked is subscribed in Program.Main before Register() — required by the SDK.
 
@@ -164,7 +179,7 @@ public partial class App : Application
                 refreshStates: shell.RefreshStates,
                 openSettings: () => dispatcher.TryEnqueue(ShowSettings),
                 openAbout: () => dispatcher.TryEnqueue(ShowAbout),
-                quit: () => dispatcher.TryEnqueue(() => Application.Current.Exit()),
+                quit: () => dispatcher.TryEnqueue(QuitApp),
                 openDashboard: () => OpenUriForActiveProvider(ProviderLinks.DashboardUri),
                 openStatusPage: () => OpenUriForActiveProvider(ProviderLinks.StatusUri),
                 openAddAccount: () => dispatcher.TryEnqueue(ShowSettings));
@@ -269,6 +284,17 @@ public partial class App : Application
         aboutWindow.Closed += (_, _) => aboutWindow = null;
         PositionNearAnchor(aboutWindow);
         aboutWindow.Activate();
+    }
+
+    private void QuitApp()
+    {
+        try
+        {
+            lifetimeAnchor?.Close();
+            lifetimeAnchor = null;
+        }
+        catch { /* ignore */ }
+        Application.Current.Exit();
     }
 
     /// <summary>
