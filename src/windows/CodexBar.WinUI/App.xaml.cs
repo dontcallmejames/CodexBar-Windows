@@ -92,7 +92,7 @@ public partial class App : Application
                 Microsoft.UI.Windowing.DisplayAreaFallback.Nearest);
             var (left, top) = PopoverPositioner.CalculateForCursor(
                 pt.X, pt.Y,
-                380, 480,
+                440, 520,
                 displayArea.WorkArea.X, displayArea.WorkArea.Y,
                 displayArea.WorkArea.Width, displayArea.WorkArea.Height);
 
