@@ -4,7 +4,7 @@ namespace CodexBar.Tests;
 public sealed class PublicReleaseDocsTests
 {
     [TestMethod]
-    public void ReadmePositionsWindowsPreviewAndCreditsOriginalProject()
+    public void ReadmePositionsWindowsAppAndPreservesUpstreamLicenseLink()
     {
         var readme = File.ReadAllText(Path.GetFullPath(Path.Combine(
             AppContext.BaseDirectory,
@@ -17,6 +17,7 @@ public sealed class PublicReleaseDocsTests
             "README.md")));
 
         StringAssert.Contains(readme, "CodexBar for Windows");
+        // MIT requires preserving the upstream attribution; we keep one link to the original.
         StringAssert.Contains(readme, "https://github.com/steipete/CodexBar");
         StringAssert.Contains(readme, "Windows 11");
         StringAssert.Contains(readme, "Cursor");
@@ -24,7 +25,7 @@ public sealed class PublicReleaseDocsTests
         StringAssert.Contains(readme, "credentials stay on your machine");
         StringAssert.Contains(readme, "## Screenshot");
         StringAssert.Contains(readme, "## Provider Support Matrix");
-        StringAssert.Contains(readme, "| Provider | Credential source | Usage status | Notes |");
+        StringAssert.Contains(readme, "| Provider | Credential source | Status | Notes |");
         StringAssert.Contains(readme, "installer");
         StringAssert.Contains(readme, "portable zip");
         StringAssert.Contains(readme, "Open Release");
@@ -91,8 +92,12 @@ public sealed class PublicReleaseDocsTests
     }
 
     [TestMethod]
-    public void ReadmeMarksMacOSArtifactsAsLegacy()
+    public void LegacyArtifactsStayUnderLegacyMacOsDirectory()
     {
+        // The README no longer needs a prominent "Legacy macOS sources" section; the legacy
+        // tree is just one bullet under Repository structure. But the FILES themselves must
+        // still exist under legacy-macos/ and NOT at the repo root (which would shadow the
+        // active Windows project structure).
         var repoRoot = Path.GetFullPath(Path.Combine(
             AppContext.BaseDirectory,
             "..",
@@ -101,13 +106,7 @@ public sealed class PublicReleaseDocsTests
             "..",
             "..",
             ".."));
-        var readme = File.ReadAllText(Path.Combine(repoRoot, "README.md"));
 
-        StringAssert.Contains(readme, "Legacy macOS sources");
-        StringAssert.Contains(readme, "`legacy-macos/`");
-        StringAssert.Contains(readme, "Package.swift");
-        StringAssert.Contains(readme, "appcast.xml");
-        StringAssert.Contains(readme, "Windows releases are built from `src/windows`");
         Assert.IsTrue(Directory.Exists(Path.Combine(repoRoot, "legacy-macos")));
         Assert.IsTrue(File.Exists(Path.Combine(repoRoot, "legacy-macos", "Package.swift")));
         Assert.IsTrue(File.Exists(Path.Combine(repoRoot, "legacy-macos", "appcast.xml")));
