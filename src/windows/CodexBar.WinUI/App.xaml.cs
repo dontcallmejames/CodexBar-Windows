@@ -3,8 +3,6 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using CodexBar.Core.Models;
-using CodexBar.Core.Tray;
-using CodexBar.Tray;
 using CodexBar.WinUI.Services;
 using CodexBar.WinUI.ViewModels;
 using CodexBar.WinUI.Views;
@@ -19,7 +17,7 @@ namespace CodexBar.WinUI;
 public partial class App : Application
 {
     private AppShell? shell;
-    private TrayIconHost? tray;
+    private TrayHost? tray;
     private ThemeListener? themeListener;
     private PopoverWindow? popover;
     private Microsoft.UI.Dispatching.DispatcherQueue? uiDispatcher;
@@ -45,18 +43,16 @@ public partial class App : Application
                 try { await shell.Scheduler.RefreshAllAsync(default); } catch { }
             });
 
-            tray = new TrayIconHost(
-                onLeftClick: () => uiDispatcher.TryEnqueue(TogglePopover),
-                onSettingsClick: () => tray?.ShowNotification(
-                    "Settings",
-                    "Settings window is not yet implemented in the WinUI 3 spike. Use the WPF build for now."),
-                onAboutClick: () => tray?.ShowNotification(
-                    "About CodexBar",
-                    "CodexBar WinUI 3 preview (Phase 2 spike). Powered by .NET 9 + Windows App SDK 1.6."),
-                onQuitClick: () => uiDispatcher.TryEnqueue(() => Application.Current.Exit()));
+            tray = new TrayHost();
+            tray.LeftClick += (_, _) => uiDispatcher.TryEnqueue(TogglePopover);
+            tray.OnQuitClick = () => uiDispatcher.TryEnqueue(() => Application.Current.Exit());
+            // OnSettingsClick / OnAboutClick wired in Task 6 (MenuFlyout). For now, leave them null
+            // so the spike still functions without a right-click menu. Task 6 fixes this.
+            tray.Show();
 
-            // Show a minimal initial icon — Update() makes it visible.
-            tray.Update(new TrayDisplayModel("CodexBar (WinUI 3 preview)", 0.0, IsStale: false));
+            // One-time tray icon render from any snapshots that may already exist.
+            // Task 4 wires shell.OnSnapshotsChanged -> tray.Update for live updates.
+            tray.Update(TraySelector.Build(shell.Store.All()));
 
             // Listen to live system theme changes (fires from background thread).
             var ui = new UISettings();
