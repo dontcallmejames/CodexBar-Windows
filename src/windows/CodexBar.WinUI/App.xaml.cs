@@ -144,41 +144,12 @@ public partial class App : Application
         var vm = new SettingsViewModel(shell.Settings);
         settingsWindow = new SettingsWindow(vm, async newSettings =>
         {
-            await PersistAndApplySettingsAsync(newSettings);
+            try { await shell!.ApplySettingsAsync(newSettings); }
+            catch (Exception ex) { WriteCrashLog("ApplySettingsAsync", ex); }
         });
         settingsWindow.Closed += (_, _) => settingsWindow = null;
         settingsWindow.Activate();
     }
-
-    private async Task PersistAndApplySettingsAsync(AppSettings newSettings)
-    {
-        if (shell is null) return;
-        try
-        {
-            var store = new JsonSettingsStore(shell.Paths.SettingsFile);
-            await store.SaveAsync(newSettings, default);
-            shell.ReconfigureProviders(newSettings);
-            // Remove snapshots for any newly-disabled providers.
-            foreach (var p in System.Enum.GetValues<UsageProvider>())
-            {
-                if (!IsEnabled(newSettings, p)) shell.Store.Remove(p);
-            }
-            await shell.RefreshOrchestrator.RefreshNowAsync(default);
-        }
-        catch (Exception ex)
-        {
-            WriteCrashLog("PersistAndApplySettingsAsync", ex);
-        }
-    }
-
-    private static bool IsEnabled(AppSettings s, UsageProvider p) => p switch
-    {
-        UsageProvider.Codex => s.CodexEnabled,
-        UsageProvider.Claude => s.ClaudeEnabled,
-        UsageProvider.Cursor => s.CursorEnabled,
-        UsageProvider.Gemini => s.GeminiEnabled,
-        _ => true,
-    };
 
     private void ShowAboutPlaceholder()
     {
