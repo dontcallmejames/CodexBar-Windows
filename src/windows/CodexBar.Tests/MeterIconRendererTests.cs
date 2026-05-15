@@ -1,3 +1,4 @@
+using CodexBar.Core.Tray;
 using CodexBar.Tray;
 using System.Drawing;
 using System.Reflection;
