@@ -3,6 +3,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using CodexBar.Core.Models;
+using CodexBar.Core.Settings;
 using CodexBar.WinUI.Services;
 using CodexBar.WinUI.ViewModels;
 using CodexBar.WinUI.Views;
@@ -20,6 +21,7 @@ public partial class App : Application
     private TrayHost? tray;
     private ThemeListener? themeListener;
     private PopoverWindow? popover;
+    private SettingsWindow? settingsWindow;
     private Microsoft.UI.Dispatching.DispatcherQueue? uiDispatcher;
     private System.Threading.CancellationTokenSource? shutdownCts;
 
@@ -41,7 +43,7 @@ public partial class App : Application
 
             tray = new TrayHost();
             tray.LeftClick += (_, _) => uiDispatcher.TryEnqueue(TogglePopover);
-            tray.OnSettingsClick = () => uiDispatcher.TryEnqueue(ShowSettingsPlaceholder);
+            tray.OnSettingsClick = () => uiDispatcher.TryEnqueue(ShowSettings);
             tray.OnAboutClick = () => uiDispatcher.TryEnqueue(ShowAboutPlaceholder);
             tray.OnQuitClick = () => uiDispatcher.TryEnqueue(() => Application.Current.Exit());
             tray.Show();
@@ -134,10 +136,49 @@ public partial class App : Application
         catch { }
     }
 
-    private void ShowSettingsPlaceholder()
+    private void ShowSettings()
     {
-        // TODO Phase 3 Task 7: replace with real Settings window.
+        if (settingsWindow is not null) { settingsWindow.Activate(); return; }
+        if (shell is null) return;
+
+        var vm = new SettingsViewModel(shell.Settings);
+        settingsWindow = new SettingsWindow(vm, async newSettings =>
+        {
+            await PersistAndApplySettingsAsync(newSettings);
+        });
+        settingsWindow.Closed += (_, _) => settingsWindow = null;
+        settingsWindow.Activate();
     }
+
+    private async Task PersistAndApplySettingsAsync(AppSettings newSettings)
+    {
+        if (shell is null) return;
+        try
+        {
+            var store = new JsonSettingsStore(shell.Paths.SettingsFile);
+            await store.SaveAsync(newSettings, default);
+            shell.ReconfigureProviders(newSettings);
+            // Remove snapshots for any newly-disabled providers.
+            foreach (var p in System.Enum.GetValues<UsageProvider>())
+            {
+                if (!IsEnabled(newSettings, p)) shell.Store.Remove(p);
+            }
+            await shell.RefreshOrchestrator.RefreshNowAsync(default);
+        }
+        catch (Exception ex)
+        {
+            WriteCrashLog("PersistAndApplySettingsAsync", ex);
+        }
+    }
+
+    private static bool IsEnabled(AppSettings s, UsageProvider p) => p switch
+    {
+        UsageProvider.Codex => s.CodexEnabled,
+        UsageProvider.Claude => s.ClaudeEnabled,
+        UsageProvider.Cursor => s.CursorEnabled,
+        UsageProvider.Gemini => s.GeminiEnabled,
+        _ => true,
+    };
 
     private void ShowAboutPlaceholder()
     {

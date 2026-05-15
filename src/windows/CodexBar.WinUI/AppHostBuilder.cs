@@ -31,6 +31,15 @@ public sealed class AppShell : IDisposable
 
     public event Action? OnSnapshotsChanged;
 
+    /// <summary>
+    /// Rebuilds the provider list from updated settings.
+    /// Call after persisting new settings so the next refresh uses the new configuration.
+    /// </summary>
+    public void ReconfigureProviders(AppSettings newSettings)
+    {
+        Scheduler.ReplaceProviders(BuildProviders(newSettings));
+    }
+
     public AppShell(AppSettings settings, DispatcherQueue dispatcherQueue, CancellationToken shutdownToken)
     {
         Paths = new WindowsAppPaths();
