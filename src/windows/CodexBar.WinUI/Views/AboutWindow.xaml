@@ -1,0 +1,27 @@
+<Window
+    x:Class="CodexBar.WinUI.Views.AboutWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="About CodexBar">
+    <StackPanel Padding="24" Spacing="8">
+        <TextBlock Style="{StaticResource TitleTextBlockStyle}" Text="CodexBar" />
+        <TextBlock Style="{StaticResource BodyTextBlockStyle}"
+                   Text="CodexBar for Windows" Opacity="0.8" />
+        <TextBlock Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.7">
+            <Run Text="Version " /><Run Text="{x:Bind ViewModel.DisplayVersion}" />
+        </TextBlock>
+        <TextBlock Style="{StaticResource CaptionTextBlockStyle}" Opacity="0.7">
+            <Run Text="Release channel: " /><Run Text="{x:Bind ViewModel.Channel}" />
+        </TextBlock>
+        <TextBlock Style="{StaticResource CaptionTextBlockStyle}"
+                   Text="Inspired by Peter Steinberger's CodexBar"
+                   TextWrapping="Wrap" Opacity="0.7" />
+        <HyperlinkButton Content="https://github.com/steipete/CodexBar"
+                        NavigateUri="https://github.com/steipete/CodexBar" />
+        <Button Content="OK"
+                HorizontalAlignment="Right"
+                Margin="0,12,0,0"
+                Style="{StaticResource AccentButtonStyle}"
+                Click="Ok_Click" />
+    </StackPanel>
+</Window>
