@@ -43,21 +43,27 @@ public sealed class TrayHost : IDisposable
 
     private MenuFlyout BuildContextMenu()
     {
+        // NOTE: H.NotifyIcon.WinUI's ContextFlyout doesn't reliably route MenuFlyoutItem.Click
+        // events in unpackaged WinUI 3 apps (no XAML root context). Use Command bindings instead
+        // — those fire correctly without depending on the visual tree.
         var menu = new MenuFlyout();
 
-        var settings = new MenuFlyoutItem { Text = "Settings..." };
-        settings.Click += (_, _) => OnSettingsClick?.Invoke();
-        menu.Items.Add(settings);
-
-        var about = new MenuFlyoutItem { Text = "About CodexBar" };
-        about.Click += (_, _) => OnAboutClick?.Invoke();
-        menu.Items.Add(about);
-
+        menu.Items.Add(new MenuFlyoutItem
+        {
+            Text = "Settings...",
+            Command = new RelayCommand(() => OnSettingsClick?.Invoke())
+        });
+        menu.Items.Add(new MenuFlyoutItem
+        {
+            Text = "About CodexBar",
+            Command = new RelayCommand(() => OnAboutClick?.Invoke())
+        });
         menu.Items.Add(new MenuFlyoutSeparator());
-
-        var quit = new MenuFlyoutItem { Text = "Quit" };
-        quit.Click += (_, _) => OnQuitClick?.Invoke();
-        menu.Items.Add(quit);
+        menu.Items.Add(new MenuFlyoutItem
+        {
+            Text = "Quit",
+            Command = new RelayCommand(() => OnQuitClick?.Invoke())
+        });
 
         return menu;
     }
