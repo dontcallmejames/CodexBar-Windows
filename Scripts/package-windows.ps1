@@ -132,18 +132,21 @@ if (Test-Path -LiteralPath $checksumPath) {
 New-Item -ItemType Directory -Path $distRoot -Force | Out-Null
 
 # dotnet publish
-& $DotNet publish `
-    (Join-Path $repoRoot "src\windows\CodexBar.WinUI\CodexBar.WinUI.csproj") `
-    -c $Configuration `
-    -r $Runtime `
-    --self-contained true `
-    -p:Version=$version `
-    -p:InformationalVersion=$version `
-    -p:IncludeSourceRevisionInInformationalVersion=false `
-    -p:BuildNumber=$buildNumber `
-    -p:WindowsPreviewNumber=$windowsPreviewNumber `
-    -o $publishDir `
-    --verbosity minimal
+$publishArgs = @(
+    'publish',
+    (Join-Path $repoRoot "src\windows\CodexBar.WinUI\CodexBar.WinUI.csproj"),
+    '-c', $Configuration,
+    '-r', $Runtime,
+    '--self-contained', 'true',
+    "-p:Version=$version",
+    "-p:InformationalVersion=$version",
+    '-p:IncludeSourceRevisionInInformationalVersion=false',
+    "-p:BuildNumber=$buildNumber",
+    "-p:WindowsPreviewNumber=$windowsPreviewNumber",
+    '-o', $publishDir,
+    '--verbosity', 'minimal'
+)
+& $DotNet @publishArgs
 
 $appExecutablePath = Join-Path $publishDir "CodexBar.WinUI.exe"
 Invoke-WindowsCodeSigning $appExecutablePath

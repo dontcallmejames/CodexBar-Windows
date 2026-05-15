@@ -174,12 +174,14 @@ if ($SkipPortablePackage) {
     Invoke-WindowsCodeSigning $appExecutablePath
 }
 
-& $iscc `
-    "/DAppVersion=$version" `
-    "/DAppRuntime=$Runtime" `
-    "/DPublishDir=$publishDir" `
-    "/DOutputDir=$distRoot" `
+$isccArgs = @(
+    "/DAppVersion=$version",
+    "/DAppRuntime=$Runtime",
+    "/DPublishDir=$publishDir",
+    "/DOutputDir=$distRoot",
     $issPath
+)
+& $iscc @isccArgs
 
 Invoke-WindowsCodeSigning $installerPath
 
