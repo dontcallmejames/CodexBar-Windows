@@ -7,6 +7,18 @@
     xmlns:core="using:CodexBar.Core.Models">
 
     <Grid Padding="16" RowSpacing="12">
+        <!-- WinUI 3's Window class has no Resources property — put styles on the root content element instead. -->
+        <Grid.Resources>
+            <Style x:Key="FooterIconButton" TargetType="Button">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="BorderBrush" Value="Transparent" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="Padding" Value="6" />
+                <Setter Property="MinWidth" Value="32" />
+                <Setter Property="MinHeight" Value="32" />
+            </Style>
+        </Grid.Resources>
+
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -103,32 +115,32 @@
                        Text="{x:Bind ViewModel.LiveIndicatorText, Mode=OneWay}" />
 
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2">
-                <Button Style="{StaticResource SubtleButtonStyle}"
+                <Button Style="{StaticResource FooterIconButton}"
                         Command="{x:Bind ViewModel.AddAccountCommand}"
                         ToolTipService.ToolTip="Add Account">
                     <FontIcon Glyph="&#xE710;" FontSize="14" />
                 </Button>
-                <Button Style="{StaticResource SubtleButtonStyle}"
+                <Button Style="{StaticResource FooterIconButton}"
                         Command="{x:Bind ViewModel.DashboardCommand}"
                         ToolTipService.ToolTip="Open Dashboard">
                     <FontIcon Glyph="&#xE9D2;" FontSize="14" />
                 </Button>
-                <Button Style="{StaticResource SubtleButtonStyle}"
+                <Button Style="{StaticResource FooterIconButton}"
                         Command="{x:Bind ViewModel.StatusPageCommand}"
                         ToolTipService.ToolTip="Status Page">
                     <FontIcon Glyph="&#xE9D9;" FontSize="14" />
                 </Button>
-                <Button Style="{StaticResource SubtleButtonStyle}"
+                <Button Style="{StaticResource FooterIconButton}"
                         Command="{x:Bind ViewModel.SettingsCommand}"
                         ToolTipService.ToolTip="Settings">
                     <FontIcon Glyph="&#xE713;" FontSize="14" />
                 </Button>
-                <Button Style="{StaticResource SubtleButtonStyle}"
+                <Button Style="{StaticResource FooterIconButton}"
                         Command="{x:Bind ViewModel.AboutCommand}"
                         ToolTipService.ToolTip="About">
                     <FontIcon Glyph="&#xE946;" FontSize="14" />
                 </Button>
-                <Button Style="{StaticResource SubtleButtonStyle}"
+                <Button Style="{StaticResource FooterIconButton}"
                         Command="{x:Bind ViewModel.QuitCommand}"
                         ToolTipService.ToolTip="Quit">
                     <FontIcon Glyph="&#xE8BB;" FontSize="14" />
