@@ -69,7 +69,7 @@ public sealed partial class SettingsViewModel : ObservableObject
             Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(pkg);
 
             var uri = ProviderLinks.BugReportUri();
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true });
+            CodexBar.WinUI.Services.ExternalLauncher.OpenExternalUrl(uri);
         }
         catch
         {

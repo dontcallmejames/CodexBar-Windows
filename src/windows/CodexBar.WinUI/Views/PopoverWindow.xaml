@@ -34,10 +34,10 @@
             IsSettingsVisible="False"
             SelectionChanged="ProviderNav_SelectionChanged">
             <controls:NavigationView.MenuItems>
-                <controls:NavigationViewItem Content="Codex" Tag="Codex" />
-                <controls:NavigationViewItem Content="Claude" Tag="Claude" />
-                <controls:NavigationViewItem Content="Cursor" Tag="Cursor" />
-                <controls:NavigationViewItem Content="Gemini" Tag="Gemini" />
+                <controls:NavigationViewItem AutomationProperties.AutomationId="PopoverTabCodex" Content="Codex" Tag="Codex" />
+                <controls:NavigationViewItem AutomationProperties.AutomationId="PopoverTabClaude" Content="Claude" Tag="Claude" />
+                <controls:NavigationViewItem AutomationProperties.AutomationId="PopoverTabCursor" Content="Cursor" Tag="Cursor" />
+                <controls:NavigationViewItem AutomationProperties.AutomationId="PopoverTabGemini" Content="Gemini" Tag="Gemini" />
             </controls:NavigationView.MenuItems>
         </controls:NavigationView>
 
@@ -116,31 +116,43 @@
 
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2">
                 <Button Style="{StaticResource FooterIconButton}"
+                        AutomationProperties.AutomationId="PopoverAddAccountButton"
+                        AutomationProperties.Name="Add Account"
                         Command="{x:Bind ViewModel.AddAccountCommand}"
                         ToolTipService.ToolTip="Add Account">
                     <FontIcon Glyph="&#xE710;" FontSize="14" />
                 </Button>
                 <Button Style="{StaticResource FooterIconButton}"
+                        AutomationProperties.AutomationId="PopoverDashboardButton"
+                        AutomationProperties.Name="Open Dashboard"
                         Command="{x:Bind ViewModel.DashboardCommand}"
                         ToolTipService.ToolTip="Open Dashboard">
                     <FontIcon Glyph="&#xE9D2;" FontSize="14" />
                 </Button>
                 <Button Style="{StaticResource FooterIconButton}"
+                        AutomationProperties.AutomationId="PopoverStatusButton"
+                        AutomationProperties.Name="Status Page"
                         Command="{x:Bind ViewModel.StatusPageCommand}"
                         ToolTipService.ToolTip="Status Page">
                     <FontIcon Glyph="&#xE9D9;" FontSize="14" />
                 </Button>
                 <Button Style="{StaticResource FooterIconButton}"
+                        AutomationProperties.AutomationId="PopoverSettingsButton"
+                        AutomationProperties.Name="Settings"
                         Command="{x:Bind ViewModel.SettingsCommand}"
                         ToolTipService.ToolTip="Settings">
                     <FontIcon Glyph="&#xE713;" FontSize="14" />
                 </Button>
                 <Button Style="{StaticResource FooterIconButton}"
+                        AutomationProperties.AutomationId="PopoverAboutButton"
+                        AutomationProperties.Name="About"
                         Command="{x:Bind ViewModel.AboutCommand}"
                         ToolTipService.ToolTip="About">
                     <FontIcon Glyph="&#xE946;" FontSize="14" />
                 </Button>
                 <Button Style="{StaticResource FooterIconButton}"
+                        AutomationProperties.AutomationId="PopoverQuitButton"
+                        AutomationProperties.Name="Quit"
                         Command="{x:Bind ViewModel.QuitCommand}"
                         ToolTipService.ToolTip="Quit">
                     <FontIcon Glyph="&#xE8BB;" FontSize="14" />
