@@ -1,0 +1,75 @@
+<Window
+    x:Class="CodexBar.WinUI.Views.SettingsWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:ctk="using:CommunityToolkit.WinUI.Controls"
+    Title="CodexBar Settings">
+    <Grid Padding="24" RowSpacing="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Style="{StaticResource TitleTextBlockStyle}" Text="Settings" />
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel Spacing="12">
+
+                <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="Providers" />
+                <ctk:SettingsCard Header="Codex">
+                    <ToggleSwitch IsOn="{x:Bind ViewModel.CodexEnabled, Mode=TwoWay}" />
+                </ctk:SettingsCard>
+                <ctk:SettingsCard Header="Claude">
+                    <ToggleSwitch IsOn="{x:Bind ViewModel.ClaudeEnabled, Mode=TwoWay}" />
+                </ctk:SettingsCard>
+                <ctk:SettingsCard Header="Cursor">
+                    <ToggleSwitch IsOn="{x:Bind ViewModel.CursorEnabled, Mode=TwoWay}" />
+                </ctk:SettingsCard>
+                <ctk:SettingsCard Header="Gemini">
+                    <ToggleSwitch IsOn="{x:Bind ViewModel.GeminiEnabled, Mode=TwoWay}" />
+                </ctk:SettingsCard>
+
+                <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="Refresh" Margin="0,12,0,0" />
+                <ctk:SettingsCard Header="Refresh interval" Description="How often CodexBar queries each provider (in minutes).">
+                    <NumberBox Minimum="1" Maximum="60" Value="{x:Bind ViewModel.RefreshMinutes, Mode=TwoWay}" Width="100" SpinButtonPlacementMode="Compact" />
+                </ctk:SettingsCard>
+
+                <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="Display" Margin="0,12,0,0" />
+                <ctk:SettingsCard Header="Show taskbar dock" Description="Pin a compact overview near the taskbar.">
+                    <ToggleSwitch IsOn="{x:Bind ViewModel.DockOverviewNearTaskbar, Mode=TwoWay}" />
+                </ctk:SettingsCard>
+                <ctk:SettingsCard Header="Show usage as used" Description="When off, shows remaining instead of used.">
+                    <ToggleSwitch IsOn="{x:Bind ViewModel.ShowUsageAsUsed, Mode=TwoWay}" />
+                </ctk:SettingsCard>
+
+                <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="System" Margin="0,12,0,0" />
+                <ctk:SettingsCard Header="Launch at startup">
+                    <ToggleSwitch IsOn="{x:Bind ViewModel.LaunchAtStartup, Mode=TwoWay}" />
+                </ctk:SettingsCard>
+                <ctk:SettingsCard Header="Check for updates automatically" Description="Check GitHub releases every 24 hours.">
+                    <ToggleSwitch IsOn="{x:Bind ViewModel.CheckForUpdatesAutomatically, Mode=TwoWay}" />
+                </ctk:SettingsCard>
+
+                <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="Advanced credentials" Margin="0,12,0,0" />
+                <ctk:SettingsCard Header="Cursor manual cookie" Description="Cookie: header from a signed-in Cursor browser request.">
+                    <TextBox Text="{x:Bind ViewModel.CursorManualCookieHeader, Mode=TwoWay}" Width="320" />
+                </ctk:SettingsCard>
+                <ctk:SettingsCard Header="Claude manual cookie" Description="Fallback when OAuth credentials are not available.">
+                    <TextBox Text="{x:Bind ViewModel.ClaudeManualCookieHeader, Mode=TwoWay}" Width="320" />
+                </ctk:SettingsCard>
+
+                <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="Support" Margin="0,12,0,0" />
+                <ctk:SettingsCard Header="Report a bug" Description="Copies a redacted diagnostic summary to your clipboard and opens the GitHub issue form.">
+                    <Button Content="Report a Bug..." Command="{x:Bind ViewModel.OpenBugReportCommand}" />
+                </ctk:SettingsCard>
+
+            </StackPanel>
+        </ScrollViewer>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+            <Button Content="Cancel" Click="Cancel_Click" />
+            <Button Content="Save" Style="{StaticResource AccentButtonStyle}" Click="Save_Click" />
+        </StackPanel>
+    </Grid>
+</Window>

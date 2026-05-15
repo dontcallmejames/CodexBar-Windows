@@ -1,4 +1,4 @@
-using CodexBar.WinApp;
+using CodexBar.Core.Updates;
 
 namespace CodexBar.Tests;
 

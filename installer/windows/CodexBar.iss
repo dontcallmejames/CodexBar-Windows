@@ -33,7 +33,7 @@ WizardStyle=modern
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 PrivilegesRequired=lowest
-UninstallDisplayIcon={app}\CodexBar.WinApp.exe
+UninstallDisplayIcon={app}\CodexBar.WinUI.exe
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Additional shortcuts:"; Flags: unchecked
@@ -42,9 +42,9 @@ Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription:
 Source: "{#PublishDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{group}\CodexBar"; Filename: "{app}\CodexBar.WinApp.exe"
+Name: "{group}\CodexBar"; Filename: "{app}\CodexBar.WinUI.exe"
 Name: "{group}\Uninstall CodexBar"; Filename: "{uninstallexe}"
-Name: "{userdesktop}\CodexBar"; Filename: "{app}\CodexBar.WinApp.exe"; Tasks: desktopicon
+Name: "{userdesktop}\CodexBar"; Filename: "{app}\CodexBar.WinUI.exe"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\CodexBar.WinApp.exe"; Description: "Launch CodexBar"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\CodexBar.WinUI.exe"; Description: "Launch CodexBar"; Flags: nowait postinstall skipifsilent

@@ -1,0 +1,54 @@
+<Window
+    x:Class="CodexBar.WinUI.Views.FirstRunWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:ctk="using:CommunityToolkit.WinUI.Controls"
+    Title="Welcome to CodexBar">
+    <Grid Padding="24" RowSpacing="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Style="{StaticResource TitleTextBlockStyle}" Text="Welcome to CodexBar" />
+        <TextBlock Grid.Row="1" Style="{StaticResource BodyTextBlockStyle}" TextWrapping="Wrap"
+                   Text="Pick the providers you want to track. You can change these later in Settings."
+                   Opacity="0.85" />
+
+        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+            <StackPanel Spacing="8">
+                <ctk:SettingsCard Header="Enable Codex" Description="Codex CLI OAuth credentials.">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <HyperlinkButton Content="Help" Click="CodexHelp_Click" />
+                        <ToggleSwitch IsOn="{x:Bind ViewModel.CodexEnabled, Mode=TwoWay}" />
+                    </StackPanel>
+                </ctk:SettingsCard>
+                <ctk:SettingsCard Header="Enable Claude" Description="Claude CLI OAuth credentials.">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <HyperlinkButton Content="Help" Click="ClaudeHelp_Click" />
+                        <ToggleSwitch IsOn="{x:Bind ViewModel.ClaudeEnabled, Mode=TwoWay}" />
+                    </StackPanel>
+                </ctk:SettingsCard>
+                <ctk:SettingsCard Header="Enable Cursor" Description="Manual Cookie: header.">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <HyperlinkButton Content="Help" Click="CursorHelp_Click" />
+                        <ToggleSwitch IsOn="{x:Bind ViewModel.CursorEnabled, Mode=TwoWay}" />
+                    </StackPanel>
+                </ctk:SettingsCard>
+                <ctk:SettingsCard Header="Enable Gemini" Description="Gemini CLI OAuth credentials.">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <HyperlinkButton Content="Help" Click="GeminiHelp_Click" />
+                        <ToggleSwitch IsOn="{x:Bind ViewModel.GeminiEnabled, Mode=TwoWay}" />
+                    </StackPanel>
+                </ctk:SettingsCard>
+            </StackPanel>
+        </ScrollViewer>
+
+        <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+            <Button Content="Skip" Click="Skip_Click" />
+            <Button Content="Get Started" Style="{StaticResource AccentButtonStyle}" Click="GetStarted_Click" />
+        </StackPanel>
+    </Grid>
+</Window>
