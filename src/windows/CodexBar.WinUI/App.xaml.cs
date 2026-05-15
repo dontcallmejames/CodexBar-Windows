@@ -21,6 +21,7 @@ public partial class App : Application
     private ThemeListener? themeListener;
     private PopoverWindow? popover;
     private Microsoft.UI.Dispatching.DispatcherQueue? uiDispatcher;
+    private System.Threading.CancellationTokenSource? shutdownCts;
 
     public App()
     {
@@ -34,14 +35,9 @@ public partial class App : Application
 
         try
         {
-            shell = await AppHostBuilder.BuildAsync();
+            shutdownCts = new System.Threading.CancellationTokenSource();
+            shell = await AppHostBuilder.BuildAsync(uiDispatcher, shutdownCts.Token);
             themeListener = new ThemeListener(ProbeSystemTheme);
-
-            // One-shot refresh on startup, fire-and-forget.
-            _ = Task.Run(async () =>
-            {
-                try { await shell.Scheduler.RefreshAllAsync(default); } catch { }
-            });
 
             tray = new TrayHost();
             tray.LeftClick += (_, _) => uiDispatcher.TryEnqueue(TogglePopover);
@@ -51,8 +47,21 @@ public partial class App : Application
             tray.Show();
 
             // One-time tray icon render from any snapshots that may already exist.
-            // Task 4 wires shell.OnSnapshotsChanged -> tray.Update for live updates.
             tray.Update(TraySelector.Build(shell.Store.All()));
+
+            // Wire live updates: every completed refresh updates the tray icon.
+            shell.OnSnapshotsChanged += () => uiDispatcher.TryEnqueue(() =>
+                tray?.Update(TraySelector.Build(shell.Store.All())));
+
+            // Fire one immediate refresh + start the periodic timer.
+            _ = shell.RefreshOrchestrator.RefreshNowAsync(shutdownCts.Token);
+            shell.RefreshOrchestrator.Start();
+
+            if (shell.Settings.CheckForUpdatesAutomatically)
+            {
+                shell.UpdateNotifier.Start(TimeSpan.FromHours(24));
+                _ = shell.UpdateNotifier.CheckNowAsync(shutdownCts.Token);
+            }
 
             // Listen to live system theme changes (fires from background thread).
             var ui = new UISettings();

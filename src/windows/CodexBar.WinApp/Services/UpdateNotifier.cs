@@ -1,3 +1,5 @@
+using CodexBar.Core.Updates;
+
 namespace CodexBar.WinApp.Services;
 
 public sealed class UpdateNotifier : IDisposable
