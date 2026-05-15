@@ -15,6 +15,8 @@ Supports **Codex, Claude, Cursor, and Gemini.** Reads local CLI credentials dire
 
 Download the latest release from the [Releases](https://github.com/dontcallmejames/CodexBar-Windows/releases) page. Most users want the `.installer.exe`. A portable zip is also published for users who don't want an installer.
 
+Both the installer and the app executable are signed with **Azure Trusted Signing** (Microsoft ID Verified Code Signing). Authenticode reports `Status: Valid` and the publisher is verified by Microsoft; SmartScreen reputation builds over time as downloads accumulate.
+
 Requirements:
 - **Windows 11** (Windows 10 22H2 may work but isn't a target)
 - **.NET 9 runtime** is bundled in the release artifacts (self-contained)
@@ -45,6 +47,8 @@ Requirements:
 - **Taskbar dock** (optional): a compact strip pinned near the taskbar showing all providers at once.
 - **First-run onboarding**, Settings with Fluent SettingsCard layout, About window, native MenuFlyout right-click menu.
 - **Automatic update checks** against GitHub Releases (24-hour cadence, off by default). The app surfaces updates via a Windows AppNotification banner; clicking Open Release takes you to the release page. Updates are not auto-installed.
+- **DPAPI-encrypted secrets**: manual cookie headers (Claude, Cursor) are encrypted at rest with Windows DPAPI tied to your user profile. Plaintext values from older installs are migrated on next save.
+- **Accessibility**: every interactive control exposes an `AutomationId` and icon-only buttons expose an accessible `Name`, so Narrator and UI automation tools can navigate the app end-to-end.
 
 ## Updates
 
@@ -63,6 +67,8 @@ Setup notes per provider:
 CodexBar reads known credential/configuration files for enabled providers and queries the matching provider endpoint directly. **Provider credentials stay on your machine** and are never sent to any CodexBar-operated service.
 
 The app doesn't crawl your disk. It checks specific paths like `%USERPROFILE%\.codex\auth.json`, `%USERPROFILE%\.claude\.credentials.json`, and `%USERPROFILE%\.gemini\oauth_creds.json`, plus any manual cookie text you paste into Settings.
+
+Manual cookie headers entered in Settings are encrypted at rest with Windows DPAPI under your current user profile — the on-disk value is unusable on a different machine or under a different Windows account.
 
 ## Known limitations
 
