@@ -63,7 +63,12 @@ public sealed class PublicReleaseDocsTests
         StringAssert.Contains(releaseChecklist, "CodexBar-Windows");
         StringAssert.Contains(releaseChecklist, ".installer.exe");
         StringAssert.Contains(releaseChecklist, "Windows signing");
-        StringAssert.Contains(signingGuide, "CODEXBAR_SIGNING_CERTIFICATE_BASE64");
+        StringAssert.Contains(signingGuide, "Azure Trusted Signing");
+        StringAssert.Contains(signingGuide, "TRUSTED_SIGNING_ENDPOINT");
+        StringAssert.Contains(signingGuide, "TRUSTED_SIGNING_ACCOUNT_NAME");
+        StringAssert.Contains(signingGuide, "TRUSTED_SIGNING_PROFILE_NAME");
+        StringAssert.Contains(signingGuide, "AZURE_CLIENT_ID");
+        StringAssert.Contains(signingGuide, "OIDC");
         StringAssert.Contains(signingGuide, "CODEXBAR_SIGNING_CERTIFICATE_PASSWORD");
         StringAssert.Contains(signingGuide, "signtool");
         StringAssert.Contains(signingGuide, "SmartScreen");

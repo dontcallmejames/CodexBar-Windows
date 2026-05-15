@@ -34,10 +34,13 @@ jobs:
     timeout-minutes: 30
     needs: build-test
     if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+      id-token: write  # required for OIDC federation to Microsoft Entra
     env:
-      CODEXBAR_SIGNING_CERTIFICATE_BASE64: ${{ secrets.CODEXBAR_SIGNING_CERTIFICATE_BASE64 }}
-      CODEXBAR_SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.CODEXBAR_SIGNING_CERTIFICATE_PASSWORD }}
-      CODEXBAR_SIGNING_TIMESTAMP_URL: ${{ vars.CODEXBAR_SIGNING_TIMESTAMP_URL }}
+      TRUSTED_SIGNING_ENDPOINT: ${{ vars.TRUSTED_SIGNING_ENDPOINT }}
+      TRUSTED_SIGNING_ACCOUNT_NAME: ${{ vars.TRUSTED_SIGNING_ACCOUNT_NAME }}
+      TRUSTED_SIGNING_PROFILE_NAME: ${{ vars.TRUSTED_SIGNING_PROFILE_NAME }}
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-dotnet@v5
@@ -46,20 +49,88 @@ jobs:
       - name: Install Inno Setup
         shell: pwsh
         run: choco install innosetup --no-progress -y
-      - name: Decode signing certificate
-        if: env.CODEXBAR_SIGNING_CERTIFICATE_BASE64 != ''
+
+      - name: Build unsigned packages
+        shell: pwsh
+        run: ./Scripts/package-windows-installer.ps1 -DotNet dotnet -SkipSigning
+
+      - name: Check Trusted Signing availability
+        id: signing-availability
         shell: pwsh
         run: |
-          $certificatePath = Join-Path $env:RUNNER_TEMP "codexbar-signing.pfx"
-          [IO.File]::WriteAllBytes($certificatePath, [Convert]::FromBase64String($env:CODEXBAR_SIGNING_CERTIFICATE_BASE64))
-          "CODEXBAR_SIGNING_CERTIFICATE_PATH=$certificatePath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-      - name: Signing unavailable
-        if: env.CODEXBAR_SIGNING_CERTIFICATE_BASE64 == ''
+          $configured = (-not [string]::IsNullOrWhiteSpace($env:TRUSTED_SIGNING_ENDPOINT)) -and `
+                        (-not [string]::IsNullOrWhiteSpace($env:TRUSTED_SIGNING_ACCOUNT_NAME)) -and `
+                        (-not [string]::IsNullOrWhiteSpace($env:TRUSTED_SIGNING_PROFILE_NAME))
+          "configured=$($configured.ToString().ToLower())" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          if (-not $configured) {
+              Write-Host "::notice::Trusted Signing variables not set; publishing unsigned assets."
+          } else {
+              Write-Host "Trusted Signing configured. Signing CodexBar.WinUI.exe and installer."
+          }
+
+      - name: Azure login (OIDC)
+        if: steps.signing-availability.outputs.configured == 'true'
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Stage portable exe for signing
+        if: steps.signing-availability.outputs.configured == 'true'
         shell: pwsh
-        run: Write-Host "Skipping code signing because CODEXBAR_SIGNING_CERTIFICATE_BASE64 is not configured."
-      - name: Package signed assets
+        run: |
+          $zip = Get-ChildItem dist/windows/*.zip | Select-Object -First 1
+          if ($null -eq $zip) { throw "No portable zip found in dist/windows/." }
+          $stage = Join-Path $env:RUNNER_TEMP "sign-stage"
+          if (Test-Path -LiteralPath $stage) { Remove-Item -LiteralPath $stage -Recurse -Force }
+          Expand-Archive -Path $zip.FullName -DestinationPath $stage -Force
+          "STAGE_DIR=$stage" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "ZIP_PATH=$($zip.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Sign CodexBar.WinUI.exe via Trusted Signing
+        if: steps.signing-availability.outputs.configured == 'true'
+        uses: azure/trusted-signing-action@v0.5.1
+        with:
+          endpoint: ${{ env.TRUSTED_SIGNING_ENDPOINT }}
+          trusted-signing-account-name: ${{ env.TRUSTED_SIGNING_ACCOUNT_NAME }}
+          certificate-profile-name: ${{ env.TRUSTED_SIGNING_PROFILE_NAME }}
+          files-folder: ${{ env.STAGE_DIR }}
+          files-folder-filter: exe
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+
+      - name: Re-zip signed portable and refresh checksum
+        if: steps.signing-availability.outputs.configured == 'true'
         shell: pwsh
-        run: ./Scripts/package-windows-installer.ps1 -DotNet dotnet
+        run: |
+          Remove-Item -LiteralPath $env:ZIP_PATH -Force
+          Compress-Archive -Path (Join-Path $env:STAGE_DIR '*') -DestinationPath $env:ZIP_PATH
+          $hash = Get-FileHash -Algorithm SHA256 -LiteralPath $env:ZIP_PATH
+          "$($hash.Hash.ToLowerInvariant())  $(Split-Path -Leaf $env:ZIP_PATH)" | Set-Content -LiteralPath "$($env:ZIP_PATH).sha256" -Encoding ascii
+
+      - name: Sign installer via Trusted Signing
+        if: steps.signing-availability.outputs.configured == 'true'
+        uses: azure/trusted-signing-action@v0.5.1
+        with:
+          endpoint: ${{ env.TRUSTED_SIGNING_ENDPOINT }}
+          trusted-signing-account-name: ${{ env.TRUSTED_SIGNING_ACCOUNT_NAME }}
+          certificate-profile-name: ${{ env.TRUSTED_SIGNING_PROFILE_NAME }}
+          files-folder: dist/windows
+          files-folder-filter: exe
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+
+      - name: Refresh installer checksum
+        if: steps.signing-availability.outputs.configured == 'true'
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem dist/windows/*.installer.exe | Select-Object -First 1
+          $hash = Get-FileHash -Algorithm SHA256 -LiteralPath $installer.FullName
+          "$($hash.Hash.ToLowerInvariant())  $(Split-Path -Leaf $installer.FullName)" | Set-Content -LiteralPath "$($installer.FullName).sha256" -Encoding ascii
+
       - name: Upload portable artifact
         uses: actions/upload-artifact@v5
         with:

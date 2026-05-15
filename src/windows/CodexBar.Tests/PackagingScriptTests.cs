@@ -199,7 +199,7 @@ public sealed class PackagingScriptTests
     }
 
     [TestMethod]
-    public void WindowsWorkflowBuildsPortableZipThroughInstallerScriptSoExecutableIsSigned()
+    public void WindowsWorkflowBuildsPortableZipThroughInstallerScriptWithDeferredSigning()
     {
         var workflowPath = Path.GetFullPath(Path.Combine(
             AppContext.BaseDirectory,
@@ -214,13 +214,14 @@ public sealed class PackagingScriptTests
             "windows.yml"));
         var workflow = File.ReadAllText(workflowPath);
 
-        StringAssert.Contains(workflow, "Package signed assets");
-        StringAssert.Contains(workflow, "./Scripts/package-windows-installer.ps1 -DotNet dotnet");
+        // Packaging produces unsigned binaries first; the workflow signs them via
+        // Trusted Signing afterwards so checksums match the signed bytes on disk.
+        StringAssert.Contains(workflow, "./Scripts/package-windows-installer.ps1 -DotNet dotnet -SkipSigning");
         Assert.IsFalse(workflow.Contains("-SkipPortablePackage", StringComparison.Ordinal));
     }
 
     [TestMethod]
-    public void WindowsWorkflowDecodesSigningCertificateOnlyWhenSecretExists()
+    public void WindowsWorkflowSignsViaAzureTrustedSigningWhenConfigured()
     {
         var workflowPath = Path.GetFullPath(Path.Combine(
             AppContext.BaseDirectory,
@@ -235,11 +236,24 @@ public sealed class PackagingScriptTests
             "windows.yml"));
         var workflow = File.ReadAllText(workflowPath);
 
-        StringAssert.Contains(workflow, "CODEXBAR_SIGNING_CERTIFICATE_BASE64");
-        StringAssert.Contains(workflow, "CODEXBAR_SIGNING_CERTIFICATE_PASSWORD");
-        StringAssert.Contains(workflow, "Decode signing certificate");
-        StringAssert.Contains(workflow, "if: env.CODEXBAR_SIGNING_CERTIFICATE_BASE64 != ''");
-        StringAssert.Contains(workflow, "CODEXBAR_SIGNING_CERTIFICATE_PATH");
-        StringAssert.Contains(workflow, "Skipping code signing");
+        // OIDC federation to Microsoft Entra requires the id-token permission and azure/login.
+        StringAssert.Contains(workflow, "id-token: write");
+        StringAssert.Contains(workflow, "azure/login@v2");
+        StringAssert.Contains(workflow, "azure/trusted-signing-action");
+
+        // The six Trusted Signing variables that gate the signing steps.
+        StringAssert.Contains(workflow, "TRUSTED_SIGNING_ENDPOINT");
+        StringAssert.Contains(workflow, "TRUSTED_SIGNING_ACCOUNT_NAME");
+        StringAssert.Contains(workflow, "TRUSTED_SIGNING_PROFILE_NAME");
+        StringAssert.Contains(workflow, "AZURE_CLIENT_ID");
+        StringAssert.Contains(workflow, "AZURE_TENANT_ID");
+        StringAssert.Contains(workflow, "AZURE_SUBSCRIPTION_ID");
+
+        // When signing is not configured the workflow still publishes unsigned assets.
+        StringAssert.Contains(workflow, "Trusted Signing variables not set");
+
+        // Signed binaries must have their SHA256 checksums refreshed.
+        StringAssert.Contains(workflow, "Re-zip signed portable and refresh checksum");
+        StringAssert.Contains(workflow, "Refresh installer checksum");
     }
 }
