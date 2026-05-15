@@ -26,7 +26,6 @@ public partial class App : Application
     private SettingsWindow? settingsWindow;
     private AboutWindow? aboutWindow;
     private FirstRunWindow? firstRunWindow;
-    private Window? lifetimeAnchor;  // hidden window that keeps the app alive after popover closes
     private Microsoft.UI.Dispatching.DispatcherQueue? uiDispatcher;
     private System.Threading.CancellationTokenSource? shutdownCts;
 
@@ -45,19 +44,6 @@ public partial class App : Application
             shutdownCts = new System.Threading.CancellationTokenSource();
             var paths = new CodexBar.Core.Paths.WindowsAppPaths();
             var settingsFileExisted = System.IO.File.Exists(paths.SettingsFile);
-
-            // Hidden anchor window: WinUI 3 exits the process when the last XAML Window closes.
-            // The tray icon is a Win32 HWND that doesn't count, so we need at least one Window
-            // alive at all times. We never show this; only explicit Quit closes it.
-            lifetimeAnchor = new Window();
-            if (lifetimeAnchor.AppWindow is { } anchorAppWindow)
-            {
-                anchorAppWindow.IsShownInSwitchers = false;
-                if (anchorAppWindow.Presenter is Microsoft.UI.Windowing.OverlappedPresenter anchorPresenter)
-                {
-                    anchorPresenter.Minimize();
-                }
-            }
 
             shell = await AppHostBuilder.BuildAsync(uiDispatcher, shutdownCts.Token);
             themeListener = new ThemeListener(ProbeSystemTheme);
@@ -163,29 +149,40 @@ public partial class App : Application
     {
         try
         {
+            // Hide-and-show pattern: the popover Window lives for the lifetime of the app.
+            // This keeps WinUI 3 from exiting the process on "last window closed", and lets
+            // the tray Settings/About flyout items dispatch properly (the popover instance
+            // stays valid so PositionNearAnchor can still anchor to its bounds).
             if (popover is not null && popover.AppWindow is not null && popover.AppWindow.IsVisible)
             {
-                popover.Close();
-                popover = null;
+                popover.AppWindow.Hide();
                 return;
             }
             if (shell is null || themeListener is null || uiDispatcher is null) return;
             var dispatcher = uiDispatcher;
 
-            var vm = new PopoverViewModel(
-                shell.Store.All(),
-                UsageProvider.Codex,
-                shell.Settings.ShowUsageAsUsed,
-                refreshStates: shell.RefreshStates,
-                openSettings: () => dispatcher.TryEnqueue(ShowSettings),
-                openAbout: () => dispatcher.TryEnqueue(ShowAbout),
-                quit: () => dispatcher.TryEnqueue(QuitApp),
-                openDashboard: () => OpenUriForActiveProvider(ProviderLinks.DashboardUri),
-                openStatusPage: () => OpenUriForActiveProvider(ProviderLinks.StatusUri),
-                openAddAccount: () => dispatcher.TryEnqueue(ShowSettings));
+            if (popover is null)
+            {
+                var vm = new PopoverViewModel(
+                    shell.Store.All(),
+                    UsageProvider.Codex,
+                    shell.Settings.ShowUsageAsUsed,
+                    refreshStates: shell.RefreshStates,
+                    openSettings: () => dispatcher.TryEnqueue(ShowSettings),
+                    openAbout: () => dispatcher.TryEnqueue(ShowAbout),
+                    quit: () => dispatcher.TryEnqueue(QuitApp),
+                    openDashboard: () => OpenUriForActiveProvider(ProviderLinks.DashboardUri),
+                    openStatusPage: () => OpenUriForActiveProvider(ProviderLinks.StatusUri),
+                    openAddAccount: () => dispatcher.TryEnqueue(ShowSettings));
 
-            popover = new PopoverWindow(vm, themeListener);
-            popover.Closed += (_, _) => popover = null;
+                popover = new PopoverWindow(vm, themeListener);
+                popover.Closed += (_, _) => popover = null;
+            }
+            else
+            {
+                // Refresh data on each re-open so the popover doesn't show stale snapshots.
+                popover.RefreshFromStore(shell.Store.All(), shell.Settings.ShowUsageAsUsed, shell.RefreshStates);
+            }
 
             NativeMethods.GetCursorPos(out var pt);
             var displayArea = Microsoft.UI.Windowing.DisplayArea.GetFromPoint(
@@ -197,7 +194,9 @@ public partial class App : Application
                 displayArea.WorkArea.X, displayArea.WorkArea.Y,
                 displayArea.WorkArea.Width, displayArea.WorkArea.Height);
 
+            if (popover is null || popover.AppWindow is null) return;
             popover.AppWindow.Move(new Windows.Graphics.PointInt32(left, top));
+            popover.AppWindow.Show();
             popover.Activate();
         }
         catch (Exception ex)
@@ -288,12 +287,11 @@ public partial class App : Application
 
     private void QuitApp()
     {
-        try
-        {
-            lifetimeAnchor?.Close();
-            lifetimeAnchor = null;
-        }
-        catch { /* ignore */ }
+        try { popover?.Close(); popover = null; } catch { /* ignore */ }
+        try { settingsWindow?.Close(); settingsWindow = null; } catch { /* ignore */ }
+        try { aboutWindow?.Close(); aboutWindow = null; } catch { /* ignore */ }
+        try { firstRunWindow?.Close(); firstRunWindow = null; } catch { /* ignore */ }
+        try { dock?.Close(); dock = null; } catch { /* ignore */ }
         Application.Current.Exit();
     }
 
