@@ -160,7 +160,7 @@ public partial class App : Application
             new Windows.Graphics.PointInt32(pt.X, pt.Y),
             Microsoft.UI.Windowing.DisplayAreaFallback.Nearest);
         var (left, top) = PopoverPositioner.CalculateTaskbarDock(
-            340, 84,
+            400, 84,
             displayArea.WorkArea.X, displayArea.WorkArea.Y,
             displayArea.WorkArea.Width, displayArea.WorkArea.Height);
         window.AppWindow.Move(new Windows.Graphics.PointInt32(left, top));

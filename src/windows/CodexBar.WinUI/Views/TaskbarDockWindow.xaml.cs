@@ -18,7 +18,7 @@ public sealed partial class TaskbarDockWindow : Window
         InitializeComponent();
 
         AppWindow.IsShownInSwitchers = false;
-        AppWindow.Resize(new Windows.Graphics.SizeInt32(340, 84));
+        AppWindow.Resize(new Windows.Graphics.SizeInt32(400, 84));
         if (AppWindow.Presenter is Microsoft.UI.Windowing.OverlappedPresenter presenter)
         {
             presenter.IsMaximizable = false;
