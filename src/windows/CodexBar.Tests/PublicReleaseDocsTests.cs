@@ -92,12 +92,10 @@ public sealed class PublicReleaseDocsTests
     }
 
     [TestMethod]
-    public void LegacyArtifactsStayUnderLegacyMacOsDirectory()
+    public void NoLegacyDirectoriesRemainAtRepoRoot()
     {
-        // The README no longer needs a prominent "Legacy macOS sources" section; the legacy
-        // tree is just one bullet under Repository structure. But the FILES themselves must
-        // still exist under legacy-macos/ and NOT at the repo root (which would shadow the
-        // active Windows project structure).
+        // Legacy macOS Swift sources and the previous WPF shell have been removed from
+        // the active tree. They still exist in git history but should not be in HEAD.
         var repoRoot = Path.GetFullPath(Path.Combine(
             AppContext.BaseDirectory,
             "..",
@@ -107,71 +105,11 @@ public sealed class PublicReleaseDocsTests
             "..",
             ".."));
 
-        Assert.IsTrue(Directory.Exists(Path.Combine(repoRoot, "legacy-macos")));
-        Assert.IsTrue(File.Exists(Path.Combine(repoRoot, "legacy-macos", "Package.swift")));
-        Assert.IsTrue(File.Exists(Path.Combine(repoRoot, "legacy-macos", "appcast.xml")));
-        Assert.IsTrue(File.Exists(Path.Combine(repoRoot, "legacy-macos", "codexbar.png")));
-        Assert.IsTrue(File.Exists(Path.Combine(repoRoot, "legacy-macos", "docs", "RELEASING.md")));
-        Assert.IsTrue(File.Exists(Path.Combine(repoRoot, "legacy-macos", "bin", "install-codexbar-cli.sh")));
-        Assert.IsTrue(File.Exists(Path.Combine(repoRoot, "legacy-macos", "bin", "docs-list")));
+        Assert.IsFalse(Directory.Exists(Path.Combine(repoRoot, "legacy-macos")));
+        Assert.IsFalse(Directory.Exists(Path.Combine(repoRoot, "legacy-wpf")));
         Assert.IsFalse(File.Exists(Path.Combine(repoRoot, "Package.swift")));
         Assert.IsFalse(File.Exists(Path.Combine(repoRoot, "appcast.xml")));
-        Assert.IsFalse(File.Exists(Path.Combine(repoRoot, "codexbar.png")));
-        Assert.IsFalse(File.Exists(Path.Combine(repoRoot, "docs", "RELEASING.md")));
         Assert.IsFalse(Directory.Exists(Path.Combine(repoRoot, "bin")));
-    }
-
-    [TestMethod]
-    public void MacOSReleaseScriptRequiresExplicitLegacyOptIn()
-    {
-        var script = File.ReadAllText(Path.GetFullPath(Path.Combine(
-            AppContext.BaseDirectory,
-            "..",
-            "..",
-            "..",
-            "..",
-            "..",
-            "..",
-            "legacy-macos",
-            "Scripts",
-            "release.sh")));
-
-        StringAssert.Contains(script, "CODEXBAR_RUN_LEGACY_MACOS_RELEASE");
-        StringAssert.Contains(script, "Legacy macOS release script");
-        StringAssert.Contains(script, "SPARKLE_LIB");
-    }
-
-    [TestMethod]
-    public void LegacySwiftAndUpstreamWorkflowsAreManualOnly()
-    {
-        var repoRoot = Path.GetFullPath(Path.Combine(
-            AppContext.BaseDirectory,
-            "..",
-            "..",
-            "..",
-            "..",
-            "..",
-            ".."));
-        var legacyCi = File.ReadAllText(Path.Combine(repoRoot, ".github", "workflows", "ci.yml"));
-        var legacyCli = File.ReadAllText(Path.Combine(repoRoot, ".github", "workflows", "release-cli.yml"));
-        var upstreamMonitor = File.ReadAllText(Path.Combine(repoRoot, ".github", "workflows", "upstream-monitor.yml"));
-
-        StringAssert.Contains(legacyCi, "name: Legacy Swift CI");
-        StringAssert.Contains(legacyCi, "workflow_dispatch:");
-        StringAssert.Contains(legacyCi, "working-directory: legacy-macos");
-        Assert.IsFalse(legacyCi.Contains("pull_request:", StringComparison.Ordinal));
-        Assert.IsFalse(legacyCi.Contains("push:", StringComparison.Ordinal));
-
-        StringAssert.Contains(legacyCli, "name: Legacy CLI Release");
-        StringAssert.Contains(legacyCli, "workflow_dispatch:");
-        StringAssert.Contains(legacyCli, "working-directory: legacy-macos");
-        Assert.IsFalse(legacyCli.Contains("release:", StringComparison.Ordinal));
-
-        StringAssert.Contains(upstreamMonitor, "name: Legacy Upstream Monitor");
-        StringAssert.Contains(upstreamMonitor, "workflow_dispatch:");
-        StringAssert.Contains(upstreamMonitor, "legacy-macos/Scripts/review_upstream.sh");
-        StringAssert.Contains(upstreamMonitor, "legacy-macos/Scripts/analyze_quotio.sh");
-        Assert.IsFalse(upstreamMonitor.Contains("schedule:", StringComparison.Ordinal));
     }
 
     [TestMethod]
