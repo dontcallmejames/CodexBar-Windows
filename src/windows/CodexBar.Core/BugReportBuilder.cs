@@ -3,7 +3,7 @@ using CodexBar.Core.Updates;
 using CodexBar.Core.Settings;
 using System.Reflection;
 
-namespace CodexBar.WinApp;
+namespace CodexBar.Core;
 
 public static class BugReportBuilder
 {

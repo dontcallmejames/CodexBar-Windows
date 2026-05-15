@@ -59,6 +59,11 @@
                     <TextBox Text="{x:Bind ViewModel.ClaudeManualCookieHeader, Mode=TwoWay}" Width="320" />
                 </ctk:SettingsCard>
 
+                <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="Support" Margin="0,12,0,0" />
+                <ctk:SettingsCard Header="Report a bug" Description="Copies a redacted diagnostic summary to your clipboard and opens the GitHub issue form.">
+                    <Button Content="Report a Bug..." Command="{x:Bind ViewModel.OpenBugReportCommand}" />
+                </ctk:SettingsCard>
+
             </StackPanel>
         </ScrollViewer>
 
