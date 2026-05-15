@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Reflection;
 using System.Text.RegularExpressions;
 
-namespace CodexBar.WinApp;
+namespace CodexBar.Core.Updates;
 
 public sealed record AppVersionInfo(string DisplayVersion, string Channel, string CurrentTag)
 {

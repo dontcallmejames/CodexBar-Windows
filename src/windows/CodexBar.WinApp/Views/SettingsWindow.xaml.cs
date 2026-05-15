@@ -1,5 +1,6 @@
 using System.Windows;
 using CodexBar.Core.Settings;
+using CodexBar.Core.Updates;
 using CodexBar.Core.Paths;
 using CodexBar.Core.Models;
 using CodexBar.WinApp.Settings;

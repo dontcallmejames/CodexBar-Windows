@@ -1,5 +1,6 @@
 using CodexBar.Core.Models;
 using CodexBar.Core.Settings;
+using CodexBar.Core.Updates;
 using CodexBar.WinApp.ViewModels;
 using CodexBar.WinApp.Views;
 using System.Diagnostics;

@@ -1,4 +1,5 @@
 using System.Windows;
+using CodexBar.Core.Updates;
 
 namespace CodexBar.WinApp.Views;
 
