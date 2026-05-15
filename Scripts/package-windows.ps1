@@ -131,6 +131,15 @@ if (Test-Path -LiteralPath $checksumPath) {
 
 New-Item -ItemType Directory -Path $distRoot -Force | Out-Null
 
+# Resolve dotnet to the actual executable to avoid PowerShell function/alias collisions
+$dotnetExe = if (Test-Path -LiteralPath $DotNet) {
+    $DotNet
+} else {
+    $resolved = Get-Command $DotNet -CommandType Application -ErrorAction SilentlyContinue
+    if ($null -eq $resolved) { throw "Could not resolve '$DotNet' to an executable." }
+    $resolved.Source
+}
+
 # dotnet publish
 $publishArgs = @(
     'publish',
@@ -146,7 +155,7 @@ $publishArgs = @(
     '-o', $publishDir,
     '--verbosity', 'minimal'
 )
-& $DotNet @publishArgs
+& $dotnetExe @publishArgs
 
 $appExecutablePath = Join-Path $publishDir "CodexBar.WinUI.exe"
 Invoke-WindowsCodeSigning $appExecutablePath
