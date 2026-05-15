@@ -82,15 +82,8 @@ C:\tmp\dotnet\dotnet.exe test src\windows\CodexBar.Windows.sln --verbosity minim
 
 Releases use the checklist in [docs/windows-release-checklist.md](docs/windows-release-checklist.md). Provider data is kept siloed per provider; behavior changes need focused tests.
 
-## Repository structure
+## Credits
 
-- `src/windows/` — active WinUI 3 codebase (the app)
-- `legacy-macos/` — archived original macOS Swift codebase (vendored, not built)
-- `legacy-wpf/` — archived previous WPF shell (vendored, not built). Windows releases are built from `src/windows`.
-- `docs/superpowers/plans/` — implementation plans for major changes
-
-## Credits & license
-
-MIT licensed. The project began as a port of [Peter Steinberger's CodexBar for macOS](https://github.com/steipete/CodexBar) and grew into its own Windows app. The original copyright notice is preserved in [LICENSE](LICENSE) per MIT.
+Inspired by [CodexBar by steipete](https://github.com/steipete/CodexBar). MIT licensed — see [LICENSE](LICENSE).
 </content>
 </invoke>

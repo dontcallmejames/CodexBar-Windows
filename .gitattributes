@@ -2,9 +2,3 @@
 *.yml text eol=lf
 *.yaml text eol=lf
 *.ps1 text eol=crlf
-
-# Hide archived legacy sources from GitHub's language pie + collapse them on the code page.
-# Active code lives in src/windows/. legacy-macos/ is the upstream Swift app; legacy-wpf/ is
-# the previous WPF shell before we moved to WinUI 3.
-legacy-macos/** linguist-vendored=true
-legacy-wpf/**   linguist-vendored=true
