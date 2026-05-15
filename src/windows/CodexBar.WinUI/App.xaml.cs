@@ -3,6 +3,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using CodexBar.Core.Models;
+using CodexBar.Core.Providers;
 using CodexBar.Core.Settings;
 using CodexBar.WinUI.Services;
 using CodexBar.WinUI.ViewModels;
@@ -152,13 +153,20 @@ public partial class App : Application
                 popover = null;
                 return;
             }
-            if (shell is null || themeListener is null) return;
+            if (shell is null || themeListener is null || uiDispatcher is null) return;
+            var dispatcher = uiDispatcher;
 
             var vm = new PopoverViewModel(
                 shell.Store.All(),
                 UsageProvider.Codex,
                 shell.Settings.ShowUsageAsUsed,
-                refreshStates: shell.RefreshStates);
+                refreshStates: shell.RefreshStates,
+                openSettings: () => dispatcher.TryEnqueue(ShowSettings),
+                openAbout: () => dispatcher.TryEnqueue(ShowAbout),
+                quit: () => dispatcher.TryEnqueue(() => Application.Current.Exit()),
+                openDashboard: () => OpenUriForActiveProvider(ProviderLinks.DashboardUri),
+                openStatusPage: () => OpenUriForActiveProvider(ProviderLinks.StatusUri),
+                openAddAccount: () => dispatcher.TryEnqueue(ShowSettings));
 
             popover = new PopoverWindow(vm, themeListener);
             popover.Closed += (_, _) => popover = null;
@@ -200,6 +208,15 @@ public partial class App : Application
             File.AppendAllText(path, $"[{stamp}] {source}: {error}\n\n");
         }
         catch { }
+    }
+
+    private void OpenUriForActiveProvider(Func<UsageProvider, Uri> uriFor)
+    {
+        if (popover?.ViewModel is null) return;
+        var provider = popover.ViewModel.ActiveProvider;
+        var uri = uriFor(provider);
+        try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true }); }
+        catch { /* ignore */ }
     }
 
     private void ShowSettings()
