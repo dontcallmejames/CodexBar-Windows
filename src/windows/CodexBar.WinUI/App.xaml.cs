@@ -246,7 +246,10 @@ public partial class App : Application
         if (settingsWindow is not null) { settingsWindow.Activate(); return; }
         if (shell is null) return;
 
-        var vm = new SettingsViewModel(shell.Settings);
+        var vm = new SettingsViewModel(
+            shell.Settings,
+            () => shell!.Store.All(),
+            () => shell!.UpdateNotifier.LatestResult);
         settingsWindow = new SettingsWindow(vm, async newSettings =>
         {
             try { await shell!.ApplySettingsAsync(newSettings); }

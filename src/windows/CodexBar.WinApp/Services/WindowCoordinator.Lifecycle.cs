@@ -1,3 +1,4 @@
+using CodexBar.Core;
 using CodexBar.Core.Models;
 using CodexBar.Core.Providers;
 using CodexBar.Core.Settings;

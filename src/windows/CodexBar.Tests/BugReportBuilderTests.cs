@@ -1,7 +1,7 @@
 using CodexBar.Core.Models;
 using CodexBar.Core.Settings;
 using CodexBar.Core.Updates;
-using CodexBar.WinApp;
+using CodexBar.Core;
 
 namespace CodexBar.Tests;
 
