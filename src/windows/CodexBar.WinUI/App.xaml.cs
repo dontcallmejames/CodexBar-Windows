@@ -26,6 +26,7 @@ public partial class App : Application
     private SettingsWindow? settingsWindow;
     private AboutWindow? aboutWindow;
     private FirstRunWindow? firstRunWindow;
+    private Window? lifetimeAnchor;  // Activated then hidden — keeps app alive without visible UI.
     private Microsoft.UI.Dispatching.DispatcherQueue? uiDispatcher;
     private System.Threading.CancellationTokenSource? shutdownCts;
 
@@ -44,6 +45,26 @@ public partial class App : Application
             shutdownCts = new System.Threading.CancellationTokenSource();
             var paths = new CodexBar.Core.Paths.WindowsAppPaths();
             var settingsFileExisted = System.IO.File.Exists(paths.SettingsFile);
+
+            // WinUI 3 exits the process when the last VISIBLE window closes. Hidden windows
+            // don't count. Create a real Window, Activate() once (registers it as alive),
+            // then immediately Hide() it so the user never sees it. Only QuitApp closes it.
+            lifetimeAnchor = new Window();
+            if (lifetimeAnchor.AppWindow is { } anchorAppWindow)
+            {
+                anchorAppWindow.IsShownInSwitchers = false;
+                if (anchorAppWindow.Presenter is Microsoft.UI.Windowing.OverlappedPresenter ap)
+                {
+                    ap.IsMaximizable = false;
+                    ap.IsMinimizable = false;
+                    ap.IsResizable = false;
+                    ap.SetBorderAndTitleBar(false, false);
+                }
+                anchorAppWindow.Resize(new Windows.Graphics.SizeInt32(1, 1));
+                anchorAppWindow.Move(new Windows.Graphics.PointInt32(-32000, -32000));
+            }
+            lifetimeAnchor.Activate();
+            lifetimeAnchor.AppWindow?.Hide();
 
             shell = await AppHostBuilder.BuildAsync(uiDispatcher, shutdownCts.Token);
             themeListener = new ThemeListener(ProbeSystemTheme);
@@ -292,38 +313,46 @@ public partial class App : Application
         try { aboutWindow?.Close(); aboutWindow = null; } catch { /* ignore */ }
         try { firstRunWindow?.Close(); firstRunWindow = null; } catch { /* ignore */ }
         try { dock?.Close(); dock = null; } catch { /* ignore */ }
+        try { lifetimeAnchor?.Close(); lifetimeAnchor = null; } catch { /* ignore */ }
         Application.Current.Exit();
     }
 
     /// <summary>
-    /// Position a secondary window next to the popover (if open) or cursor (if not).
-    /// Critical for multi-monitor / ultrawide setups so windows don't land far-left.
+    /// Position a secondary window next to the popover's last known position (popover is
+    /// persistent for the lifetime of the app, so it always has a valid Position once it's
+    /// been opened at least once). If the popover hasn't been opened yet, fall back to
+    /// centering on the cursor's display so the window doesn't land under the tray flyout.
     /// </summary>
     private void PositionNearAnchor(Microsoft.UI.Xaml.Window window)
     {
-        int anchorX, anchorY, anchorW, anchorH;
-        if (popover is not null && popover.AppWindow is not null && popover.AppWindow.IsVisible)
+        if (window.AppWindow is null) return;
+
+        if (popover is not null && popover.AppWindow is not null)
         {
             var pos = popover.AppWindow.Position;
             var size = popover.AppWindow.Size;
-            anchorX = pos.X; anchorY = pos.Y; anchorW = size.Width; anchorH = size.Height;
-        }
-        else
-        {
-            NativeMethods.GetCursorPos(out var pt);
-            anchorX = pt.X; anchorY = pt.Y; anchorW = 1; anchorH = 1;
+            var displayArea = Microsoft.UI.Windowing.DisplayArea.GetFromPoint(
+                new Windows.Graphics.PointInt32(pos.X, pos.Y),
+                Microsoft.UI.Windowing.DisplayAreaFallback.Nearest);
+            var winSize = window.AppWindow.Size;
+            var (left, top) = PopoverPositioner.CalculateNearAnchor(
+                winSize.Width, winSize.Height,
+                pos.X, pos.Y, size.Width, size.Height,
+                displayArea.WorkArea.X, displayArea.WorkArea.Y,
+                displayArea.WorkArea.Width, displayArea.WorkArea.Height);
+            window.AppWindow.Move(new Windows.Graphics.PointInt32(left, top));
+            return;
         }
 
-        var displayArea = Microsoft.UI.Windowing.DisplayArea.GetFromPoint(
-            new Windows.Graphics.PointInt32(anchorX, anchorY),
+        // No popover yet — center on the display the cursor is on.
+        NativeMethods.GetCursorPos(out var pt);
+        var cursorDisplay = Microsoft.UI.Windowing.DisplayArea.GetFromPoint(
+            new Windows.Graphics.PointInt32(pt.X, pt.Y),
             Microsoft.UI.Windowing.DisplayAreaFallback.Nearest);
-        var winSize = window.AppWindow.Size;
-        var (left, top) = PopoverPositioner.CalculateNearAnchor(
-            winSize.Width, winSize.Height,
-            anchorX, anchorY, anchorW, anchorH,
-            displayArea.WorkArea.X, displayArea.WorkArea.Y,
-            displayArea.WorkArea.Width, displayArea.WorkArea.Height);
-        window.AppWindow.Move(new Windows.Graphics.PointInt32(left, top));
+        var sz = window.AppWindow.Size;
+        var centerLeft = cursorDisplay.WorkArea.X + (cursorDisplay.WorkArea.Width - sz.Width) / 2;
+        var centerTop = cursorDisplay.WorkArea.Y + (cursorDisplay.WorkArea.Height - sz.Height) / 2;
+        window.AppWindow.Move(new Windows.Graphics.PointInt32(centerLeft, centerTop));
     }
 
     private void ShowFirstRun()
