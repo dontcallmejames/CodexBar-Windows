@@ -258,6 +258,7 @@ public partial class App : Application
             catch (Exception ex) { WriteCrashLog("ApplySettingsAsync", ex); }
         });
         settingsWindow.Closed += (_, _) => settingsWindow = null;
+        PositionNearAnchor(settingsWindow);
         settingsWindow.Activate();
     }
 
@@ -266,7 +267,39 @@ public partial class App : Application
         if (aboutWindow is not null) { aboutWindow.Activate(); return; }
         aboutWindow = new AboutWindow(new AboutViewModel(CodexBar.Core.Updates.AppVersionInfo.Current));
         aboutWindow.Closed += (_, _) => aboutWindow = null;
+        PositionNearAnchor(aboutWindow);
         aboutWindow.Activate();
+    }
+
+    /// <summary>
+    /// Position a secondary window next to the popover (if open) or cursor (if not).
+    /// Critical for multi-monitor / ultrawide setups so windows don't land far-left.
+    /// </summary>
+    private void PositionNearAnchor(Microsoft.UI.Xaml.Window window)
+    {
+        int anchorX, anchorY, anchorW, anchorH;
+        if (popover is not null && popover.AppWindow is not null && popover.AppWindow.IsVisible)
+        {
+            var pos = popover.AppWindow.Position;
+            var size = popover.AppWindow.Size;
+            anchorX = pos.X; anchorY = pos.Y; anchorW = size.Width; anchorH = size.Height;
+        }
+        else
+        {
+            NativeMethods.GetCursorPos(out var pt);
+            anchorX = pt.X; anchorY = pt.Y; anchorW = 1; anchorH = 1;
+        }
+
+        var displayArea = Microsoft.UI.Windowing.DisplayArea.GetFromPoint(
+            new Windows.Graphics.PointInt32(anchorX, anchorY),
+            Microsoft.UI.Windowing.DisplayAreaFallback.Nearest);
+        var winSize = window.AppWindow.Size;
+        var (left, top) = PopoverPositioner.CalculateNearAnchor(
+            winSize.Width, winSize.Height,
+            anchorX, anchorY, anchorW, anchorH,
+            displayArea.WorkArea.X, displayArea.WorkArea.Y,
+            displayArea.WorkArea.Width, displayArea.WorkArea.Height);
+        window.AppWindow.Move(new Windows.Graphics.PointInt32(left, top));
     }
 
     private void ShowFirstRun()

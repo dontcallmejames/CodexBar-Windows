@@ -36,6 +36,41 @@ public static class PopoverPositioner
     }
 
     /// <summary>
+    /// Pixel position for a secondary window (Settings, About) anchored next to an anchor rect
+    /// (usually the popover when it's open, else the cursor). Prefers right side; falls back to
+    /// left side if right would clip. Vertically centered on the anchor. Clamped to work area.
+    /// Mirrors WPF WindowCoordinator.CalculateSettingsPosition.
+    /// </summary>
+    public static (int Left, int Top) CalculateNearAnchor(
+        int windowWidth,
+        int windowHeight,
+        int anchorLeft,
+        int anchorTop,
+        int anchorWidth,
+        int anchorHeight,
+        int workAreaX,
+        int workAreaY,
+        int workAreaWidth,
+        int workAreaHeight)
+    {
+        const int gap = 12;
+        var rightCandidate = anchorLeft + anchorWidth + gap;
+        var leftCandidate = anchorLeft - windowWidth - gap;
+        var maxLeft = workAreaX + workAreaWidth - windowWidth - Margin;
+        var left = rightCandidate <= maxLeft ? rightCandidate : leftCandidate;
+
+        var anchorCenter = anchorTop + (anchorHeight / 2);
+        var top = anchorCenter - (windowHeight / 2);
+        var minLeft = workAreaX + Margin;
+        var minTop = workAreaY + Margin;
+        var maxTop = workAreaY + workAreaHeight - windowHeight - Margin;
+
+        return (
+            System.Math.Clamp(left, minLeft, System.Math.Max(minLeft, maxLeft)),
+            System.Math.Clamp(top, minTop, System.Math.Max(minTop, maxTop)));
+    }
+
+    /// <summary>
     /// Pixel position for the taskbar dock strip, anchored bottom-right of the work area
     /// with a small gap above the taskbar. Mirrors WPF WindowCoordinator.CalculateTaskbarDockPosition.
     /// </summary>
