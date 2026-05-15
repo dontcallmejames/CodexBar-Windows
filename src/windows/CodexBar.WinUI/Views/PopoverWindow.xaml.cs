@@ -26,6 +26,13 @@ public sealed partial class PopoverWindow : Window
         ExtendsContentIntoTitleBar = true;
         AppWindow.IsShownInSwitchers = false;
         AppWindow.Resize(new Windows.Graphics.SizeInt32(440, 520));
+        if (AppWindow.Presenter is Microsoft.UI.Windowing.OverlappedPresenter presenter)
+        {
+            presenter.IsMaximizable = false;
+            presenter.IsMinimizable = false;
+            presenter.IsResizable = false;
+            presenter.SetBorderAndTitleBar(false, false);
+        }
 
         TrySetBackdrop();
         ApplyTheme(theme.Effective);
