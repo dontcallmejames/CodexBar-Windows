@@ -1,4 +1,5 @@
 using CodexBar.Core.Models;
+using CodexBar.Core.Tray;
 using CodexBar.Tray;
 
 namespace CodexBar.WinApp.Services;

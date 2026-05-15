@@ -3,6 +3,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using CodexBar.Core.Models;
+using CodexBar.Core.Tray;
 using CodexBar.Tray;
 using CodexBar.WinUI.Services;
 using CodexBar.WinUI.ViewModels;

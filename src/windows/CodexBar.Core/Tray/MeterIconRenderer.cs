@@ -2,7 +2,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Runtime.InteropServices;
 
-namespace CodexBar.Tray;
+namespace CodexBar.Core.Tray;
 
 public static class MeterIconRenderer
 {
