@@ -22,6 +22,7 @@ public partial class App : Application
     private ThemeListener? themeListener;
     private PopoverWindow? popover;
     private SettingsWindow? settingsWindow;
+    private AboutWindow? aboutWindow;
     private Microsoft.UI.Dispatching.DispatcherQueue? uiDispatcher;
     private System.Threading.CancellationTokenSource? shutdownCts;
 
@@ -44,7 +45,7 @@ public partial class App : Application
             tray = new TrayHost();
             tray.LeftClick += (_, _) => uiDispatcher.TryEnqueue(TogglePopover);
             tray.OnSettingsClick = () => uiDispatcher.TryEnqueue(ShowSettings);
-            tray.OnAboutClick = () => uiDispatcher.TryEnqueue(ShowAboutPlaceholder);
+            tray.OnAboutClick = () => uiDispatcher.TryEnqueue(ShowAbout);
             tray.OnQuitClick = () => uiDispatcher.TryEnqueue(() => Application.Current.Exit());
             tray.Show();
 
@@ -151,9 +152,12 @@ public partial class App : Application
         settingsWindow.Activate();
     }
 
-    private void ShowAboutPlaceholder()
+    private void ShowAbout()
     {
-        // TODO Phase 3 Task 9: replace with real About window.
+        if (aboutWindow is not null) { aboutWindow.Activate(); return; }
+        aboutWindow = new AboutWindow(new AboutViewModel(CodexBar.Core.Updates.AppVersionInfo.Current));
+        aboutWindow.Closed += (_, _) => aboutWindow = null;
+        aboutWindow.Activate();
     }
 
     private static class NativeMethods
