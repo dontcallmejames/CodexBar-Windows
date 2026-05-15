@@ -26,7 +26,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\CodexBar.Core\CodexBar.Core.csproj" />
-    <ProjectReference Include="..\CodexBar.Tray\CodexBar.Tray.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Manifest Include="$(ApplicationManifest)" />
