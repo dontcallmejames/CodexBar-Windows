@@ -19,7 +19,7 @@ The Windows preview follows the translucent tray popover style of the original C
 
 Download the latest Windows preview release from this repository's Releases page. Most users should download and run the `.installer.exe` asset.
 
-The portable zip is still published for testers who prefer a no-install build. Unzip the portable package and run `CodexBar.WinApp.exe`.
+The portable zip is still published for testers who prefer a no-install build. Unzip the portable package and run `CodexBar.WinUI.exe`.
 
 Requirements:
 - Windows 11
@@ -37,7 +37,7 @@ Requirements:
 
 ## First Run
 
-1. Start `CodexBar.WinApp.exe`.
+1. Start `CodexBar.WinUI.exe`.
 2. On a new install, use the Welcome to CodexBar setup window to enable the providers you want to track.
 3. Use the Help button beside any provider that needs credentials.
 4. Click Get Started to save your provider choices, or Skip to keep the defaults and configure later.
@@ -64,6 +64,10 @@ Windows-specific setup notes live in:
 This repository was forked from the original macOS CodexBar project. Legacy macOS sources and docs such as `Package.swift`, `Sources/`, `Tests/`, `Icon.icns`, `appcast.xml`, and Sparkle release scripts are archived under `legacy-macos/` for upstream reference. Windows releases are built from `src/windows`, `installer/windows`, `Scripts/package-windows.ps1`, `Scripts/package-windows-installer.ps1`, and `.github/workflows/windows.yml`.
 
 Do not use `legacy-macos/Scripts/release.sh` for Windows releases. It is the legacy macOS/Sparkle release path and requires an explicit opt-in environment variable before it will run. Legacy Swift and upstream-sync workflows are manual-only.
+
+## Legacy WPF shell
+
+The original Windows preview used a WPF shell (`CodexBar.WinApp`). That shell is archived under `legacy-wpf/CodexBar.WinApp` and `legacy-wpf/CodexBar.Tray` for reference. It is not built or tested as part of the active solution. The active Windows shell is `src/windows/CodexBar.WinUI`, which uses WinUI 3 via the Windows App SDK.
 
 ## Privacy
 

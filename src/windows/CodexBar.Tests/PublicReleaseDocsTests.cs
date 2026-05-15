@@ -34,25 +34,6 @@ public sealed class PublicReleaseDocsTests
     }
 
     [TestMethod]
-    public void AboutWindowCreditsOriginalProject()
-    {
-        var about = File.ReadAllText(Path.GetFullPath(Path.Combine(
-            AppContext.BaseDirectory,
-            "..",
-            "..",
-            "..",
-            "..",
-            "CodexBar.WinApp",
-            "Views",
-            "AboutWindow.xaml")));
-
-        StringAssert.Contains(about, "Inspired by Peter Steinberger's CodexBar");
-        StringAssert.Contains(about, "https://github.com/steipete/CodexBar");
-        StringAssert.Contains(about, "Version");
-        StringAssert.Contains(about, "Release channel");
-    }
-
-    [TestMethod]
     public void PublicRepoIncludesIssueTemplatesAndReleaseChecklist()
     {
         var repoRoot = Path.GetFullPath(Path.Combine(

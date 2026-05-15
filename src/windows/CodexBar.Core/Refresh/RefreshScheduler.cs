@@ -5,7 +5,8 @@ namespace CodexBar.Core.Refresh;
 
 public sealed class RefreshScheduler : IRefreshScheduler
 {
-    private readonly IReadOnlyList<IUsageProvider> providers;
+    private IReadOnlyList<IUsageProvider> providers;
+    private readonly object providersLock = new();
     private readonly SnapshotStore store;
     private readonly ProviderRefreshStateRegistry registry;
     private readonly Func<DateTimeOffset> clock;
@@ -24,10 +25,17 @@ public sealed class RefreshScheduler : IRefreshScheduler
 
     public ProviderRefreshStateRegistry Registry => registry;
 
+    public void ReplaceProviders(IReadOnlyList<IUsageProvider> newProviders)
+    {
+        lock (providersLock) { providers = newProviders; }
+    }
+
     public async Task RefreshAllAsync(CancellationToken cancellationToken)
     {
+        IReadOnlyList<IUsageProvider> activeProviders;
+        lock (providersLock) { activeProviders = providers; }
         var now = clock();
-        foreach (var provider in providers)
+        foreach (var provider in activeProviders)
         {
             if (!registry.Get(provider.Provider).IsDue(now))
             {

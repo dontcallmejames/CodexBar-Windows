@@ -1,12 +1,13 @@
 # Repository Guidelines
 
 ## Project Structure & Modules
-- `src/windows`: Windows 11 app source. `CodexBar.WinApp` owns WPF UI, tray/dock windows, settings, and shell behavior. `CodexBar.Core` owns provider models, credential discovery, usage mapping, update checks, and shared services.
-- `src/windows/CodexBar.Tests`: MSTest coverage for provider parsing, settings persistence, update checks, packaging, docs, and WPF shell behavior. Mirror behavior changes with focused tests.
+- `src/windows`: Windows 11 app source. `CodexBar.WinUI` owns the WinUI 3 shell, tray/popover windows, settings, and shell behavior. `CodexBar.Core` owns provider models, credential discovery, usage mapping, update checks, and shared services.
+- `src/windows/CodexBar.Tests`: MSTest coverage for provider parsing, settings persistence, update checks, packaging, and docs. Mirror behavior changes with focused tests.
 - `installer/windows`: Inno Setup installer source and installer assets.
 - `Scripts`: Windows packaging helpers only: `package-windows.ps1` and `package-windows-installer.ps1`.
 - `docs`: Windows-facing setup, release, and support docs.
 - `legacy-macos`: Archived upstream Swift/macOS app, Sparkle appcast, Swift tests, and old release scripts. Keep it as reference unless the task is explicitly about legacy macOS.
+- `legacy-wpf`: Archived WPF shell (`CodexBar.WinApp`, `CodexBar.Tray`) and WPF-specific tests. Not built by the active solution. Keep as reference only.
 
 ## Build, Test, Run
 - Full Windows test pass: `C:\tmp\dotnet\dotnet.exe test src\windows\CodexBar.Windows.sln --configuration Release --verbosity minimal`.
