@@ -1,5 +1,4 @@
 using System;
-using System.Diagnostics;
 using CodexBar.Core.Models;
 using CodexBar.Core.Providers;
 using CodexBar.Core.Settings;
@@ -43,6 +42,6 @@ public sealed partial class FirstRunWindow : Window
 
     private static void OpenUri(Uri uri)
     {
-        Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true });
+        Services.ExternalLauncher.OpenExternalUrl(uri);
     }
 }

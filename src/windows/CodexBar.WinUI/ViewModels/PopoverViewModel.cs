@@ -22,7 +22,6 @@ public sealed partial class PopoverViewModel : ObservableObject
 
     [ObservableProperty] private UsageProvider activeProvider;
     [ObservableProperty] private UsageSnapshot? activeSnapshot;
-    [ObservableProperty] private IReadOnlyList<ProviderTabViewModel> tabs = Array.Empty<ProviderTabViewModel>();
     [ObservableProperty] private IReadOnlyList<PopoverMetricViewModel> metrics = Array.Empty<PopoverMetricViewModel>();
     [ObservableProperty] private string updatedText = string.Empty;
     [ObservableProperty] private string planText = string.Empty;
@@ -93,11 +92,6 @@ public sealed partial class PopoverViewModel : ObservableObject
         var selected = Snapshots.FirstOrDefault(s => s.Provider == provider) ?? Snapshots.FirstOrDefault();
         ActiveProvider = selected?.Provider ?? provider;
         ActiveSnapshot = selected;
-        Tabs = Snapshots.Select(s => new ProviderTabViewModel(
-            s.Provider,
-            s.DisplayName,
-            s.Provider == ActiveProvider,
-            s.IsStale)).ToArray();
         Metrics = BuildMetrics(selected);
         PlanText = selected?.Plan ?? string.Empty;
         RefreshLiveIndicator();

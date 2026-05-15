@@ -24,6 +24,13 @@ public sealed partial class SettingsWindow : Window
             presenter.IsResizable = false;
             presenter.SetBorderAndTitleBar(true, false);
         }
+
+        // Force integer display for the refresh-interval NumberBox (no decimal point).
+        RefreshMinutesNumberBox.NumberFormatter = new Windows.Globalization.NumberFormatting.DecimalFormatter
+        {
+            FractionDigits = 0,
+            IntegerDigits = 1,
+        };
     }
 
     private void Save_Click(object sender, RoutedEventArgs e)

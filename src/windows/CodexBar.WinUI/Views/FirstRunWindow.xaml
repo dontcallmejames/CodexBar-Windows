@@ -21,34 +21,44 @@
             <StackPanel Spacing="8">
                 <ctk:SettingsCard Header="Enable Codex" Description="Codex CLI OAuth credentials.">
                     <StackPanel Orientation="Horizontal" Spacing="8">
-                        <HyperlinkButton Content="Help" Click="CodexHelp_Click" />
-                        <ToggleSwitch IsOn="{x:Bind ViewModel.CodexEnabled, Mode=TwoWay}" />
+                        <HyperlinkButton AutomationProperties.AutomationId="FirstRunCodexHelpLink"
+                                         Content="Help" Click="CodexHelp_Click" />
+                        <ToggleSwitch AutomationProperties.AutomationId="FirstRunCodexToggle"
+                                      IsOn="{x:Bind ViewModel.CodexEnabled, Mode=TwoWay}" />
                     </StackPanel>
                 </ctk:SettingsCard>
                 <ctk:SettingsCard Header="Enable Claude" Description="Claude CLI OAuth credentials.">
                     <StackPanel Orientation="Horizontal" Spacing="8">
-                        <HyperlinkButton Content="Help" Click="ClaudeHelp_Click" />
-                        <ToggleSwitch IsOn="{x:Bind ViewModel.ClaudeEnabled, Mode=TwoWay}" />
+                        <HyperlinkButton AutomationProperties.AutomationId="FirstRunClaudeHelpLink"
+                                         Content="Help" Click="ClaudeHelp_Click" />
+                        <ToggleSwitch AutomationProperties.AutomationId="FirstRunClaudeToggle"
+                                      IsOn="{x:Bind ViewModel.ClaudeEnabled, Mode=TwoWay}" />
                     </StackPanel>
                 </ctk:SettingsCard>
                 <ctk:SettingsCard Header="Enable Cursor" Description="Manual Cookie: header.">
                     <StackPanel Orientation="Horizontal" Spacing="8">
-                        <HyperlinkButton Content="Help" Click="CursorHelp_Click" />
-                        <ToggleSwitch IsOn="{x:Bind ViewModel.CursorEnabled, Mode=TwoWay}" />
+                        <HyperlinkButton AutomationProperties.AutomationId="FirstRunCursorHelpLink"
+                                         Content="Help" Click="CursorHelp_Click" />
+                        <ToggleSwitch AutomationProperties.AutomationId="FirstRunCursorToggle"
+                                      IsOn="{x:Bind ViewModel.CursorEnabled, Mode=TwoWay}" />
                     </StackPanel>
                 </ctk:SettingsCard>
                 <ctk:SettingsCard Header="Enable Gemini" Description="Gemini CLI OAuth credentials.">
                     <StackPanel Orientation="Horizontal" Spacing="8">
-                        <HyperlinkButton Content="Help" Click="GeminiHelp_Click" />
-                        <ToggleSwitch IsOn="{x:Bind ViewModel.GeminiEnabled, Mode=TwoWay}" />
+                        <HyperlinkButton AutomationProperties.AutomationId="FirstRunGeminiHelpLink"
+                                         Content="Help" Click="GeminiHelp_Click" />
+                        <ToggleSwitch AutomationProperties.AutomationId="FirstRunGeminiToggle"
+                                      IsOn="{x:Bind ViewModel.GeminiEnabled, Mode=TwoWay}" />
                     </StackPanel>
                 </ctk:SettingsCard>
             </StackPanel>
         </ScrollViewer>
 
         <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
-            <Button Content="Skip" Click="Skip_Click" />
-            <Button Content="Get Started" Style="{StaticResource AccentButtonStyle}" Click="GetStarted_Click" />
+            <Button AutomationProperties.AutomationId="FirstRunSkipButton"
+                    Content="Skip" Click="Skip_Click" />
+            <Button AutomationProperties.AutomationId="FirstRunGetStartedButton"
+                    Content="Get Started" Style="{StaticResource AccentButtonStyle}" Click="GetStarted_Click" />
         </StackPanel>
     </Grid>
 </Window>

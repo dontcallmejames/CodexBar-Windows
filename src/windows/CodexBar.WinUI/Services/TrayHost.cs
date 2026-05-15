@@ -69,7 +69,7 @@ public sealed class TrayHost : IDisposable
     }
 
     private static string Truncate(string tooltip) =>
-        tooltip.Length <= 63 ? tooltip : tooltip[..63];
+        tooltip.Length <= 127 ? tooltip : tooltip[..127];
 }
 
 #pragma warning disable CS0067 // The event 'RelayCommand.CanExecuteChanged' is never used
