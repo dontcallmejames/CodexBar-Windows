@@ -14,6 +14,7 @@ public static class Program
     public static int Main(string[] args)
     {
         WinRT.ComWrappersSupport.InitializeComWrappers();
+        Microsoft.Windows.AppNotifications.AppNotificationManager.Default.Register();
 
         // If another instance is already running, redirect activation to it and exit.
         // To verify single-instance behavior manually:

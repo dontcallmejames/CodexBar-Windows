@@ -53,6 +53,7 @@ public partial class App : Application
             tray.OnAboutClick = () => uiDispatcher.TryEnqueue(ShowAbout);
             tray.OnQuitClick = () => uiDispatcher.TryEnqueue(() => Application.Current.Exit());
             tray.Show();
+            Microsoft.Windows.AppNotifications.AppNotificationManager.Default.NotificationInvoked += OnNotificationInvoked;
 
             // One-time tray icon render from any snapshots that may already exist.
             tray.Update(TraySelector.Build(shell.Store.All()));
@@ -197,6 +198,27 @@ public partial class App : Application
         // Dark mode -> background is near-black; Light mode -> near-white.
         var luminance = (background.R + background.G + background.B) / 3.0;
         return luminance < 128 ? CodexBarTheme.Dark : CodexBarTheme.Light;
+    }
+
+    private void OnNotificationInvoked(
+        Microsoft.Windows.AppNotifications.AppNotificationManager sender,
+        Microsoft.Windows.AppNotifications.AppNotificationActivatedEventArgs args)
+    {
+        if (args.Arguments.TryGetValue("action", out var action) && action == "open-release")
+        {
+            if (args.Arguments.TryGetValue("url", out var url))
+            {
+                try
+                {
+                    System.Diagnostics.Process.Start(
+                        new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true });
+                }
+                catch (Exception ex)
+                {
+                    WriteCrashLog("OnNotificationInvoked", ex);
+                }
+            }
+        }
     }
 
     private static void WriteCrashLog(string source, Exception error)
