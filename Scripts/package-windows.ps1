@@ -133,7 +133,7 @@ New-Item -ItemType Directory -Path $distRoot -Force | Out-Null
 
 # dotnet publish
 & $DotNet publish `
-    (Join-Path $repoRoot "src\windows\CodexBar.WinApp\CodexBar.WinApp.csproj") `
+    (Join-Path $repoRoot "src\windows\CodexBar.WinUI\CodexBar.WinUI.csproj") `
     -c $Configuration `
     -r $Runtime `
     --self-contained true `
@@ -145,7 +145,7 @@ New-Item -ItemType Directory -Path $distRoot -Force | Out-Null
     -o $publishDir `
     --verbosity minimal
 
-$appExecutablePath = Join-Path $publishDir "CodexBar.WinApp.exe"
+$appExecutablePath = Join-Path $publishDir "CodexBar.WinUI.exe"
 Invoke-WindowsCodeSigning $appExecutablePath
 
 Compress-Archive -Path (Join-Path $publishDir "*") -DestinationPath $zipPath -Force
