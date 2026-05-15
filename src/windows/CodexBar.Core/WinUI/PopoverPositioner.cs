@@ -34,4 +34,28 @@ public static class PopoverPositioner
 
         return (left, top);
     }
+
+    /// <summary>
+    /// Pixel position for the taskbar dock strip, anchored bottom-right of the work area
+    /// with a small gap above the taskbar. Mirrors WPF WindowCoordinator.CalculateTaskbarDockPosition.
+    /// </summary>
+    public static (int Left, int Top) CalculateTaskbarDock(
+        int width,
+        int height,
+        int workAreaX,
+        int workAreaY,
+        int workAreaWidth,
+        int workAreaHeight)
+    {
+        const int taskbarGap = 12;
+        var minLeft = workAreaX + Margin;
+        var maxLeft = workAreaX + workAreaWidth - width - Margin;
+        var minTop = workAreaY + Margin;
+        var maxTop = workAreaY + workAreaHeight - height - taskbarGap;
+
+        var left = maxLeft < minLeft ? minLeft : System.Math.Clamp(maxLeft, minLeft, maxLeft);
+        var top = maxTop < minTop ? minTop : System.Math.Clamp(maxTop, minTop, maxTop);
+
+        return (left, top);
+    }
 }
