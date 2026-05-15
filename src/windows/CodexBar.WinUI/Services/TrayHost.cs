@@ -2,6 +2,7 @@ using System;
 using System.Drawing;
 using CodexBar.Core.Tray;
 using H.NotifyIcon;
+using Microsoft.UI.Xaml.Controls;
 
 namespace CodexBar.WinUI.Services;
 
@@ -21,6 +22,7 @@ public sealed class TrayHost : IDisposable
         icon.NoLeftClickDelay = true;
         icon.ToolTipText = "CodexBar";
         icon.LeftClickCommand = new RelayCommand(() => LeftClick?.Invoke(this, EventArgs.Empty));
+        icon.ContextFlyout = BuildContextMenu();
     }
 
     public void Show() => icon.ForceCreate();
@@ -39,17 +41,38 @@ public sealed class TrayHost : IDisposable
         currentIcon?.Dispose();
     }
 
+    private MenuFlyout BuildContextMenu()
+    {
+        var menu = new MenuFlyout();
+
+        var settings = new MenuFlyoutItem { Text = "Settings..." };
+        settings.Click += (_, _) => OnSettingsClick?.Invoke();
+        menu.Items.Add(settings);
+
+        var about = new MenuFlyoutItem { Text = "About CodexBar" };
+        about.Click += (_, _) => OnAboutClick?.Invoke();
+        menu.Items.Add(about);
+
+        menu.Items.Add(new MenuFlyoutSeparator());
+
+        var quit = new MenuFlyoutItem { Text = "Quit" };
+        quit.Click += (_, _) => OnQuitClick?.Invoke();
+        menu.Items.Add(quit);
+
+        return menu;
+    }
+
     private static string Truncate(string tooltip) =>
         tooltip.Length <= 63 ? tooltip : tooltip[..63];
 }
 
+#pragma warning disable CS0067 // The event 'RelayCommand.CanExecuteChanged' is never used
 internal sealed class RelayCommand : System.Windows.Input.ICommand
 {
     private readonly Action action;
     public RelayCommand(Action action) { this.action = action; }
-#pragma warning disable 67 // CanExecuteChanged is required by ICommand but never raised for always-enabled commands
     public event EventHandler? CanExecuteChanged;
-#pragma warning restore 67
     public bool CanExecute(object? parameter) => true;
     public void Execute(object? parameter) => action();
 }
+#pragma warning restore CS0067
