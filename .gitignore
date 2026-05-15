@@ -13,6 +13,8 @@ legacy-macos/.build/
 DerivedData
 src/windows/**/bin/
 src/windows/**/obj/
+legacy-wpf/**/bin/
+legacy-wpf/**/obj/
 
 # Bundles / artifacts
 # Main app bundle (any variation)
