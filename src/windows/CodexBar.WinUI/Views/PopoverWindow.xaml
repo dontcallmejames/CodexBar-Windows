@@ -89,11 +89,51 @@
             </StackPanel>
         </ScrollViewer>
 
-        <!-- Footer with live indicator -->
-        <TextBlock
-            Grid.Row="2"
-            Style="{StaticResource CaptionTextBlockStyle}"
-            Opacity="0.6"
-            Text="{x:Bind ViewModel.LiveIndicatorText, Mode=OneWay}" />
+        <!-- Bottom row: footer commands + live indicator -->
+        <Grid Grid.Row="2" ColumnSpacing="8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <TextBlock Grid.Column="0"
+                       VerticalAlignment="Center"
+                       Style="{StaticResource CaptionTextBlockStyle}"
+                       Opacity="0.6"
+                       Text="{x:Bind ViewModel.LiveIndicatorText, Mode=OneWay}" />
+
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2">
+                <Button Style="{StaticResource SubtleButtonStyle}"
+                        Command="{x:Bind ViewModel.AddAccountCommand}"
+                        ToolTipService.ToolTip="Add Account">
+                    <FontIcon Glyph="&#xE710;" FontSize="14" />
+                </Button>
+                <Button Style="{StaticResource SubtleButtonStyle}"
+                        Command="{x:Bind ViewModel.DashboardCommand}"
+                        ToolTipService.ToolTip="Open Dashboard">
+                    <FontIcon Glyph="&#xE9D2;" FontSize="14" />
+                </Button>
+                <Button Style="{StaticResource SubtleButtonStyle}"
+                        Command="{x:Bind ViewModel.StatusPageCommand}"
+                        ToolTipService.ToolTip="Status Page">
+                    <FontIcon Glyph="&#xE9D9;" FontSize="14" />
+                </Button>
+                <Button Style="{StaticResource SubtleButtonStyle}"
+                        Command="{x:Bind ViewModel.SettingsCommand}"
+                        ToolTipService.ToolTip="Settings">
+                    <FontIcon Glyph="&#xE713;" FontSize="14" />
+                </Button>
+                <Button Style="{StaticResource SubtleButtonStyle}"
+                        Command="{x:Bind ViewModel.AboutCommand}"
+                        ToolTipService.ToolTip="About">
+                    <FontIcon Glyph="&#xE946;" FontSize="14" />
+                </Button>
+                <Button Style="{StaticResource SubtleButtonStyle}"
+                        Command="{x:Bind ViewModel.QuitCommand}"
+                        ToolTipService.ToolTip="Quit">
+                    <FontIcon Glyph="&#xE8BB;" FontSize="14" />
+                </Button>
+            </StackPanel>
+        </Grid>
     </Grid>
 </Window>

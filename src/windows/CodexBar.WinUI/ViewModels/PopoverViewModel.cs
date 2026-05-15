@@ -4,6 +4,7 @@ using System.Linq;
 using CodexBar.Core.Models;
 using CodexBar.Core.Refresh;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 
 namespace CodexBar.WinUI.ViewModels;
 
@@ -12,6 +13,12 @@ public sealed partial class PopoverViewModel : ObservableObject
     private readonly bool showUsageAsUsed;
     private readonly ProviderRefreshStateRegistry? refreshStates;
     private readonly DateTimeOffset? now;
+    private readonly Action? openSettings;
+    private readonly Action? openAbout;
+    private readonly Action? quit;
+    private readonly Action? openDashboard;
+    private readonly Action? openStatusPage;
+    private readonly Action? openAddAccount;
 
     [ObservableProperty] private UsageProvider activeProvider;
     [ObservableProperty] private UsageSnapshot? activeSnapshot;
@@ -28,14 +35,44 @@ public sealed partial class PopoverViewModel : ObservableObject
         UsageProvider activeProvider,
         bool showUsageAsUsed,
         ProviderRefreshStateRegistry? refreshStates = null,
-        DateTimeOffset? now = null)
+        DateTimeOffset? now = null,
+        Action? openSettings = null,
+        Action? openAbout = null,
+        Action? quit = null,
+        Action? openDashboard = null,
+        Action? openStatusPage = null,
+        Action? openAddAccount = null)
     {
         Snapshots = snapshots;
         this.showUsageAsUsed = showUsageAsUsed;
         this.refreshStates = refreshStates;
         this.now = now;
+        this.openSettings = openSettings;
+        this.openAbout = openAbout;
+        this.quit = quit;
+        this.openDashboard = openDashboard;
+        this.openStatusPage = openStatusPage;
+        this.openAddAccount = openAddAccount;
         SelectProvider(activeProvider);
     }
+
+    [RelayCommand]
+    private void Settings() => openSettings?.Invoke();
+
+    [RelayCommand]
+    private void About() => openAbout?.Invoke();
+
+    [RelayCommand]
+    private void Quit() => quit?.Invoke();
+
+    [RelayCommand]
+    private void Dashboard() => openDashboard?.Invoke();
+
+    [RelayCommand]
+    private void StatusPage() => openStatusPage?.Invoke();
+
+    [RelayCommand]
+    private void AddAccount() => openAddAccount?.Invoke();
 
     public void SelectProvider(UsageProvider provider)
     {
