@@ -1,6 +1,6 @@
 using CodexBar.Core.Models;
 
-namespace CodexBar.WinApp;
+namespace CodexBar.Core.Providers;
 
 public static class ProviderLinks
 {

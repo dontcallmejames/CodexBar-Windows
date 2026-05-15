@@ -1,5 +1,5 @@
 using CodexBar.Core.Models;
-using CodexBar.WinApp;
+using CodexBar.Core.Providers;
 
 namespace CodexBar.Tests;
 
