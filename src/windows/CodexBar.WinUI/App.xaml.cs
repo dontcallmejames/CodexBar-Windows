@@ -41,9 +41,9 @@ public partial class App : Application
 
             tray = new TrayHost();
             tray.LeftClick += (_, _) => uiDispatcher.TryEnqueue(TogglePopover);
+            tray.OnSettingsClick = () => uiDispatcher.TryEnqueue(ShowSettingsPlaceholder);
+            tray.OnAboutClick = () => uiDispatcher.TryEnqueue(ShowAboutPlaceholder);
             tray.OnQuitClick = () => uiDispatcher.TryEnqueue(() => Application.Current.Exit());
-            // OnSettingsClick / OnAboutClick wired in Task 6 (MenuFlyout). For now, leave them null
-            // so the spike still functions without a right-click menu. Task 6 fixes this.
             tray.Show();
 
             // One-time tray icon render from any snapshots that may already exist.
@@ -132,6 +132,16 @@ public partial class App : Application
             File.AppendAllText(path, $"[{stamp}] {source}: {error}\n\n");
         }
         catch { }
+    }
+
+    private void ShowSettingsPlaceholder()
+    {
+        // TODO Phase 3 Task 7: replace with real Settings window.
+    }
+
+    private void ShowAboutPlaceholder()
+    {
+        // TODO Phase 3 Task 9: replace with real About window.
     }
 
     private static class NativeMethods
