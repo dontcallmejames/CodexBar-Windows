@@ -21,6 +21,7 @@ public partial class App : Application
     private TrayHost? tray;
     private ThemeListener? themeListener;
     private PopoverWindow? popover;
+    private TaskbarDockWindow? dock;
     private SettingsWindow? settingsWindow;
     private AboutWindow? aboutWindow;
     private FirstRunWindow? firstRunWindow;
@@ -55,13 +56,17 @@ public partial class App : Application
             // One-time tray icon render from any snapshots that may already exist.
             tray.Update(TraySelector.Build(shell.Store.All()));
 
-            // Wire live updates: every completed refresh updates the tray icon.
+            // Wire live updates: every completed refresh updates the tray icon and dock.
             shell.OnSnapshotsChanged += () => uiDispatcher.TryEnqueue(() =>
-                tray?.Update(TraySelector.Build(shell.Store.All())));
+            {
+                tray?.Update(TraySelector.Build(shell.Store.All()));
+                UpdateTaskbarDock();
+            });
 
             // Fire one immediate refresh + start the periodic timer.
             _ = shell.RefreshOrchestrator.RefreshNowAsync(shutdownCts.Token);
             shell.RefreshOrchestrator.Start();
+            UpdateTaskbarDock();
 
             if (shell.Settings.CheckForUpdatesAutomatically)
             {
@@ -83,6 +88,58 @@ public partial class App : Application
         {
             WriteCrashLog("OnLaunched", ex);
         }
+    }
+
+    private void UpdateTaskbarDock()
+    {
+        try
+        {
+            if (shell is null) return;
+
+            if (!shell.Settings.DockOverviewNearTaskbar)
+            {
+                dock?.Close();
+                dock = null;
+                return;
+            }
+
+            var vm = new TaskbarDockViewModel(shell.Store.All(), shell.Settings.ShowUsageAsUsed);
+            if (!vm.HasTiles)
+            {
+                dock?.Close();
+                dock = null;
+                return;
+            }
+
+            if (dock is null)
+            {
+                dock = new TaskbarDockWindow(vm);
+                dock.Closed += (_, _) => dock = null;
+                PositionDock(dock);
+                dock.Activate();
+            }
+            else
+            {
+                dock.SetViewModel(vm);
+            }
+        }
+        catch (Exception ex)
+        {
+            WriteCrashLog("UpdateTaskbarDock", ex);
+        }
+    }
+
+    private void PositionDock(TaskbarDockWindow window)
+    {
+        NativeMethods.GetCursorPos(out var pt);
+        var displayArea = Microsoft.UI.Windowing.DisplayArea.GetFromPoint(
+            new Windows.Graphics.PointInt32(pt.X, pt.Y),
+            Microsoft.UI.Windowing.DisplayAreaFallback.Nearest);
+        var (left, top) = PopoverPositioner.CalculateTaskbarDock(
+            460, 84,
+            displayArea.WorkArea.X, displayArea.WorkArea.Y,
+            displayArea.WorkArea.Width, displayArea.WorkArea.Height);
+        window.AppWindow.Move(new Windows.Graphics.PointInt32(left, top));
     }
 
     private void TogglePopover()
