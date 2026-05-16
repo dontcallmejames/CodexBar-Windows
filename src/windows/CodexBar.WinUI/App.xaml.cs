@@ -31,6 +31,14 @@ public partial class App : Application
     private System.Threading.CancellationTokenSource? shutdownCts;
     private UISettings? uiSettings;
 
+    // Timestamp of the most recent popover auto-hide caused by clicking outside the popover.
+    // When the user clicks the tray icon to dismiss an open popover, the deactivation fires
+    // BEFORE the tray LeftClick handler, so without this guard TogglePopover would see the
+    // popover as hidden and immediately re-open it. If a deactivation just happened within
+    // this window, we treat the tray click as the dismiss and swallow it.
+    private DateTime popoverDismissedAt = DateTime.MinValue;
+    private static readonly TimeSpan PopoverDismissDebounce = TimeSpan.FromMilliseconds(300);
+
     public App()
     {
         InitializeComponent();
@@ -192,6 +200,15 @@ public partial class App : Application
     {
         try
         {
+            // If the popover was just dismissed via deactivation (e.g. the same tray click
+            // that's firing right now caused the popover to lose focus and auto-hide), treat
+            // this click as the close action and don't re-open.
+            if (DateTime.UtcNow - popoverDismissedAt < PopoverDismissDebounce)
+            {
+                popoverDismissedAt = DateTime.MinValue;
+                return;
+            }
+
             // Hide-and-show pattern: the popover Window lives for the lifetime of the app.
             // This keeps WinUI 3 from exiting the process on "last window closed", and lets
             // the tray Settings/About flyout items dispatch properly (the popover instance
@@ -220,6 +237,16 @@ public partial class App : Application
 
                 popover = new PopoverWindow(vm, themeListener);
                 popover.Closed += (_, _) => popover = null;
+
+                // Auto-hide on deactivation (clicking outside the popover dismisses it,
+                // matching the canonical NSPopover / Windows flyout behavior).
+                popover.Activated += (sender, e) =>
+                {
+                    if (e.WindowActivationState != WindowActivationState.Deactivated) return;
+                    if (sender is not Window w || w.AppWindow is null || !w.AppWindow.IsVisible) return;
+                    popoverDismissedAt = DateTime.UtcNow;
+                    w.AppWindow.Hide();
+                };
             }
             else
             {
@@ -241,6 +268,12 @@ public partial class App : Application
             popover.AppWindow.Move(new Windows.Graphics.PointInt32(left, top));
             popover.AppWindow.Show();
             popover.Activate();
+
+            // Force the popover above whatever's currently in front. Windows' foreground-lock
+            // routinely denies Activate() when the trigger came from a background process
+            // (tray icon), so without this the popover gets buried under the active app.
+            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(popover);
+            NativeMethods.BringToFront(hwnd);
         }
         catch (Exception ex)
         {
@@ -292,7 +325,7 @@ public partial class App : Application
 
     private void ShowSettings()
     {
-        if (settingsWindow is not null) { settingsWindow.Activate(); return; }
+        if (settingsWindow is not null) { settingsWindow.Activate(); BringWindowToFront(settingsWindow); return; }
         if (shell is null) return;
 
         var vm = new SettingsViewModel(
@@ -307,15 +340,27 @@ public partial class App : Application
         settingsWindow.Closed += (_, _) => settingsWindow = null;
         PositionNearAnchor(settingsWindow);
         settingsWindow.Activate();
+        BringWindowToFront(settingsWindow);
     }
 
     private void ShowAbout()
     {
-        if (aboutWindow is not null) { aboutWindow.Activate(); return; }
+        if (aboutWindow is not null) { aboutWindow.Activate(); BringWindowToFront(aboutWindow); return; }
         aboutWindow = new AboutWindow(new AboutViewModel(CodexBar.Core.Updates.AppVersionInfo.Current));
         aboutWindow.Closed += (_, _) => aboutWindow = null;
         PositionNearAnchor(aboutWindow);
         aboutWindow.Activate();
+        BringWindowToFront(aboutWindow);
+    }
+
+    private static void BringWindowToFront(Window window)
+    {
+        try
+        {
+            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(window);
+            NativeMethods.BringToFront(hwnd);
+        }
+        catch { /* ignore — best-effort foreground promotion */ }
     }
 
     private void QuitApp()
@@ -408,5 +453,33 @@ public partial class App : Application
         [DllImport("user32.dll")]
         [return: MarshalAs(UnmanagedType.Bool)]
         public static extern bool GetCursorPos(out POINT lpPoint);
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool SetForegroundWindow(IntPtr hWnd);
+
+        public static readonly IntPtr HWND_TOPMOST = new(-1);
+        public static readonly IntPtr HWND_NOTOPMOST = new(-2);
+        public const uint SWP_NOMOVE = 0x0002;
+        public const uint SWP_NOSIZE = 0x0001;
+        public const uint SWP_SHOWWINDOW = 0x0040;
+
+        /// <summary>
+        /// Force a window to the front even when Windows' foreground-lock would
+        /// otherwise deny SetForegroundWindow from a background process (e.g. a
+        /// tray icon click). Flips topmost on then off so the window pops above
+        /// whatever's currently in front without becoming permanently topmost.
+        /// </summary>
+        public static void BringToFront(IntPtr hWnd)
+        {
+            if (hWnd == IntPtr.Zero) return;
+            SetWindowPos(hWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
+            SetWindowPos(hWnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+            SetForegroundWindow(hWnd);
+        }
     }
 }

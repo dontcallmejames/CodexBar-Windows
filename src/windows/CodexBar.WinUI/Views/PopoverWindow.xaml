@@ -41,6 +41,22 @@
             </controls:NavigationView.MenuItems>
         </controls:NavigationView>
 
+        <!-- Close (X) button floats over the right edge of the tabs row.
+             Single source of dismissal that also matches click-outside-to-dismiss. -->
+        <Button Grid.Row="0"
+                x:Name="CloseButton"
+                Style="{StaticResource FooterIconButton}"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Top"
+                Margin="0,4,4,0"
+                Canvas.ZIndex="10"
+                AutomationProperties.AutomationId="PopoverCloseButton"
+                AutomationProperties.Name="Close"
+                ToolTipService.ToolTip="Close"
+                Click="CloseButton_Click">
+            <FontIcon Glyph="&#xE8BB;" FontSize="12" />
+        </Button>
+
         <!-- Active-provider content -->
         <ScrollViewer Grid.Row="1" VerticalScrollMode="Auto" VerticalScrollBarVisibility="Auto">
             <StackPanel Spacing="8">
@@ -149,13 +165,6 @@
                         Command="{x:Bind ViewModel.AboutCommand}"
                         ToolTipService.ToolTip="About">
                     <FontIcon Glyph="&#xE946;" FontSize="14" />
-                </Button>
-                <Button Style="{StaticResource FooterIconButton}"
-                        AutomationProperties.AutomationId="PopoverQuitButton"
-                        AutomationProperties.Name="Quit"
-                        Command="{x:Bind ViewModel.QuitCommand}"
-                        ToolTipService.ToolTip="Quit">
-                    <FontIcon Glyph="&#xE8BB;" FontSize="14" />
                 </Button>
             </StackPanel>
         </Grid>

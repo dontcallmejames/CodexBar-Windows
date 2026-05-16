@@ -4,11 +4,12 @@ A Windows 11 tray app that shows your AI coding-provider usage at a glance — n
 
 Supports **Codex, Claude, Cursor, and Gemini.** Reads local CLI credentials directly — your tokens never leave your machine.
 
-## Screenshot
+## Screenshots
 
 <p>
-  <img src="docs/screenshots/windows-codex-preview.png" alt="CodexBar popover showing Codex usage" width="380">
-  <img src="docs/screenshots/windows-claude-preview.png" alt="CodexBar popover showing Claude usage" width="380">
+  <img src="docs/screenshots/windows-codex-preview.png" alt="CodexBar popover showing Codex usage" width="320">
+  <img src="docs/screenshots/windows-claude-preview.png" alt="CodexBar popover showing Claude usage" width="320">
+  <img src="docs/screenshots/windows-gemini-preview.png" alt="CodexBar popover showing Gemini usage" width="320">
 </p>
 
 ## Install

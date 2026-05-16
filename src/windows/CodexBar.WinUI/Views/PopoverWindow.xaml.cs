@@ -127,6 +127,11 @@ public sealed partial class PopoverWindow : Window
         }
     }
 
+    private void CloseButton_Click(object sender, RoutedEventArgs e)
+    {
+        AppWindow?.Hide();
+    }
+
     private void SetActiveProviderInUI(UsageProvider provider)
     {
         foreach (var obj in ProviderNav.MenuItems)
