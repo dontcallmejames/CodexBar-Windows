@@ -16,7 +16,9 @@ public sealed record AppSettings(
     string CursorSource,
     string GeminiSource,
     string? ClaudeManualCookieHeader,
-    string? CursorManualCookieHeader)
+    string? CursorManualCookieHeader,
+    string GlobalHotkey,
+    bool EnableGlobalHotkey)
 {
     public static AppSettings Default { get; } = new(
         CodexEnabled: true,
@@ -34,5 +36,7 @@ public sealed record AppSettings(
         CursorSource: "auto",
         GeminiSource: "auto",
         ClaudeManualCookieHeader: null,
-        CursorManualCookieHeader: null);
+        CursorManualCookieHeader: null,
+        GlobalHotkey: "Ctrl+Alt+U",
+        EnableGlobalHotkey: true);
 }

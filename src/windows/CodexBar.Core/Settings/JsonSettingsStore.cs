@@ -91,7 +91,9 @@ public sealed class JsonSettingsStore
         string? CursorSource,
         string? GeminiSource,
         string? ClaudeManualCookieHeader,
-        string? CursorManualCookieHeader)
+        string? CursorManualCookieHeader,
+        string? GlobalHotkey,
+        bool? EnableGlobalHotkey)
     {
         public AppSettings ToAppSettings()
         {
@@ -113,7 +115,9 @@ public sealed class JsonSettingsStore
                 NormalizeSource(CursorSource, defaults.CursorSource),
                 NormalizeSource(GeminiSource, defaults.GeminiSource),
                 UnprotectIfNeeded(ClaudeManualCookieHeader),
-                UnprotectIfNeeded(CursorManualCookieHeader));
+                UnprotectIfNeeded(CursorManualCookieHeader),
+                string.IsNullOrWhiteSpace(GlobalHotkey) ? defaults.GlobalHotkey : GlobalHotkey,
+                EnableGlobalHotkey ?? defaults.EnableGlobalHotkey);
         }
 
         private static string NormalizeSource(string? source, string fallback) =>

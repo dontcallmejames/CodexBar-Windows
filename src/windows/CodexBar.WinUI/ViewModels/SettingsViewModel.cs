@@ -27,6 +27,8 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private bool showUsageAsUsed;
     [ObservableProperty] private string claudeManualCookieHeader = string.Empty;
     [ObservableProperty] private string cursorManualCookieHeader = string.Empty;
+    [ObservableProperty] private string globalHotkey = "Ctrl+Alt+U";
+    [ObservableProperty] private bool enableGlobalHotkey = true;
 
     public SettingsViewModel(AppSettings settings)
         : this(settings, static () => Array.Empty<UsageSnapshot>(), static () => null)
@@ -52,6 +54,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         showUsageAsUsed = settings.ShowUsageAsUsed;
         claudeManualCookieHeader = settings.ClaudeManualCookieHeader ?? string.Empty;
         cursorManualCookieHeader = settings.CursorManualCookieHeader ?? string.Empty;
+        globalHotkey = string.IsNullOrWhiteSpace(settings.GlobalHotkey) ? "Ctrl+Alt+U" : settings.GlobalHotkey;
+        enableGlobalHotkey = settings.EnableGlobalHotkey;
     }
 
     [RelayCommand]
@@ -93,7 +97,9 @@ public sealed partial class SettingsViewModel : ObservableObject
         originalSettings.CursorSource,
         originalSettings.GeminiSource,
         string.IsNullOrWhiteSpace(ClaudeManualCookieHeader) ? null : ClaudeManualCookieHeader,
-        string.IsNullOrWhiteSpace(CursorManualCookieHeader) ? null : CursorManualCookieHeader);
+        string.IsNullOrWhiteSpace(CursorManualCookieHeader) ? null : CursorManualCookieHeader,
+        string.IsNullOrWhiteSpace(GlobalHotkey) ? "Ctrl+Alt+U" : GlobalHotkey,
+        EnableGlobalHotkey);
 
     private int ClampRefreshMinutes() =>
         (int)Math.Round(Math.Clamp(RefreshMinutes, 1, 1440));

@@ -53,6 +53,25 @@
                                   IsOn="{x:Bind ViewModel.ShowUsageAsUsed, Mode=TwoWay}" />
                 </ctk:SettingsCard>
 
+                <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="General" Margin="0,12,0,0" />
+                <ctk:SettingsCard Header="Global hotkey" Description="System-wide shortcut to toggle the CodexBar popover.">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBox AutomationProperties.AutomationId="SettingsGlobalHotkeyText"
+                                 Text="{x:Bind ViewModel.GlobalHotkey, Mode=OneWay}"
+                                 IsReadOnly="True" Width="160" VerticalAlignment="Center" />
+                        <Button AutomationProperties.AutomationId="SettingsRebindHotkeyButton"
+                                Content="Rebind..." Click="RebindHotkey_Click" />
+                    </StackPanel>
+                </ctk:SettingsCard>
+                <ctk:SettingsCard Header="Enable global hotkey" Description="Register the shortcut system-wide.">
+                    <ToggleSwitch AutomationProperties.AutomationId="SettingsEnableGlobalHotkeyToggle"
+                                  IsOn="{x:Bind ViewModel.EnableGlobalHotkey, Mode=TwoWay}" />
+                </ctk:SettingsCard>
+                <TeachingTip x:Name="HotkeyConflictTip"
+                             Title="Hotkey unavailable"
+                             Subtitle="This combination is in use by another app — choose a different one."
+                             IsLightDismissEnabled="True" />
+
                 <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="System" Margin="0,12,0,0" />
                 <ctk:SettingsCard Header="Launch at startup">
                     <ToggleSwitch AutomationProperties.AutomationId="SettingsLaunchAtStartupToggle"
