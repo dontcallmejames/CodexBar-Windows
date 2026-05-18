@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
@@ -113,7 +114,7 @@ public partial class App : Application
             themeListener = new ThemeListener(ProbeSystemTheme);
 
             tray = new TrayHost();
-            tray.LeftClick += (_, _) => uiDispatcher.TryEnqueue(TogglePopover);
+            tray.LeftClick += (_, _) => uiDispatcher.TryEnqueue(() => TogglePopover(PopoverAnchor.Cursor));
             tray.OnSettingsClick = () => uiDispatcher.TryEnqueue(ShowSettings);
             tray.OnAboutClick = () => uiDispatcher.TryEnqueue(ShowAbout);
             tray.OnQuitClick = () => uiDispatcher.TryEnqueue(QuitApp);
@@ -215,7 +216,15 @@ public partial class App : Application
         window.AppWindow.Move(new Windows.Graphics.PointInt32(left, top));
     }
 
-    private void TogglePopover()
+    private enum PopoverAnchor
+    {
+        /// <summary>Place the popover next to the mouse cursor (canonical tray-click behavior).</summary>
+        Cursor,
+        /// <summary>Place the popover in the bottom-right corner of the primary work area, just above the system tray.</summary>
+        SystemTray
+    }
+
+    private void TogglePopover(PopoverAnchor anchor = PopoverAnchor.Cursor)
     {
         try
         {
@@ -240,12 +249,15 @@ public partial class App : Application
             if (shell is null || themeListener is null || uiDispatcher is null) return;
             var dispatcher = uiDispatcher;
 
+            var enabledProviders = ResolveEnabledProviders(shell.Settings);
+
             if (popover is null)
             {
                 var vm = new PopoverViewModel(
                     shell.Store.All(),
-                    UsageProvider.Codex,
+                    enabledProviders.Count > 0 ? enabledProviders[0] : UsageProvider.Codex,
                     shell.Settings.ShowUsageAsUsed,
+                    enabledProviders: enabledProviders,
                     refreshStates: shell.RefreshStates,
                     openSettings: () => dispatcher.TryEnqueue(ShowSettings),
                     openAbout: () => dispatcher.TryEnqueue(ShowAbout),
@@ -270,18 +282,36 @@ public partial class App : Application
             else
             {
                 // Refresh data on each re-open so the popover doesn't show stale snapshots.
-                popover.RefreshFromStore(shell.Store.All(), shell.Settings.ShowUsageAsUsed);
+                popover.RefreshFromStore(shell.Store.All(), enabledProviders, shell.Settings.ShowUsageAsUsed);
             }
 
-            NativeMethods.GetCursorPos(out var pt);
-            var displayArea = Microsoft.UI.Windowing.DisplayArea.GetFromPoint(
-                new Windows.Graphics.PointInt32(pt.X, pt.Y),
-                Microsoft.UI.Windowing.DisplayAreaFallback.Nearest);
-            var (left, top) = PopoverPositioner.CalculateForCursor(
-                pt.X, pt.Y,
-                440, 520,
-                displayArea.WorkArea.X, displayArea.WorkArea.Y,
-                displayArea.WorkArea.Width, displayArea.WorkArea.Height);
+            // Anchor positioning depends on what triggered the toggle. Tray clicks
+            // happen with the cursor over the tray icon, so CalculateForCursor lands
+            // the popover near the tray naturally. Hotkey triggers can fire with the
+            // cursor anywhere on any monitor — fall back to the tray's actual home
+            // (bottom-right of the PRIMARY work area) so the popover always opens
+            // somewhere predictable and on screen.
+            int left, top;
+            if (anchor == PopoverAnchor.SystemTray)
+            {
+                var primary = Microsoft.UI.Windowing.DisplayArea.Primary;
+                (left, top) = PopoverPositioner.CalculateTaskbarDock(
+                    440, 520,
+                    primary.WorkArea.X, primary.WorkArea.Y,
+                    primary.WorkArea.Width, primary.WorkArea.Height);
+            }
+            else
+            {
+                NativeMethods.GetCursorPos(out var pt);
+                var displayArea = Microsoft.UI.Windowing.DisplayArea.GetFromPoint(
+                    new Windows.Graphics.PointInt32(pt.X, pt.Y),
+                    Microsoft.UI.Windowing.DisplayAreaFallback.Nearest);
+                (left, top) = PopoverPositioner.CalculateForCursor(
+                    pt.X, pt.Y,
+                    440, 520,
+                    displayArea.WorkArea.X, displayArea.WorkArea.Y,
+                    displayArea.WorkArea.Width, displayArea.WorkArea.Height);
+            }
 
             if (popover is null || popover.AppWindow is null) return;
             popover.AppWindow.Move(new Windows.Graphics.PointInt32(left, top));
@@ -298,6 +328,22 @@ public partial class App : Application
         {
             WriteCrashLog("TogglePopover", ex);
         }
+    }
+
+    /// <summary>
+    /// Returns the providers the user has enabled in Settings, in popover tab order.
+    /// The popover renders one tab per provider in this list, regardless of whether the
+    /// snapshot store has data for the provider yet.
+    /// </summary>
+    private static IReadOnlyList<UsageProvider> ResolveEnabledProviders(AppSettings settings)
+    {
+        var enabled = new List<UsageProvider>(5);
+        if (settings.CodexEnabled) enabled.Add(UsageProvider.Codex);
+        if (settings.ClaudeEnabled) enabled.Add(UsageProvider.Claude);
+        if (settings.CursorEnabled) enabled.Add(UsageProvider.Cursor);
+        if (settings.GeminiEnabled) enabled.Add(UsageProvider.Gemini);
+        if (settings.CopilotEnabled) enabled.Add(UsageProvider.Copilot);
+        return enabled;
     }
 
     private static CodexBarTheme ProbeSystemTheme()
@@ -433,7 +479,7 @@ public partial class App : Application
     {
         if (msg == NativeMethods.WM_HOTKEY && wParam.ToInt32() == HotkeyId)
         {
-            try { uiDispatcher?.TryEnqueue(TogglePopover); }
+            try { uiDispatcher?.TryEnqueue(() => TogglePopover(PopoverAnchor.SystemTray)); }
             catch (Exception ex) { WriteCrashLog("WM_HOTKEY dispatch", ex); }
             return IntPtr.Zero;
         }

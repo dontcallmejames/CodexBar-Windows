@@ -32,10 +32,18 @@ public sealed partial class PopoverViewModel : ObservableObject
 
     public IReadOnlyList<UsageSnapshot> Snapshots { get; private set; }
 
+    /// <summary>
+    /// Providers the user has enabled in Settings, in display order. Drives which tabs render
+    /// in the popover — even if a provider has not yet produced a snapshot (no successful
+    /// refresh, missing credentials), its tab still appears so the user can see "no data yet".
+    /// </summary>
+    public IReadOnlyList<UsageProvider> EnabledProviders { get; private set; }
+
     public PopoverViewModel(
         IReadOnlyList<UsageSnapshot> snapshots,
         UsageProvider activeProvider,
         bool showUsageAsUsed,
+        IReadOnlyList<UsageProvider>? enabledProviders = null,
         ProviderRefreshStateRegistry? refreshStates = null,
         DateTimeOffset? now = null,
         Action? openSettings = null,
@@ -46,6 +54,7 @@ public sealed partial class PopoverViewModel : ObservableObject
         Action? openAddAccount = null)
     {
         Snapshots = snapshots;
+        EnabledProviders = enabledProviders ?? snapshots.Select(s => s.Provider).ToArray();
         this.showUsageAsUsed = showUsageAsUsed;
         this.refreshStates = refreshStates;
         this.now = now;
@@ -88,6 +97,15 @@ public sealed partial class PopoverViewModel : ObservableObject
         // Preserve the user's current tab selection if that provider is still present;
         // otherwise SelectProvider will fall through to the first snapshot.
         SelectProvider(ActiveProvider);
+    }
+
+    /// <summary>
+    /// Update the set of enabled providers (called when settings change so the popover
+    /// adds or removes tabs without needing the popover to be recreated).
+    /// </summary>
+    public void UpdateEnabledProviders(IReadOnlyList<UsageProvider> enabledProviders)
+    {
+        EnabledProviders = enabledProviders;
     }
 
     public void SelectProvider(UsageProvider provider)
