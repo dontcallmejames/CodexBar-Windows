@@ -19,17 +19,29 @@ public sealed class ClaudeProvider : IUsageProvider
     private readonly HttpClient httpClient;
     private readonly IAppPaths paths;
     private readonly string? manualCookieHeader;
+    private readonly ClaudeCodeLocalUsageScanner localUsageScanner;
 
-    public ClaudeProvider(HttpClient httpClient, IAppPaths paths, string? manualCookieHeader = null)
+    public ClaudeProvider(
+        HttpClient httpClient,
+        IAppPaths paths,
+        string? manualCookieHeader = null,
+        ClaudeCodeLocalUsageScanner? localUsageScanner = null)
     {
         this.httpClient = httpClient;
         this.paths = paths;
         this.manualCookieHeader = manualCookieHeader;
+        this.localUsageScanner = localUsageScanner ?? new ClaudeCodeLocalUsageScanner();
     }
 
     public UsageProvider Provider => UsageProvider.Claude;
 
     public async Task<UsageSnapshot> RefreshAsync(CancellationToken cancellationToken)
+    {
+        var snapshot = await RefreshCloudAsync(cancellationToken);
+        return MergeLocalUsage(snapshot, cancellationToken);
+    }
+
+    private async Task<UsageSnapshot> RefreshCloudAsync(CancellationToken cancellationToken)
     {
         if (File.Exists(paths.ClaudeCredentialsJson))
         {
@@ -60,6 +72,30 @@ public sealed class ClaudeProvider : IUsageProvider
             UsageProvider.Claude,
             "Claude",
             "Claude OAuth credentials or manual cookie header were not found.");
+    }
+
+    private UsageSnapshot MergeLocalUsage(UsageSnapshot snapshot, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var report = localUsageScanner.Scan(DateTimeOffset.Now, cancellationToken);
+            if (report.TodayTotalTokens == 0 && report.Last7DaysTotalTokens == 0)
+            {
+                return snapshot;
+            }
+
+            // We don't track 30 days locally; expose the 7-day rollup in Last30DaysTokens for now.
+            return snapshot with
+            {
+                TodayTokens = report.TodayTotalTokens,
+                Last30DaysTokens = report.Last7DaysTotalTokens
+            };
+        }
+        catch (Exception)
+        {
+            // Local scan must never fail the cloud snapshot — return as-is on any unexpected error.
+            return snapshot;
+        }
     }
 
     private async Task<UsageSnapshot> RefreshOAuthAsync(

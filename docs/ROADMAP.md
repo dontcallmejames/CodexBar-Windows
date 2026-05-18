@@ -2,11 +2,11 @@
 
 Tracked features and ideas. Roughly in priority order; subject to change.
 
-## In this batch (PR pending)
+## Shipped in this batch
 
 1. **Global hotkey** — Configurable system-wide shortcut to toggle the popover from anywhere. Right now you have to find the tray icon, which Windows often hides into the overflow chevron.
 2. **GitHub Copilot provider** — Reads `GET https://api.github.com/copilot_internal/user` using the GitHub CLI's stored token. Surfaces premium-interactions / chat / completions quotas depending on the plan tier.
-3. **ccusage integration for Claude** — Shells to `npx ccusage daily --json` to surface today's local Claude Code token spend on the Claude tab. Local-only, no API roundtrip.
+3. **ccusage integration for Claude** — Scans `~/.claude/projects/**/*.jsonl` (Claude Code's local session log) and surfaces today's local token spend on the Claude tab. Local-only, no API roundtrip and no NPX dependency.
 
 ## Next up (4–9)
 

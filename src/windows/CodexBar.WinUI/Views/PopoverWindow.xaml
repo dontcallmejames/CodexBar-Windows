@@ -115,6 +115,16 @@
                         </DataTemplate>
                     </ItemsRepeater.ItemTemplate>
                 </ItemsRepeater>
+
+                <!-- Local Claude Code token usage (ccusage-style). Visible only on the Claude tab
+                     when at least one assistant message with usage exists for today. -->
+                <TextBlock
+                    x:Name="LocalTokensCaption"
+                    AutomationProperties.AutomationId="PopoverLocalTokensCaption"
+                    Style="{StaticResource CaptionTextBlockStyle}"
+                    Opacity="0.75"
+                    Visibility="{x:Bind ViewModel.LocalTokensVisibility, Mode=OneWay}"
+                    Text="{x:Bind ViewModel.LocalTokensText, Mode=OneWay}" />
             </StackPanel>
         </ScrollViewer>
 

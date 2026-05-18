@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using CodexBar.Core.Models;
+using CodexBar.Core.Providers.Claude;
 using CodexBar.Core.Refresh;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -26,6 +27,8 @@ public sealed partial class PopoverViewModel : ObservableObject
     [ObservableProperty] private string updatedText = string.Empty;
     [ObservableProperty] private string planText = string.Empty;
     [ObservableProperty] private string liveIndicatorText = string.Empty;
+    [ObservableProperty] private string localTokensText = string.Empty;
+    [ObservableProperty] private Microsoft.UI.Xaml.Visibility localTokensVisibility = Microsoft.UI.Xaml.Visibility.Collapsed;
 
     public IReadOnlyList<UsageSnapshot> Snapshots { get; private set; }
 
@@ -94,6 +97,7 @@ public sealed partial class PopoverViewModel : ObservableObject
         ActiveSnapshot = selected;
         Metrics = BuildMetrics(selected);
         PlanText = selected?.Plan ?? string.Empty;
+        UpdateLocalTokens(selected);
         RefreshLiveIndicator();
     }
 
@@ -129,6 +133,20 @@ public sealed partial class PopoverViewModel : ObservableObject
         }
         var diff = (now ?? DateTimeOffset.Now) - last.Value;
         LiveIndicatorText = $"Live • updated {Humanize(diff)} ago";
+    }
+
+    private void UpdateLocalTokens(UsageSnapshot? snapshot)
+    {
+        if (snapshot is { Provider: UsageProvider.Claude, TodayTokens: > 0 } claudeSnapshot)
+        {
+            LocalTokensText = $"Claude Code: {TokenFormatter.Format(claudeSnapshot.TodayTokens.Value)} tokens today";
+            LocalTokensVisibility = Microsoft.UI.Xaml.Visibility.Visible;
+        }
+        else
+        {
+            LocalTokensText = string.Empty;
+            LocalTokensVisibility = Microsoft.UI.Xaml.Visibility.Collapsed;
+        }
     }
 
     private IReadOnlyList<PopoverMetricViewModel> BuildMetrics(UsageSnapshot? snapshot)

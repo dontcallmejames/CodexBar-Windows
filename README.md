@@ -51,6 +51,7 @@ Requirements:
 - **Automatic update checks** against GitHub Releases (24-hour cadence, off by default). The app surfaces updates via a Windows AppNotification banner; clicking Open Release takes you to the release page. Updates are not auto-installed.
 - **DPAPI-encrypted secrets**: manual cookie headers (Claude, Cursor) are encrypted at rest with Windows DPAPI tied to your user profile. Plaintext values from older installs are migrated on next save.
 - **Accessibility**: every interactive control exposes an `AutomationId` and icon-only buttons expose an accessible `Name`, so Narrator and UI automation tools can navigate the app end-to-end.
+- **Local Claude Code token tracking** (when Claude Code is installed): the Claude tab also shows today's local token spend by scanning `~/.claude/projects/**/*.jsonl`, ccusage-style. No network call, no NPX dependency.
 
 ## Updates
 

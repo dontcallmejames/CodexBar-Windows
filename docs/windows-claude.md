@@ -26,6 +26,20 @@ The tray popover can show:
 - Model-specific weekly windows when returned by the provider
 - Extra usage or overage information when available
 
+## Local token usage (ccusage)
+
+When Claude Code is installed, CodexBar additionally reads
+`%USERPROFILE%\.claude\projects\**\*.jsonl` to compute today's local token spend
+in the style of the [ccusage](https://github.com/ryoppippi/ccusage) CLI. The
+scan is purely local — no data leaves your machine and no API call is made.
+Session files modified more than 8 days ago are skipped without being opened.
+Assistant messages are deduplicated by `message.id` so a replayed message is
+only counted once.
+
+The token total is shown under the rate-window list on the Claude tab as
+`Claude Code: 1.2M tokens today`. To disable in v1, remove the
+`~/.claude/projects` directory or revoke read access; there is no in-app toggle.
+
 ## Common Setup Errors
 
 - `.credentials.json` is missing: sign in with Claude Code or paste a manual cookie header.
