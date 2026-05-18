@@ -33,6 +33,10 @@
                     <ToggleSwitch AutomationProperties.AutomationId="SettingsGeminiEnabledToggle"
                                   IsOn="{x:Bind ViewModel.GeminiEnabled, Mode=TwoWay}" />
                 </ctk:SettingsCard>
+                <ctk:SettingsCard Header="Copilot" Description="Requires `gh auth login` first.">
+                    <ToggleSwitch AutomationProperties.AutomationId="SettingsCopilotEnabledToggle"
+                                  IsOn="{x:Bind ViewModel.CopilotEnabled, Mode=TwoWay}" />
+                </ctk:SettingsCard>
 
                 <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="Refresh" Margin="0,12,0,0" />
                 <ctk:SettingsCard Header="Refresh interval" Description="How often CodexBar queries each provider (in minutes).">

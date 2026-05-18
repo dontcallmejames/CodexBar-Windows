@@ -38,6 +38,7 @@
                 <controls:NavigationViewItem AutomationProperties.AutomationId="PopoverTabClaude" Content="Claude" Tag="Claude" />
                 <controls:NavigationViewItem AutomationProperties.AutomationId="PopoverTabCursor" Content="Cursor" Tag="Cursor" />
                 <controls:NavigationViewItem AutomationProperties.AutomationId="PopoverTabGemini" Content="Gemini" Tag="Gemini" />
+                <controls:NavigationViewItem AutomationProperties.AutomationId="PopoverTabCopilot" Content="Copilot" Tag="Copilot" />
             </controls:NavigationView.MenuItems>
         </controls:NavigationView>
 

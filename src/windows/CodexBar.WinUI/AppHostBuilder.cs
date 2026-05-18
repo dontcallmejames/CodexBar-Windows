@@ -8,6 +8,7 @@ using CodexBar.Core.Paths;
 using CodexBar.Core.Providers;
 using CodexBar.Core.Providers.Claude;
 using CodexBar.Core.Providers.Codex;
+using CodexBar.Core.Providers.Copilot;
 using CodexBar.Core.Providers.Cursor;
 using CodexBar.Core.Providers.Gemini;
 using CodexBar.Core.Refresh;
@@ -78,6 +79,7 @@ public sealed class AppShell : IDisposable
         UsageProvider.Claude => s.ClaudeEnabled,
         UsageProvider.Cursor => s.CursorEnabled,
         UsageProvider.Gemini => s.GeminiEnabled,
+        UsageProvider.Copilot => s.CopilotEnabled,
         _ => true,
     };
 
@@ -119,6 +121,7 @@ public sealed class AppShell : IDisposable
         if (settings.ClaudeEnabled) list.Add(new ClaudeProvider(HttpClient, Paths, manualCookieHeader: settings.ClaudeManualCookieHeader));
         if (settings.CursorEnabled) list.Add(new CursorProvider(HttpClient, settings.CursorManualCookieHeader));
         if (settings.GeminiEnabled) list.Add(new GeminiProvider(HttpClient, Paths));
+        if (settings.CopilotEnabled) list.Add(new CopilotProvider(HttpClient));
         return list;
     }
 }

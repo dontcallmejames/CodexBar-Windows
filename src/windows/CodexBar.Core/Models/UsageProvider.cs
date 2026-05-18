@@ -5,5 +5,6 @@ public enum UsageProvider
     Codex,
     Claude,
     Cursor,
-    Gemini
+    Gemini,
+    Copilot
 }

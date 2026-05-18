@@ -31,6 +31,7 @@ Requirements:
 | Claude | Claude CLI OAuth at `%USERPROFILE%\.claude\.credentials.json` or manual cookie header | Supported | OAuth is preferred; manual cookies are a fallback. |
 | Cursor | Manual `Cookie:` header from a signed-in Cursor browser request | Manual-cookie only | Cursor has no stable public usage API. |
 | Gemini | Gemini CLI OAuth at `%USERPROFILE%\.gemini\oauth_creds.json` | Supported | API key and Vertex AI modes are not supported. |
+| Copilot | GitHub CLI token via `gh auth token` (run `gh auth login` first) | Supported | Off by default — opt in from Settings after signing in with `gh`. |
 
 ## First run
 

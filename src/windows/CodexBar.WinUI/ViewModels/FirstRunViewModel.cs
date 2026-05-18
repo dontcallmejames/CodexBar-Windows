@@ -11,6 +11,7 @@ public sealed partial class FirstRunViewModel : ObservableObject
     [ObservableProperty] private bool claudeEnabled;
     [ObservableProperty] private bool cursorEnabled;
     [ObservableProperty] private bool geminiEnabled;
+    [ObservableProperty] private bool copilotEnabled;
 
     public FirstRunViewModel(AppSettings settings)
     {
@@ -19,6 +20,7 @@ public sealed partial class FirstRunViewModel : ObservableObject
         claudeEnabled = settings.ClaudeEnabled;
         cursorEnabled = settings.CursorEnabled;
         geminiEnabled = settings.GeminiEnabled;
+        copilotEnabled = settings.CopilotEnabled;
     }
 
     public AppSettings ToSettings() => originalSettings with
@@ -27,5 +29,6 @@ public sealed partial class FirstRunViewModel : ObservableObject
         ClaudeEnabled = ClaudeEnabled,
         CursorEnabled = CursorEnabled,
         GeminiEnabled = GeminiEnabled,
+        CopilotEnabled = CopilotEnabled,
     };
 }

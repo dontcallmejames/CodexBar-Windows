@@ -19,6 +19,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private bool claudeEnabled;
     [ObservableProperty] private bool cursorEnabled;
     [ObservableProperty] private bool geminiEnabled;
+    [ObservableProperty] private bool copilotEnabled;
     // NumberBox.Value is double — back this with a double so the binding doesn't quietly fail.
     [ObservableProperty] private double refreshMinutes;
     [ObservableProperty] private bool dockOverviewNearTaskbar;
@@ -47,6 +48,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         claudeEnabled = settings.ClaudeEnabled;
         cursorEnabled = settings.CursorEnabled;
         geminiEnabled = settings.GeminiEnabled;
+        copilotEnabled = settings.CopilotEnabled;
         refreshMinutes = settings.RefreshMinutes;
         dockOverviewNearTaskbar = settings.DockOverviewNearTaskbar;
         launchAtStartup = settings.LaunchAtStartup;
@@ -86,6 +88,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         ClaudeEnabled,
         CursorEnabled,
         GeminiEnabled,
+        CopilotEnabled,
         originalSettings.MergeTrayIcon,
         ShowUsageAsUsed,
         DockOverviewNearTaskbar,
@@ -96,6 +99,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         originalSettings.ClaudeSource,
         originalSettings.CursorSource,
         originalSettings.GeminiSource,
+        originalSettings.CopilotSource,
         string.IsNullOrWhiteSpace(ClaudeManualCookieHeader) ? null : ClaudeManualCookieHeader,
         string.IsNullOrWhiteSpace(CursorManualCookieHeader) ? null : CursorManualCookieHeader,
         string.IsNullOrWhiteSpace(GlobalHotkey) ? "Ctrl+Alt+U" : GlobalHotkey,

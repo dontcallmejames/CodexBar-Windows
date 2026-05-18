@@ -31,6 +31,7 @@ public static class BugReportBuilder
             ProviderLine(UsageProvider.Claude, settings.ClaudeEnabled, byProvider),
             ProviderLine(UsageProvider.Cursor, settings.CursorEnabled, byProvider),
             ProviderLine(UsageProvider.Gemini, settings.GeminiEnabled, byProvider),
+            ProviderLine(UsageProvider.Copilot, settings.CopilotEnabled, byProvider),
             string.Empty,
             "No tokens, cookies, OAuth files, or credential contents are included.");
     }
