@@ -85,6 +85,19 @@
                     <ToggleSwitch AutomationProperties.AutomationId="SettingsCheckForUpdatesToggle"
                                   IsOn="{x:Bind ViewModel.CheckForUpdatesAutomatically, Mode=TwoWay}" />
                 </ctk:SettingsCard>
+                <ctk:SettingsCard Header="Install update"
+                                  Description="{x:Bind ViewModel.InstallStatusText, Mode=OneWay}">
+                    <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                        <ProgressBar AutomationProperties.AutomationId="SettingsInstallUpdateProgress"
+                                     Width="120" Minimum="0" Maximum="100"
+                                     Value="{x:Bind ViewModel.DownloadProgress, Mode=OneWay}"
+                                     Visibility="{x:Bind ViewModel.ProgressVisibility, Mode=OneWay}" />
+                        <Button AutomationProperties.AutomationId="SettingsInstallUpdateButton"
+                                Content="Install now"
+                                Command="{x:Bind ViewModel.InstallUpdateCommand}"
+                                IsEnabled="{x:Bind ViewModel.CanInstallUpdate, Mode=OneWay}" />
+                    </StackPanel>
+                </ctk:SettingsCard>
 
                 <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="Advanced credentials" Margin="0,12,0,0" />
                 <ctk:SettingsCard Header="Cursor manual cookie" Description="Cookie: header from a signed-in Cursor browser request.">
