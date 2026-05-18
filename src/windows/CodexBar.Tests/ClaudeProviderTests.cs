@@ -15,7 +15,7 @@ public sealed class ClaudeProviderTests
         var credentialsPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), ".credentials.json");
         using var handler = new QueueHandler();
         using var httpClient = new HttpClient(handler);
-        var provider = new ClaudeProvider(httpClient, new TestAppPaths(credentialsPath));
+        var provider = new ClaudeProvider(httpClient, new TestAppPaths(credentialsPath), localUsageScanner: EmptyScanner());
 
         var snapshot = await provider.RefreshAsync(CancellationToken.None);
 
@@ -47,7 +47,7 @@ public sealed class ClaudeProviderTests
             """)
         });
         using var httpClient = new HttpClient(handler);
-        var provider = new ClaudeProvider(httpClient, new TestAppPaths(credentialsPath));
+        var provider = new ClaudeProvider(httpClient, new TestAppPaths(credentialsPath), localUsageScanner: EmptyScanner());
 
         var snapshot = await provider.RefreshAsync(CancellationToken.None);
 
@@ -99,7 +99,7 @@ public sealed class ClaudeProviderTests
                 """)
             });
         using var httpClient = new HttpClient(handler);
-        var provider = new ClaudeProvider(httpClient, new TestAppPaths(credentialsPath));
+        var provider = new ClaudeProvider(httpClient, new TestAppPaths(credentialsPath), localUsageScanner: EmptyScanner());
 
         var snapshot = await provider.RefreshAsync(CancellationToken.None);
 
@@ -136,7 +136,7 @@ public sealed class ClaudeProviderTests
         response.Headers.TryAddWithoutValidation("Retry-After", "120");
         using var handler = new QueueHandler(response);
         using var httpClient = new HttpClient(handler);
-        var provider = new ClaudeProvider(httpClient, new TestAppPaths(credentialsPath));
+        var provider = new ClaudeProvider(httpClient, new TestAppPaths(credentialsPath), localUsageScanner: EmptyScanner());
 
         var error = await Assert.ThrowsExactlyAsync<RateLimitException>(
             () => provider.RefreshAsync(CancellationToken.None));
@@ -161,7 +161,7 @@ public sealed class ClaudeProviderTests
         response.Headers.TryAddWithoutValidation("Retry-After", "45");
         using var handler = new QueueHandler(response);
         using var httpClient = new HttpClient(handler);
-        var provider = new ClaudeProvider(httpClient, new TestAppPaths(credentialsPath));
+        var provider = new ClaudeProvider(httpClient, new TestAppPaths(credentialsPath), localUsageScanner: EmptyScanner());
 
         var ex = await Assert.ThrowsExactlyAsync<RateLimitException>(
             () => provider.RefreshAsync(CancellationToken.None));
@@ -203,7 +203,7 @@ public sealed class ClaudeProviderTests
                 Content = new StringContent("{}")
             });
         using var httpClient = new HttpClient(handler);
-        var provider = new ClaudeProvider(httpClient, new TestAppPaths(credentialsPath), "sessionKey=sk-ant-123");
+        var provider = new ClaudeProvider(httpClient, new TestAppPaths(credentialsPath), "sessionKey=sk-ant-123", EmptyScanner());
 
         var snapshot = await provider.RefreshAsync(CancellationToken.None);
 
@@ -276,7 +276,7 @@ public sealed class ClaudeProviderTests
                 """)
             });
         using var httpClient = new HttpClient(handler);
-        var provider = new ClaudeProvider(httpClient, new TestAppPaths(credentialsPath), "sessionKey=sk-ant-123");
+        var provider = new ClaudeProvider(httpClient, new TestAppPaths(credentialsPath), "sessionKey=sk-ant-123", EmptyScanner());
 
         var snapshot = await provider.RefreshAsync(CancellationToken.None);
 
@@ -340,7 +340,7 @@ public sealed class ClaudeProviderTests
                 """)
             });
         using var httpClient = new HttpClient(handler);
-        var provider = new ClaudeProvider(httpClient, new TestAppPaths(credentialsPath), "sessionKey=sk-ant-123");
+        var provider = new ClaudeProvider(httpClient, new TestAppPaths(credentialsPath), "sessionKey=sk-ant-123", EmptyScanner());
 
         var snapshot = await provider.RefreshAsync(CancellationToken.None);
 
@@ -389,7 +389,7 @@ public sealed class ClaudeProviderTests
                 Content = new StringContent("{}")
             });
         using var httpClient = new HttpClient(handler);
-        var provider = new ClaudeProvider(httpClient, new TestAppPaths(credentialsPath), "sessionKey=sk-ant-123");
+        var provider = new ClaudeProvider(httpClient, new TestAppPaths(credentialsPath), "sessionKey=sk-ant-123", EmptyScanner());
 
         var snapshot = await provider.RefreshAsync(CancellationToken.None);
 
@@ -398,6 +398,12 @@ public sealed class ClaudeProviderTests
         Assert.AreEqual("web", snapshot.SourceLabel);
         Assert.AreEqual("fallback@example.com", snapshot.AccountEmail);
     }
+
+    // The default ClaudeProvider scanner walks %USERPROFILE%\.claude\projects.
+    // Tests inject a scanner rooted at a non-existent path so local session data
+    // on the developer/CI machine cannot leak into snapshot assertions.
+    private static ClaudeCodeLocalUsageScanner EmptyScanner() =>
+        new(Path.Combine(Path.GetTempPath(), "no-such-claude-projects-" + Guid.NewGuid().ToString("N")));
 
     private static async Task<string> WriteCredentialsFileAsync(string json)
     {

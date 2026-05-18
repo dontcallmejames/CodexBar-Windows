@@ -27,9 +27,35 @@ public sealed partial class PopoverWindow : Window
     /// </summary>
     public void RefreshFromStore(
         System.Collections.Generic.IReadOnlyList<UsageSnapshot> snapshots,
+        System.Collections.Generic.IReadOnlyList<UsageProvider> enabledProviders,
         bool showUsageAsUsed)
     {
+        ViewModel.UpdateEnabledProviders(enabledProviders);
         ViewModel.UpdateSnapshots(snapshots, showUsageAsUsed);
+        RebuildProviderTabs(enabledProviders);
+        SetActiveProviderInUI(ViewModel.ActiveProvider);
+    }
+
+    /// <summary>
+    /// Rebuild the NavigationView's MenuItems collection from the user's enabled-provider
+    /// settings. Disabled providers never render; enabled providers without a snapshot yet
+    /// still get a tab (the active-tab UI handles the empty state gracefully).
+    /// </summary>
+    private void RebuildProviderTabs(
+        System.Collections.Generic.IReadOnlyList<UsageProvider> enabledProviders)
+    {
+        ProviderNav.MenuItems.Clear();
+        foreach (var provider in enabledProviders)
+        {
+            var providerName = provider.ToString();
+            var item = new NavigationViewItem
+            {
+                Content = providerName,
+                Tag = providerName
+            };
+            Microsoft.UI.Xaml.Automation.AutomationProperties.SetAutomationId(item, $"PopoverTab{providerName}");
+            ProviderNav.MenuItems.Add(item);
+        }
     }
 
     public PopoverWindow(PopoverViewModel viewModel, ThemeListener theme)
@@ -53,6 +79,7 @@ public sealed partial class PopoverWindow : Window
         themeChangedHandler = (_, _) => DispatcherQueue.TryEnqueue(() => ApplyTheme(theme.Effective));
         theme.Changed += themeChangedHandler;
 
+        RebuildProviderTabs(viewModel.EnabledProviders);
         SetActiveProviderInUI(viewModel.ActiveProvider);
 
         indicatorTimer = DispatcherQueue.CreateTimer();

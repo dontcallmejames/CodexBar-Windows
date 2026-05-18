@@ -31,6 +31,7 @@ Requirements:
 | Claude | Claude CLI OAuth at `%USERPROFILE%\.claude\.credentials.json` or manual cookie header | Supported | OAuth is preferred; manual cookies are a fallback. |
 | Cursor | Manual `Cookie:` header from a signed-in Cursor browser request | Manual-cookie only | Cursor has no stable public usage API. |
 | Gemini | Gemini CLI OAuth at `%USERPROFILE%\.gemini\oauth_creds.json` | Supported | API key and Vertex AI modes are not supported. |
+| Copilot | GitHub CLI token via `gh auth token` (run `gh auth login` first) | Supported | Off by default — opt in from Settings after signing in with `gh`. |
 
 ## First run
 
@@ -50,6 +51,7 @@ Requirements:
 - **Automatic update checks** against GitHub Releases (24-hour cadence, off by default). The app surfaces updates via a Windows AppNotification banner; clicking Open Release takes you to the release page. Updates are not auto-installed.
 - **DPAPI-encrypted secrets**: manual cookie headers (Claude, Cursor) are encrypted at rest with Windows DPAPI tied to your user profile. Plaintext values from older installs are migrated on next save.
 - **Accessibility**: every interactive control exposes an `AutomationId` and icon-only buttons expose an accessible `Name`, so Narrator and UI automation tools can navigate the app end-to-end.
+- **Local Claude Code token tracking** (when Claude Code is installed): the Claude tab also shows today's local token spend by scanning `~/.claude/projects/**/*.jsonl`, ccusage-style. No network call, no NPX dependency.
 
 ## Updates
 

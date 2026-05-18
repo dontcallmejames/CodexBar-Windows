@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
@@ -30,6 +31,14 @@ public partial class App : Application
     private Microsoft.UI.Dispatching.DispatcherQueue? uiDispatcher;
     private System.Threading.CancellationTokenSource? shutdownCts;
     private UISettings? uiSettings;
+
+    // System-wide hotkey: subclasses the lifetime-anchor HWND so it can listen
+    // for WM_HOTKEY without needing a separate message-only window.
+    private const int HotkeyId = 0xC0DE;
+    private IntPtr anchorHwnd = IntPtr.Zero;
+    private IntPtr originalWndProc = IntPtr.Zero;
+    private NativeMethods.WndProcDelegate? subclassDelegate;
+    private bool hotkeyRegistered;
 
     // Timestamp of the most recent popover auto-hide caused by clicking outside the popover.
     // When the user clicks the tray icon to dismiss an open popover, the deactivation fires
@@ -93,11 +102,19 @@ public partial class App : Application
             lifetimeAnchor.Activate();
             lifetimeAnchor.AppWindow?.Hide();
 
+            // Install WM_HOTKEY subclass on the anchor so the global hotkey can route here.
+            try
+            {
+                anchorHwnd = WinRT.Interop.WindowNative.GetWindowHandle(lifetimeAnchor);
+                InstallHotkeySubclass(anchorHwnd);
+            }
+            catch (Exception ex) { WriteCrashLog("InstallHotkeySubclass", ex); }
+
             shell = await AppHostBuilder.BuildAsync(uiDispatcher, shutdownCts.Token);
             themeListener = new ThemeListener(ProbeSystemTheme);
 
             tray = new TrayHost();
-            tray.LeftClick += (_, _) => uiDispatcher.TryEnqueue(TogglePopover);
+            tray.LeftClick += (_, _) => uiDispatcher.TryEnqueue(() => TogglePopover(PopoverAnchor.Cursor));
             tray.OnSettingsClick = () => uiDispatcher.TryEnqueue(ShowSettings);
             tray.OnAboutClick = () => uiDispatcher.TryEnqueue(ShowAbout);
             tray.OnQuitClick = () => uiDispatcher.TryEnqueue(QuitApp);
@@ -129,6 +146,9 @@ public partial class App : Application
             {
                 ShowFirstRun();
             }
+
+            // Register the configured global hotkey now that settings have loaded.
+            TryRegisterGlobalHotkey(shell.Settings);
 
             // Listen to live system theme changes (fires from background thread).
             // Promoted to a field so the event subscription stays alive for the app's lifetime.
@@ -196,7 +216,15 @@ public partial class App : Application
         window.AppWindow.Move(new Windows.Graphics.PointInt32(left, top));
     }
 
-    private void TogglePopover()
+    private enum PopoverAnchor
+    {
+        /// <summary>Place the popover next to the mouse cursor (canonical tray-click behavior).</summary>
+        Cursor,
+        /// <summary>Place the popover in the bottom-right corner of the primary work area, just above the system tray.</summary>
+        SystemTray
+    }
+
+    private void TogglePopover(PopoverAnchor anchor = PopoverAnchor.Cursor)
     {
         try
         {
@@ -221,12 +249,15 @@ public partial class App : Application
             if (shell is null || themeListener is null || uiDispatcher is null) return;
             var dispatcher = uiDispatcher;
 
+            var enabledProviders = ResolveEnabledProviders(shell.Settings);
+
             if (popover is null)
             {
                 var vm = new PopoverViewModel(
                     shell.Store.All(),
-                    UsageProvider.Codex,
+                    enabledProviders.Count > 0 ? enabledProviders[0] : UsageProvider.Codex,
                     shell.Settings.ShowUsageAsUsed,
+                    enabledProviders: enabledProviders,
                     refreshStates: shell.RefreshStates,
                     openSettings: () => dispatcher.TryEnqueue(ShowSettings),
                     openAbout: () => dispatcher.TryEnqueue(ShowAbout),
@@ -251,18 +282,36 @@ public partial class App : Application
             else
             {
                 // Refresh data on each re-open so the popover doesn't show stale snapshots.
-                popover.RefreshFromStore(shell.Store.All(), shell.Settings.ShowUsageAsUsed);
+                popover.RefreshFromStore(shell.Store.All(), enabledProviders, shell.Settings.ShowUsageAsUsed);
             }
 
-            NativeMethods.GetCursorPos(out var pt);
-            var displayArea = Microsoft.UI.Windowing.DisplayArea.GetFromPoint(
-                new Windows.Graphics.PointInt32(pt.X, pt.Y),
-                Microsoft.UI.Windowing.DisplayAreaFallback.Nearest);
-            var (left, top) = PopoverPositioner.CalculateForCursor(
-                pt.X, pt.Y,
-                440, 520,
-                displayArea.WorkArea.X, displayArea.WorkArea.Y,
-                displayArea.WorkArea.Width, displayArea.WorkArea.Height);
+            // Anchor positioning depends on what triggered the toggle. Tray clicks
+            // happen with the cursor over the tray icon, so CalculateForCursor lands
+            // the popover near the tray naturally. Hotkey triggers can fire with the
+            // cursor anywhere on any monitor — fall back to the tray's actual home
+            // (bottom-right of the PRIMARY work area) so the popover always opens
+            // somewhere predictable and on screen.
+            int left, top;
+            if (anchor == PopoverAnchor.SystemTray)
+            {
+                var primary = Microsoft.UI.Windowing.DisplayArea.Primary;
+                (left, top) = PopoverPositioner.CalculateTaskbarDock(
+                    440, 520,
+                    primary.WorkArea.X, primary.WorkArea.Y,
+                    primary.WorkArea.Width, primary.WorkArea.Height);
+            }
+            else
+            {
+                NativeMethods.GetCursorPos(out var pt);
+                var displayArea = Microsoft.UI.Windowing.DisplayArea.GetFromPoint(
+                    new Windows.Graphics.PointInt32(pt.X, pt.Y),
+                    Microsoft.UI.Windowing.DisplayAreaFallback.Nearest);
+                (left, top) = PopoverPositioner.CalculateForCursor(
+                    pt.X, pt.Y,
+                    440, 520,
+                    displayArea.WorkArea.X, displayArea.WorkArea.Y,
+                    displayArea.WorkArea.Width, displayArea.WorkArea.Height);
+            }
 
             if (popover is null || popover.AppWindow is null) return;
             popover.AppWindow.Move(new Windows.Graphics.PointInt32(left, top));
@@ -279,6 +328,22 @@ public partial class App : Application
         {
             WriteCrashLog("TogglePopover", ex);
         }
+    }
+
+    /// <summary>
+    /// Returns the providers the user has enabled in Settings, in popover tab order.
+    /// The popover renders one tab per provider in this list, regardless of whether the
+    /// snapshot store has data for the provider yet.
+    /// </summary>
+    private static IReadOnlyList<UsageProvider> ResolveEnabledProviders(AppSettings settings)
+    {
+        var enabled = new List<UsageProvider>(5);
+        if (settings.CodexEnabled) enabled.Add(UsageProvider.Codex);
+        if (settings.ClaudeEnabled) enabled.Add(UsageProvider.Claude);
+        if (settings.CursorEnabled) enabled.Add(UsageProvider.Cursor);
+        if (settings.GeminiEnabled) enabled.Add(UsageProvider.Gemini);
+        if (settings.CopilotEnabled) enabled.Add(UsageProvider.Copilot);
+        return enabled;
     }
 
     private static CodexBarTheme ProbeSystemTheme()
@@ -334,7 +399,15 @@ public partial class App : Application
             () => shell!.UpdateNotifier.LatestResult);
         settingsWindow = new SettingsWindow(vm, async newSettings =>
         {
-            try { await shell!.ApplySettingsAsync(newSettings); }
+            try
+            {
+                await shell!.ApplySettingsAsync(newSettings);
+                // Re-register the hotkey after settings change. Conflicts are logged
+                // to the crash log — Save_Click closes the window so a teaching tip
+                // here would never be seen by the user. The rebind dialog handles
+                // interactive conflict feedback separately.
+                TryRegisterGlobalHotkey(newSettings);
+            }
             catch (Exception ex) { WriteCrashLog("ApplySettingsAsync", ex); }
         });
         settingsWindow.Closed += (_, _) => settingsWindow = null;
@@ -363,8 +436,68 @@ public partial class App : Application
         catch { /* ignore — best-effort foreground promotion */ }
     }
 
+    private bool TryRegisterGlobalHotkey(AppSettings settings)
+    {
+        if (anchorHwnd == IntPtr.Zero) return false;
+
+        // Always unregister the previous binding first so re-registration after a
+        // settings change doesn't leave the old combo live.
+        if (hotkeyRegistered)
+        {
+            NativeMethods.UnregisterHotKey(anchorHwnd, HotkeyId);
+            hotkeyRegistered = false;
+        }
+
+        if (!settings.EnableGlobalHotkey) return true;
+        if (!HotkeyParser.TryParse(settings.GlobalHotkey, out var parsed))
+        {
+            WriteCrashLog("TryRegisterGlobalHotkey", new InvalidOperationException(
+                $"Unparseable hotkey '{settings.GlobalHotkey}'"));
+            return false;
+        }
+
+        if (NativeMethods.RegisterHotKey(anchorHwnd, HotkeyId, parsed.Modifiers, parsed.VirtualKey))
+        {
+            hotkeyRegistered = true;
+            return true;
+        }
+
+        WriteCrashLog("TryRegisterGlobalHotkey", new InvalidOperationException(
+            $"RegisterHotKey failed for '{settings.GlobalHotkey}' — combination likely in use by another app."));
+        return false;
+    }
+
+    private void InstallHotkeySubclass(IntPtr hwnd)
+    {
+        if (hwnd == IntPtr.Zero) return;
+        subclassDelegate = HotkeyWndProc;
+        var fnPtr = Marshal.GetFunctionPointerForDelegate(subclassDelegate);
+        originalWndProc = NativeMethods.SetWindowLongPtrCompat(hwnd, NativeMethods.GWLP_WNDPROC, fnPtr);
+    }
+
+    private IntPtr HotkeyWndProc(IntPtr hwnd, uint msg, IntPtr wParam, IntPtr lParam)
+    {
+        if (msg == NativeMethods.WM_HOTKEY && wParam.ToInt32() == HotkeyId)
+        {
+            try { uiDispatcher?.TryEnqueue(() => TogglePopover(PopoverAnchor.SystemTray)); }
+            catch (Exception ex) { WriteCrashLog("WM_HOTKEY dispatch", ex); }
+            return IntPtr.Zero;
+        }
+        return NativeMethods.CallWindowProc(originalWndProc, hwnd, msg, wParam, lParam);
+    }
+
     private void QuitApp()
     {
+        try
+        {
+            if (hotkeyRegistered && anchorHwnd != IntPtr.Zero)
+            {
+                NativeMethods.UnregisterHotKey(anchorHwnd, HotkeyId);
+                hotkeyRegistered = false;
+            }
+        }
+        catch { /* ignore */ }
+
         try { popover?.Close(); popover = null; } catch { /* ignore */ }
         try { settingsWindow?.Close(); settingsWindow = null; } catch { /* ignore */ }
         try { aboutWindow?.Close(); aboutWindow = null; } catch { /* ignore */ }
@@ -449,6 +582,35 @@ public partial class App : Application
     {
         [StructLayout(LayoutKind.Sequential)]
         public struct POINT { public int X; public int Y; }
+
+        // WM_HOTKEY and the WNDPROC slot for our anchor subclass.
+        public const uint WM_HOTKEY = 0x0312;
+        public const int GWLP_WNDPROC = -4;
+
+        public delegate IntPtr WndProcDelegate(IntPtr hwnd, uint msg, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool UnregisterHotKey(IntPtr hWnd, int id);
+
+        [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW", SetLastError = true)]
+        private static extern IntPtr SetWindowLongPtr64(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
+
+        [DllImport("user32.dll", EntryPoint = "SetWindowLongW", SetLastError = true)]
+        private static extern IntPtr SetWindowLong32(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
+
+        // 32-/64-bit indirection: user32 exports SetWindowLong on x86 and SetWindowLongPtr on x64.
+        public static IntPtr SetWindowLongPtrCompat(IntPtr hWnd, int nIndex, IntPtr dwNewLong) =>
+            IntPtr.Size == 8
+                ? SetWindowLongPtr64(hWnd, nIndex, dwNewLong)
+                : SetWindowLong32(hWnd, nIndex, dwNewLong);
+
+        [DllImport("user32.dll", EntryPoint = "CallWindowProcW")]
+        public static extern IntPtr CallWindowProc(IntPtr lpPrevWndFunc, IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
 
         [DllImport("user32.dll")]
         [return: MarshalAs(UnmanagedType.Bool)]

@@ -39,6 +39,7 @@ public sealed partial class FirstRunWindow : Window
     private void ClaudeHelp_Click(object sender, RoutedEventArgs e) => OpenUri(ProviderLinks.SetupUri(UsageProvider.Claude));
     private void CursorHelp_Click(object sender, RoutedEventArgs e) => OpenUri(ProviderLinks.SetupUri(UsageProvider.Cursor));
     private void GeminiHelp_Click(object sender, RoutedEventArgs e) => OpenUri(ProviderLinks.SetupUri(UsageProvider.Gemini));
+    private void CopilotHelp_Click(object sender, RoutedEventArgs e) => OpenUri(ProviderLinks.SetupUri(UsageProvider.Copilot));
 
     private static void OpenUri(Uri uri)
     {

@@ -25,7 +25,8 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!-- Provider tabs along the top -->
+        <!-- Provider tabs along the top. MenuItems is populated in code-behind from
+             the current snapshot set so disabled providers never render. -->
         <controls:NavigationView
             Grid.Row="0"
             x:Name="ProviderNav"
@@ -33,12 +34,6 @@
             IsBackButtonVisible="Collapsed"
             IsSettingsVisible="False"
             SelectionChanged="ProviderNav_SelectionChanged">
-            <controls:NavigationView.MenuItems>
-                <controls:NavigationViewItem AutomationProperties.AutomationId="PopoverTabCodex" Content="Codex" Tag="Codex" />
-                <controls:NavigationViewItem AutomationProperties.AutomationId="PopoverTabClaude" Content="Claude" Tag="Claude" />
-                <controls:NavigationViewItem AutomationProperties.AutomationId="PopoverTabCursor" Content="Cursor" Tag="Cursor" />
-                <controls:NavigationViewItem AutomationProperties.AutomationId="PopoverTabGemini" Content="Gemini" Tag="Gemini" />
-            </controls:NavigationView.MenuItems>
         </controls:NavigationView>
 
         <!-- Close (X) button floats over the right edge of the tabs row.
@@ -114,6 +109,16 @@
                         </DataTemplate>
                     </ItemsRepeater.ItemTemplate>
                 </ItemsRepeater>
+
+                <!-- Local Claude Code token usage (ccusage-style). Visible only on the Claude tab
+                     when at least one assistant message with usage exists for today. -->
+                <TextBlock
+                    x:Name="LocalTokensCaption"
+                    AutomationProperties.AutomationId="PopoverLocalTokensCaption"
+                    Style="{StaticResource CaptionTextBlockStyle}"
+                    Opacity="0.75"
+                    Visibility="{x:Bind ViewModel.LocalTokensVisibility, Mode=OneWay}"
+                    Text="{x:Bind ViewModel.LocalTokensText, Mode=OneWay}" />
             </StackPanel>
         </ScrollViewer>
 

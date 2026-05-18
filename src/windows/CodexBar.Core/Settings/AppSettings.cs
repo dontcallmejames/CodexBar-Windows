@@ -5,6 +5,7 @@ public sealed record AppSettings(
     bool ClaudeEnabled,
     bool CursorEnabled,
     bool GeminiEnabled,
+    bool CopilotEnabled,
     bool MergeTrayIcon,
     bool ShowUsageAsUsed,
     bool DockOverviewNearTaskbar,
@@ -15,14 +16,19 @@ public sealed record AppSettings(
     string ClaudeSource,
     string CursorSource,
     string GeminiSource,
+    string CopilotSource,
     string? ClaudeManualCookieHeader,
-    string? CursorManualCookieHeader)
+    string? CursorManualCookieHeader,
+    string GlobalHotkey,
+    bool EnableGlobalHotkey)
 {
     public static AppSettings Default { get; } = new(
         CodexEnabled: true,
         ClaudeEnabled: true,
         CursorEnabled: true,
         GeminiEnabled: true,
+        // Copilot ships off by default — requires the user to run `gh auth login` first.
+        CopilotEnabled: false,
         MergeTrayIcon: true,
         ShowUsageAsUsed: true,
         DockOverviewNearTaskbar: false,
@@ -33,6 +39,9 @@ public sealed record AppSettings(
         ClaudeSource: "auto",
         CursorSource: "auto",
         GeminiSource: "auto",
+        CopilotSource: "auto",
         ClaudeManualCookieHeader: null,
-        CursorManualCookieHeader: null);
+        CursorManualCookieHeader: null,
+        GlobalHotkey: "Ctrl+Alt+U",
+        EnableGlobalHotkey: true);
 }

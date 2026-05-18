@@ -22,6 +22,7 @@ public sealed class PublicReleaseDocsTests
         StringAssert.Contains(readme, "Windows 11");
         StringAssert.Contains(readme, "Cursor");
         StringAssert.Contains(readme, "Gemini");
+        StringAssert.Contains(readme, "Copilot");
         StringAssert.Contains(readme, "credentials stay on your machine");
         StringAssert.Contains(readme, "## Screenshot");
         StringAssert.Contains(readme, "## Provider Support Matrix");
@@ -94,6 +95,19 @@ public sealed class PublicReleaseDocsTests
         StringAssert.Contains(windowsDoc, "Known limitations");
         StringAssert.Contains(windowsDoc, "Gemini");
         StringAssert.Contains(windowsDoc, "Cursor");
+
+        var copilotDoc = File.ReadAllText(Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory,
+            "..",
+            "..",
+            "..",
+            "..",
+            "..",
+            "..",
+            "docs",
+            "windows-copilot.md")));
+        StringAssert.Contains(copilotDoc, "gh auth login");
+        StringAssert.Contains(copilotDoc, "copilot_internal/user");
     }
 
     [TestMethod]

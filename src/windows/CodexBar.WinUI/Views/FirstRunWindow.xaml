@@ -51,6 +51,14 @@
                                       IsOn="{x:Bind ViewModel.GeminiEnabled, Mode=TwoWay}" />
                     </StackPanel>
                 </ctk:SettingsCard>
+                <ctk:SettingsCard Header="Enable Copilot" Description="Requires `gh auth login` first.">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <HyperlinkButton AutomationProperties.AutomationId="FirstRunCopilotHelpLink"
+                                         Content="Help" Click="CopilotHelp_Click" />
+                        <ToggleSwitch AutomationProperties.AutomationId="FirstRunCopilotToggle"
+                                      IsOn="{x:Bind ViewModel.CopilotEnabled, Mode=TwoWay}" />
+                    </StackPanel>
+                </ctk:SettingsCard>
             </StackPanel>
         </ScrollViewer>
 

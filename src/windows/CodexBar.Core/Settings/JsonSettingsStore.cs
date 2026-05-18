@@ -80,6 +80,7 @@ public sealed class JsonSettingsStore
         bool? ClaudeEnabled,
         bool? CursorEnabled,
         bool? GeminiEnabled,
+        bool? CopilotEnabled,
         bool? MergeTrayIcon,
         bool? ShowUsageAsUsed,
         bool? DockOverviewNearTaskbar,
@@ -90,8 +91,11 @@ public sealed class JsonSettingsStore
         string? ClaudeSource,
         string? CursorSource,
         string? GeminiSource,
+        string? CopilotSource,
         string? ClaudeManualCookieHeader,
-        string? CursorManualCookieHeader)
+        string? CursorManualCookieHeader,
+        string? GlobalHotkey,
+        bool? EnableGlobalHotkey)
     {
         public AppSettings ToAppSettings()
         {
@@ -102,6 +106,7 @@ public sealed class JsonSettingsStore
                 ClaudeEnabled ?? defaults.ClaudeEnabled,
                 CursorEnabled ?? defaults.CursorEnabled,
                 GeminiEnabled ?? defaults.GeminiEnabled,
+                CopilotEnabled ?? defaults.CopilotEnabled,
                 MergeTrayIcon ?? defaults.MergeTrayIcon,
                 ShowUsageAsUsed ?? defaults.ShowUsageAsUsed,
                 DockOverviewNearTaskbar ?? defaults.DockOverviewNearTaskbar,
@@ -112,8 +117,11 @@ public sealed class JsonSettingsStore
                 NormalizeSource(ClaudeSource, defaults.ClaudeSource),
                 NormalizeSource(CursorSource, defaults.CursorSource),
                 NormalizeSource(GeminiSource, defaults.GeminiSource),
+                NormalizeSource(CopilotSource, defaults.CopilotSource),
                 UnprotectIfNeeded(ClaudeManualCookieHeader),
-                UnprotectIfNeeded(CursorManualCookieHeader));
+                UnprotectIfNeeded(CursorManualCookieHeader),
+                string.IsNullOrWhiteSpace(GlobalHotkey) ? defaults.GlobalHotkey : GlobalHotkey,
+                EnableGlobalHotkey ?? defaults.EnableGlobalHotkey);
         }
 
         private static string NormalizeSource(string? source, string fallback) =>

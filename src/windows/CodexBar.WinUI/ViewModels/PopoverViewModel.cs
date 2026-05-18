@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using CodexBar.Core.Models;
+using CodexBar.Core.Providers.Claude;
 using CodexBar.Core.Refresh;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -26,13 +27,23 @@ public sealed partial class PopoverViewModel : ObservableObject
     [ObservableProperty] private string updatedText = string.Empty;
     [ObservableProperty] private string planText = string.Empty;
     [ObservableProperty] private string liveIndicatorText = string.Empty;
+    [ObservableProperty] private string localTokensText = string.Empty;
+    [ObservableProperty] private Microsoft.UI.Xaml.Visibility localTokensVisibility = Microsoft.UI.Xaml.Visibility.Collapsed;
 
     public IReadOnlyList<UsageSnapshot> Snapshots { get; private set; }
+
+    /// <summary>
+    /// Providers the user has enabled in Settings, in display order. Drives which tabs render
+    /// in the popover — even if a provider has not yet produced a snapshot (no successful
+    /// refresh, missing credentials), its tab still appears so the user can see "no data yet".
+    /// </summary>
+    public IReadOnlyList<UsageProvider> EnabledProviders { get; private set; }
 
     public PopoverViewModel(
         IReadOnlyList<UsageSnapshot> snapshots,
         UsageProvider activeProvider,
         bool showUsageAsUsed,
+        IReadOnlyList<UsageProvider>? enabledProviders = null,
         ProviderRefreshStateRegistry? refreshStates = null,
         DateTimeOffset? now = null,
         Action? openSettings = null,
@@ -43,6 +54,7 @@ public sealed partial class PopoverViewModel : ObservableObject
         Action? openAddAccount = null)
     {
         Snapshots = snapshots;
+        EnabledProviders = enabledProviders ?? snapshots.Select(s => s.Provider).ToArray();
         this.showUsageAsUsed = showUsageAsUsed;
         this.refreshStates = refreshStates;
         this.now = now;
@@ -87,6 +99,15 @@ public sealed partial class PopoverViewModel : ObservableObject
         SelectProvider(ActiveProvider);
     }
 
+    /// <summary>
+    /// Update the set of enabled providers (called when settings change so the popover
+    /// adds or removes tabs without needing the popover to be recreated).
+    /// </summary>
+    public void UpdateEnabledProviders(IReadOnlyList<UsageProvider> enabledProviders)
+    {
+        EnabledProviders = enabledProviders;
+    }
+
     public void SelectProvider(UsageProvider provider)
     {
         var selected = Snapshots.FirstOrDefault(s => s.Provider == provider) ?? Snapshots.FirstOrDefault();
@@ -94,6 +115,7 @@ public sealed partial class PopoverViewModel : ObservableObject
         ActiveSnapshot = selected;
         Metrics = BuildMetrics(selected);
         PlanText = selected?.Plan ?? string.Empty;
+        UpdateLocalTokens(selected);
         RefreshLiveIndicator();
     }
 
@@ -129,6 +151,20 @@ public sealed partial class PopoverViewModel : ObservableObject
         }
         var diff = (now ?? DateTimeOffset.Now) - last.Value;
         LiveIndicatorText = $"Live • updated {Humanize(diff)} ago";
+    }
+
+    private void UpdateLocalTokens(UsageSnapshot? snapshot)
+    {
+        if (snapshot is { Provider: UsageProvider.Claude, TodayTokens: > 0 } claudeSnapshot)
+        {
+            LocalTokensText = $"Claude Code: {TokenFormatter.Format(claudeSnapshot.TodayTokens.Value)} tokens today";
+            LocalTokensVisibility = Microsoft.UI.Xaml.Visibility.Visible;
+        }
+        else
+        {
+            LocalTokensText = string.Empty;
+            LocalTokensVisibility = Microsoft.UI.Xaml.Visibility.Collapsed;
+        }
     }
 
     private IReadOnlyList<PopoverMetricViewModel> BuildMetrics(UsageSnapshot? snapshot)
