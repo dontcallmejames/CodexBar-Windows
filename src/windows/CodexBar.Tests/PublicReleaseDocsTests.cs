@@ -90,7 +90,7 @@ public sealed class PublicReleaseDocsTests
             "windows.md")));
 
         StringAssert.Contains(windowsDoc, "No usage yet");
-        StringAssert.Contains(windowsDoc, "Open Release");
+        StringAssert.Contains(windowsDoc, "Install now");
         StringAssert.Contains(windowsDoc, "Check for updates automatically");
         StringAssert.Contains(windowsDoc, "Known limitations");
         StringAssert.Contains(windowsDoc, "Gemini");
