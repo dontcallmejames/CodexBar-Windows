@@ -14,6 +14,9 @@ public sealed partial class SettingsViewModel : ObservableObject
     private readonly AppSettings originalSettings;
     private readonly Func<IReadOnlyList<UsageSnapshot>> snapshotsProvider;
     private readonly Func<UpdateCheckResult?> lastUpdateProvider;
+    private readonly IUpdateInstaller? updateInstaller;
+    private readonly Func<string, (bool Success, string? ErrorMessage)>? launchInstaller;
+    private readonly Action? quitApp;
 
     [ObservableProperty] private bool codexEnabled;
     [ObservableProperty] private bool claudeEnabled;
@@ -31,6 +34,17 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private string globalHotkey = "Ctrl+Alt+U";
     [ObservableProperty] private bool enableGlobalHotkey = true;
 
+    // In-app update installer state.
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanInstallUpdate))]
+    [NotifyPropertyChangedFor(nameof(ProgressVisibility))]
+    private bool isInstalling;
+    [ObservableProperty] private double downloadProgress;
+    [ObservableProperty] private string installStatusText = string.Empty;
+
+    public Microsoft.UI.Xaml.Visibility ProgressVisibility =>
+        IsInstalling ? Microsoft.UI.Xaml.Visibility.Visible : Microsoft.UI.Xaml.Visibility.Collapsed;
+
     public SettingsViewModel(AppSettings settings)
         : this(settings, static () => Array.Empty<UsageSnapshot>(), static () => null)
     {
@@ -40,10 +54,24 @@ public sealed partial class SettingsViewModel : ObservableObject
         AppSettings settings,
         Func<IReadOnlyList<UsageSnapshot>> snapshotsProvider,
         Func<UpdateCheckResult?> lastUpdateProvider)
+        : this(settings, snapshotsProvider, lastUpdateProvider, null, null, null)
+    {
+    }
+
+    public SettingsViewModel(
+        AppSettings settings,
+        Func<IReadOnlyList<UsageSnapshot>> snapshotsProvider,
+        Func<UpdateCheckResult?> lastUpdateProvider,
+        IUpdateInstaller? updateInstaller,
+        Func<string, (bool Success, string? ErrorMessage)>? launchInstaller,
+        Action? quitApp)
     {
         originalSettings = settings;
         this.snapshotsProvider = snapshotsProvider;
         this.lastUpdateProvider = lastUpdateProvider;
+        this.updateInstaller = updateInstaller;
+        this.launchInstaller = launchInstaller;
+        this.quitApp = quitApp;
         codexEnabled = settings.CodexEnabled;
         claudeEnabled = settings.ClaudeEnabled;
         cursorEnabled = settings.CursorEnabled;
@@ -58,6 +86,48 @@ public sealed partial class SettingsViewModel : ObservableObject
         cursorManualCookieHeader = settings.CursorManualCookieHeader ?? string.Empty;
         globalHotkey = string.IsNullOrWhiteSpace(settings.GlobalHotkey) ? "Ctrl+Alt+U" : settings.GlobalHotkey;
         enableGlobalHotkey = settings.EnableGlobalHotkey;
+        UpdateAvailableStatus();
+    }
+
+    /// <summary>
+    /// Latest tag string shown in the update card. Empty when no update info has loaded.
+    /// </summary>
+    public string LatestUpdateText
+    {
+        get
+        {
+            var result = lastUpdateProvider();
+            if (result is null) return "Checking for updates…";
+            if (!string.IsNullOrEmpty(result.ErrorMessage)) return result.StatusText;
+            if (result.UpdateAvailable && result.LatestTag is not null) return $"{result.LatestTag} available.";
+            return result.StatusText;
+        }
+    }
+
+    /// <summary>
+    /// True when an update is available, both installer + sidecar URLs were discovered in the
+    /// release assets, and no install is currently in flight.
+    /// </summary>
+    public bool CanInstallUpdate
+    {
+        get
+        {
+            if (IsInstalling) return false;
+            if (updateInstaller is null || launchInstaller is null) return false;
+            var result = lastUpdateProvider();
+            return result is { UpdateAvailable: true, InstallerAssetUri: not null, InstallerSha256Uri: not null };
+        }
+    }
+
+    /// <summary>
+    /// Re-reads the latest update result and refreshes derived bindings. Call from the host
+    /// when UpdateNotifier.ResultChanged fires.
+    /// </summary>
+    public void UpdateAvailableStatus()
+    {
+        OnPropertyChanged(nameof(CanInstallUpdate));
+        OnPropertyChanged(nameof(LatestUpdateText));
+        InstallUpdateCommand.NotifyCanExecuteChanged();
     }
 
     [RelayCommand]
@@ -80,6 +150,58 @@ public sealed partial class SettingsViewModel : ObservableObject
         catch
         {
             // Swallow — failing to copy/open shouldn't crash settings.
+        }
+    }
+
+    [RelayCommand(CanExecute = nameof(CanInstallUpdate))]
+    private async Task InstallUpdate()
+    {
+        if (updateInstaller is null || launchInstaller is null) return;
+        var result = lastUpdateProvider();
+        if (result is null || result.InstallerAssetUri is null || result.InstallerSha256Uri is null) return;
+
+        IsInstalling = true;
+        DownloadProgress = 0;
+        InstallStatusText = "Downloading…";
+        try
+        {
+            var progress = new Progress<double>(value =>
+            {
+                DownloadProgress = value * 100.0;
+                InstallStatusText = value >= 1.0
+                    ? "Verifying signature…"
+                    : $"Downloading {Math.Round(value * 100.0)}%";
+            });
+
+            var prepared = await updateInstaller.PrepareAsync(
+                result.InstallerAssetUri,
+                result.InstallerSha256Uri,
+                progress,
+                CancellationToken.None);
+
+            if (!prepared.Success || prepared.LocalInstallerPath is null)
+            {
+                InstallStatusText = $"Install failed: {prepared.ErrorMessage ?? "unknown error"}";
+                IsInstalling = false;
+                return;
+            }
+
+            InstallStatusText = "Launching installer…";
+            var (launched, errorMessage) = launchInstaller(prepared.LocalInstallerPath);
+            if (!launched)
+            {
+                InstallStatusText = $"Install failed: {errorMessage ?? "could not launch installer"}";
+                IsInstalling = false;
+                return;
+            }
+
+            // Hand off to the installer process and shut down so it can replace our binaries.
+            quitApp?.Invoke();
+        }
+        catch (Exception ex)
+        {
+            InstallStatusText = $"Install failed: {ex.Message}";
+            IsInstalling = false;
         }
     }
 

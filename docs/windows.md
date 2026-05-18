@@ -38,7 +38,7 @@ Click the CodexBar tray icon to open the popover.
 
 Use each provider's Test button in Settings to refresh only that provider and show the current credential status. Use the matching Help button to open that provider's Windows setup notes.
 
-Keep Check for updates automatically enabled to let CodexBar check GitHub Releases every 24 hours. You can also use Settings > Check for Updates... to compare the current app version with the latest GitHub Release. Settings shows the current version, latest release, and update status. When an update is available, the action changes to Open Release. CodexBar does not auto-install updates.
+Keep Check for updates automatically enabled to let CodexBar check GitHub Releases every 24 hours. You can also use Settings > Check for Updates... to compare the current app version with the latest GitHub Release. Settings shows the current version, latest release, and update status. When an update is available, Settings exposes an Install now button — CodexBar downloads the signed installer, verifies it against the published `.sha256` sidecar, then launches the installer elevated and exits so it can replace the running binaries. The release page link is still available if you'd rather grab the installer or portable zip from GitHub manually.
 
 Use Settings > Report a Bug... to copy a redacted diagnostic summary and open the GitHub bug report form. The summary includes app version, Windows version, update status, enabled providers, provider freshness, and latest visible provider errors, including recent Test results. It does not include tokens, cookies, OAuth files, or credential contents.
 
@@ -62,7 +62,7 @@ For Codex, confirm the Codex CLI is signed in and that `%CODEX_HOME%\auth.json` 
 
 ## Known limitations
 
-- Updates are manual to install; Open Release takes you to GitHub to download the installer or portable zip.
+- Update installs trigger a UAC prompt and exit the running app so the Inno Setup installer can replace the binaries. Declining UAC leaves CodexBar running and surfaces the error in Settings.
 - Cursor support depends on a manual browser cookie header.
 - Gemini support is Gemini CLI OAuth only.
 - Provider dashboards and private usage APIs can change without notice.

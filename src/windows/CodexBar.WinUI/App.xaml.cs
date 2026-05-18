@@ -393,10 +393,28 @@ public partial class App : Application
         if (settingsWindow is not null) { settingsWindow.Activate(); BringWindowToFront(settingsWindow); return; }
         if (shell is null) return;
 
+        var installer = new CodexBar.Core.Updates.UpdateInstaller(
+            shell.HttpClient,
+            CodexBar.Core.Updates.AppVersionInfo.Current);
+        var launcher = new Services.UpdateLauncher();
+
         var vm = new SettingsViewModel(
             shell.Settings,
             () => shell!.Store.All(),
-            () => shell!.UpdateNotifier.LatestResult);
+            () => shell!.UpdateNotifier.LatestResult,
+            installer,
+            installerPath =>
+            {
+                var ok = launcher.LaunchAndDetach(installerPath, out var err);
+                return (ok, err);
+            },
+            () => uiDispatcher?.TryEnqueue(QuitApp));
+
+        // Refresh the VM's CanInstallUpdate / status text whenever the notifier picks up new data.
+        EventHandler? handler = null;
+        handler = (_, _) => uiDispatcher?.TryEnqueue(() => vm.UpdateAvailableStatus());
+        shell.UpdateNotifier.ResultChanged += handler;
+
         settingsWindow = new SettingsWindow(vm, async newSettings =>
         {
             try
@@ -410,7 +428,11 @@ public partial class App : Application
             }
             catch (Exception ex) { WriteCrashLog("ApplySettingsAsync", ex); }
         });
-        settingsWindow.Closed += (_, _) => settingsWindow = null;
+        settingsWindow.Closed += (_, _) =>
+        {
+            try { if (shell is not null) shell.UpdateNotifier.ResultChanged -= handler; } catch { /* ignore */ }
+            settingsWindow = null;
+        };
         PositionNearAnchor(settingsWindow);
         settingsWindow.Activate();
         BringWindowToFront(settingsWindow);

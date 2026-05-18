@@ -9,10 +9,12 @@ public sealed record UpdateCheckResult(
     string? LatestTag,
     Uri? ReleaseUri,
     string StatusText,
-    string? ErrorMessage)
+    string? ErrorMessage,
+    Uri? InstallerAssetUri = null,
+    Uri? InstallerSha256Uri = null)
 {
-    public static UpdateCheckResult Available(string latestTag, Uri releaseUri) =>
-        new(true, latestTag, releaseUri, $"Update available: {latestTag}", null);
+    public static UpdateCheckResult Available(string latestTag, Uri releaseUri, Uri? installerAssetUri = null, Uri? installerSha256Uri = null) =>
+        new(true, latestTag, releaseUri, $"Update available: {latestTag}", null, installerAssetUri, installerSha256Uri);
 
     public static UpdateCheckResult UpToDate(string? latestTag) =>
         new(false, latestTag, null, latestTag is null ? "No release metadata found." : "You're on the latest release.", null);
@@ -63,9 +65,10 @@ public sealed class GitHubUpdateChecker : IUpdateChecker
             var tag = ReadString(release.Value, "tag_name");
             var uriText = ReadString(release.Value, "html_url");
             var releaseUri = string.IsNullOrWhiteSpace(uriText) ? FallbackReleasesUri : new Uri(uriText);
+            var (installerUri, sha256Uri) = ExtractInstallerAssets(release.Value);
 
             return versionInfo.IsOlderThan(tag)
-                ? UpdateCheckResult.Available(tag!, releaseUri)
+                ? UpdateCheckResult.Available(tag!, releaseUri, installerUri, sha256Uri)
                 : UpdateCheckResult.UpToDate(tag);
         }
         catch (Exception error) when (error is not OperationCanceledException)
@@ -100,6 +103,43 @@ public sealed class GitHubUpdateChecker : IUpdateChecker
     private static bool IsDraft(JsonElement element) =>
         element.TryGetProperty("draft", out var draft) &&
         draft.ValueKind == JsonValueKind.True;
+
+    /// <summary>
+    /// Walks the release's "assets" array looking for the Windows installer + its SHA-256 sidecar.
+    /// The installer asset's "name" ends with ".installer.exe"; the sidecar ends with
+    /// ".installer.exe.sha256". Returns (null, null) when either is missing — the in-app installer
+    /// flow becomes disabled but the "Open release" path still works.
+    /// </summary>
+    private static (Uri? Installer, Uri? Sha256) ExtractInstallerAssets(JsonElement release)
+    {
+        if (!release.TryGetProperty("assets", out var assets) || assets.ValueKind != JsonValueKind.Array)
+        {
+            return (null, null);
+        }
+
+        Uri? installer = null;
+        Uri? sha256 = null;
+        foreach (var asset in assets.EnumerateArray())
+        {
+            if (asset.ValueKind != JsonValueKind.Object) continue;
+            var name = ReadString(asset, "name");
+            var downloadUrl = ReadString(asset, "browser_download_url");
+            if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(downloadUrl)) continue;
+            if (!Uri.TryCreate(downloadUrl, UriKind.Absolute, out var uri)) continue;
+
+            // Sidecar check FIRST so ".installer.exe.sha256" doesn't get caught by the installer matcher.
+            if (name.EndsWith(".installer.exe.sha256", StringComparison.OrdinalIgnoreCase))
+            {
+                sha256 ??= uri;
+            }
+            else if (name.EndsWith(".installer.exe", StringComparison.OrdinalIgnoreCase))
+            {
+                installer ??= uri;
+            }
+        }
+
+        return (installer is not null && sha256 is not null) ? (installer, sha256) : (null, null);
+    }
 
     private static string? ReadString(JsonElement element, string propertyName) =>
         element.TryGetProperty(propertyName, out var value) && value.ValueKind == JsonValueKind.String

@@ -7,10 +7,9 @@ Tracked features and ideas. Roughly in priority order; subject to change.
 1. **Global hotkey** — Configurable system-wide shortcut to toggle the popover from anywhere. Right now you have to find the tray icon, which Windows often hides into the overflow chevron.
 2. **GitHub Copilot provider** — Reads `GET https://api.github.com/copilot_internal/user` using the GitHub CLI's stored token. Surfaces premium-interactions / chat / completions quotas depending on the plan tier.
 3. **ccusage integration for Claude** — Scans `~/.claude/projects/**/*.jsonl` (Claude Code's local session log) and surfaces today's local token spend on the Claude tab. Local-only, no API roundtrip and no NPX dependency.
+4. **In-app update installer** — Settings now has an Install now button. CodexBar downloads the new `.installer.exe` to `%TEMP%`, verifies it against the published `.sha256` sidecar, launches the Inno Setup installer elevated with `/CLOSEAPPLICATIONS /SILENT /SUPPRESSMSGBOXES`, and exits the running instance so the installer can replace its binaries.
 
-## Next up (4–9)
-
-4. **In-app update installer**. Today CodexBar surfaces a Windows AppNotification when a new release is found, but the user has to click through to the Releases page to install. Replace with: download the new `.installer.exe` to `%TEMP%`, verify Authenticode signature, run elevated, and exit the running instance so the installer can replace it. Foundation already exists (24-hour update check, signature chain via Trusted Signing).
+## Next up (5–9)
 
 5. **Microsoft Store distribution (MSIX)**. Add a Windows Application Packaging Project to the solution producing `.msixbundle` alongside the existing installer + portable zip. Requires `broadFileSystemAccess` capability approval from the Store reviewers (justification: app reads known CLI credential file paths under `%USERPROFILE%`). Costs $19 one-time for the individual Partner Center account. Gains: silent auto-update, no SmartScreen, Store search reach.
 
