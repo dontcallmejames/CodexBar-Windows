@@ -6,7 +6,14 @@ param(
     [string]$SigningCertificatePath = $env:CODEXBAR_SIGNING_CERTIFICATE_PATH,
     [string]$SigningCertificatePassword = $env:CODEXBAR_SIGNING_CERTIFICATE_PASSWORD,
     [string]$TimestampUrl = $(if ([string]::IsNullOrWhiteSpace($env:CODEXBAR_SIGNING_TIMESTAMP_URL)) { "http://timestamp.digicert.com" } else { $env:CODEXBAR_SIGNING_TIMESTAMP_URL }),
-    [switch]$SkipSigning
+    [switch]$SkipSigning,
+    # Stop after `dotnet publish` (no signing, no zip, no checksum). Used by CI when an
+    # external signing step (e.g. Azure Trusted Signing) needs to sign the published exe
+    # before it gets packaged. Combine with -SkipPublish in a later invocation to finish.
+    [switch]$PublishOnly,
+    # Skip `dotnet publish` and resume packaging from an existing publish directory.
+    # Used by CI after an out-of-band signing step has stamped the published exe.
+    [switch]$SkipPublish
 )
 
 $ErrorActionPreference = "Stop"
@@ -119,45 +126,60 @@ $publishDir = Join-Path $distRoot "CodexBar-Windows-$version-$Runtime"
 $zipPath = Join-Path $distRoot "CodexBar-Windows-$version-$Runtime.zip"
 $checksumPath = "$zipPath.sha256"
 
-if (Test-Path -LiteralPath $publishDir) {
-    Remove-Item -LiteralPath $publishDir -Recurse -Force
+if (-not $SkipPublish) {
+    if (Test-Path -LiteralPath $publishDir) {
+        Remove-Item -LiteralPath $publishDir -Recurse -Force
+    }
 }
-if (Test-Path -LiteralPath $zipPath) {
-    Remove-Item -LiteralPath $zipPath -Force
-}
-if (Test-Path -LiteralPath $checksumPath) {
-    Remove-Item -LiteralPath $checksumPath -Force
+if (-not $PublishOnly) {
+    if (Test-Path -LiteralPath $zipPath) {
+        Remove-Item -LiteralPath $zipPath -Force
+    }
+    if (Test-Path -LiteralPath $checksumPath) {
+        Remove-Item -LiteralPath $checksumPath -Force
+    }
 }
 
 New-Item -ItemType Directory -Path $distRoot -Force | Out-Null
 
-# Resolve dotnet to the actual executable to avoid PowerShell function/alias collisions
-$dotnetExe = if (Test-Path -LiteralPath $DotNet) {
-    $DotNet
-} else {
-    $resolved = Get-Command $DotNet -CommandType Application -ErrorAction SilentlyContinue
-    if ($null -eq $resolved) { throw "Could not resolve '$DotNet' to an executable." }
-    $resolved.Source
+$appExecutablePath = Join-Path $publishDir "CodexBar.WinUI.exe"
+
+if (-not $SkipPublish) {
+    # Resolve dotnet to the actual executable to avoid PowerShell function/alias collisions
+    $dotnetExe = if (Test-Path -LiteralPath $DotNet) {
+        $DotNet
+    } else {
+        $resolved = Get-Command $DotNet -CommandType Application -ErrorAction SilentlyContinue
+        if ($null -eq $resolved) { throw "Could not resolve '$DotNet' to an executable." }
+        $resolved.Source
+    }
+
+    # dotnet publish
+    $publishArgs = @(
+        'publish',
+        (Join-Path $repoRoot "src\windows\CodexBar.WinUI\CodexBar.WinUI.csproj"),
+        '-c', $Configuration,
+        '-r', $Runtime,
+        '--self-contained', 'true',
+        "-p:Version=$version",
+        "-p:InformationalVersion=$version",
+        '-p:IncludeSourceRevisionInInformationalVersion=false',
+        "-p:BuildNumber=$buildNumber",
+        "-p:WindowsPreviewNumber=$windowsPreviewNumber",
+        '-o', $publishDir,
+        '--verbosity', 'minimal'
+    )
+    & $dotnetExe @publishArgs
 }
 
-# dotnet publish
-$publishArgs = @(
-    'publish',
-    (Join-Path $repoRoot "src\windows\CodexBar.WinUI\CodexBar.WinUI.csproj"),
-    '-c', $Configuration,
-    '-r', $Runtime,
-    '--self-contained', 'true',
-    "-p:Version=$version",
-    "-p:InformationalVersion=$version",
-    '-p:IncludeSourceRevisionInInformationalVersion=false',
-    "-p:BuildNumber=$buildNumber",
-    "-p:WindowsPreviewNumber=$windowsPreviewNumber",
-    '-o', $publishDir,
-    '--verbosity', 'minimal'
-)
-& $dotnetExe @publishArgs
+if ($PublishOnly) {
+    [pscustomobject]@{
+        PublishDirectory = $publishDir
+        SignedExecutablePath = $appExecutablePath
+    }
+    return
+}
 
-$appExecutablePath = Join-Path $publishDir "CodexBar.WinUI.exe"
 Invoke-WindowsCodeSigning $appExecutablePath
 
 Compress-Archive -Path (Join-Path $publishDir "*") -DestinationPath $zipPath -Force

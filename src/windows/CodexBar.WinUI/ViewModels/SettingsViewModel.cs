@@ -1,3 +1,4 @@
+using System.IO;
 using CodexBar.Core;
 using CodexBar.Core.Models;
 using CodexBar.Core.Providers;
@@ -163,6 +164,11 @@ public sealed partial class SettingsViewModel : ObservableObject
         IsInstalling = true;
         DownloadProgress = 0;
         InstallStatusText = "Downloading…";
+
+        // Sweep prior orphans from %TEMP% — every failed UAC prompt leaves a ~50MB
+        // installer behind. Best-effort: never throw out of a cleanup pass.
+        TryCleanupOrphanInstallers();
+
         try
         {
             var progress = new Progress<double>(value =>
@@ -190,6 +196,9 @@ public sealed partial class SettingsViewModel : ObservableObject
             var (launched, errorMessage) = launchInstaller(prepared.LocalInstallerPath);
             if (!launched)
             {
+                // UAC denial (ERROR_CANCELLED) is the common path here. The downloaded
+                // ~50MB installer would otherwise linger in %TEMP% across retries.
+                try { File.Delete(prepared.LocalInstallerPath); } catch { /* best effort */ }
                 InstallStatusText = $"Install failed: {errorMessage ?? "could not launch installer"}";
                 IsInstalling = false;
                 return;
@@ -229,4 +238,26 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     private int ClampRefreshMinutes() =>
         (int)Math.Round(Math.Clamp(RefreshMinutes, 1, 1440));
+
+    /// <summary>
+    /// Remove any leftover CodexBar update installers from %TEMP%. UpdateInstaller uses
+    /// the pattern "CodexBar-Windows-update-{guid}.installer.exe", so we match that
+    /// exact prefix/suffix combo. Called both before download (sweep priors) and after
+    /// a launch failure (delete the one we just made).
+    /// </summary>
+    private static void TryCleanupOrphanInstallers()
+    {
+        try
+        {
+            var tempDir = Path.GetTempPath();
+            foreach (var path in Directory.EnumerateFiles(tempDir, "CodexBar-Windows-update-*.installer.exe"))
+            {
+                try { File.Delete(path); } catch { /* best effort */ }
+            }
+        }
+        catch
+        {
+            // Enumeration can throw on unusual %TEMP% configs; never propagate.
+        }
+    }
 }

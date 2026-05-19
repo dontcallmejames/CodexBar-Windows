@@ -13,6 +13,7 @@ using CodexBar.Core.Providers.Cursor;
 using CodexBar.Core.Providers.Gemini;
 using CodexBar.Core.Refresh;
 using CodexBar.Core.Settings;
+using CodexBar.Core.Startup;
 using CodexBar.Core.Updates;
 using CodexBar.WinUI.Services;
 using Microsoft.UI.Dispatching;
@@ -30,6 +31,7 @@ public sealed class AppShell : IDisposable
     public IReadOnlyList<IUsageProvider> Providers { get; }
     public RefreshOrchestrator RefreshOrchestrator { get; }
     public UpdateNotifier UpdateNotifier { get; }
+    public IStartupRegistration StartupRegistration { get; }
 
     public event Action? OnSnapshotsChanged;
 
@@ -60,6 +62,11 @@ public sealed class AppShell : IDisposable
         // 5. Persist to disk.
         var settingsStore = new JsonSettingsStore(Paths.SettingsFile);
         await settingsStore.SaveAsync(newSettings, default);
+
+        // 5a. Mirror the LaunchAtStartup setting into the Run registry key. Done after
+        // persistence so the on-disk setting and the registry state agree even if the
+        // registry write fails (the next launch will reconcile).
+        TryApplyStartupRegistration(newSettings.LaunchAtStartup);
 
         // 6. Restart orchestrator + fire immediate refresh (OnSnapshotsChanged fires via Refreshed).
         RefreshOrchestrator.Start();
@@ -95,7 +102,9 @@ public sealed class AppShell : IDisposable
 
         RefreshOrchestrator = new RefreshOrchestrator(
             Scheduler,
-            () => TimeSpan.FromMinutes(Math.Clamp(Settings.RefreshMinutes, 1, 60)),
+            // Match the Settings UI's clamp range (1..1440 minutes). Previously capped
+            // at 60, which silently truncated any user-configured value > 1h.
+            () => TimeSpan.FromMinutes(Math.Clamp(Settings.RefreshMinutes, 1, 1440)),
             dispatcherQueue,
             shutdownToken);
         RefreshOrchestrator.Refreshed += (_, _) => OnSnapshotsChanged?.Invoke();
@@ -105,6 +114,25 @@ public sealed class AppShell : IDisposable
             UpdateNotificationPoster.Show,
             dispatcherQueue,
             shutdownToken);
+
+        StartupRegistration = new StartupRegistration();
+        // Reconcile the registry with the persisted setting at startup so a manual
+        // edit (or an external uninstaller pulling the value) gets corrected.
+        TryApplyStartupRegistration(settings.LaunchAtStartup);
+    }
+
+    private void TryApplyStartupRegistration(bool enabled)
+    {
+        try
+        {
+            var exePath = Environment.ProcessPath;
+            if (string.IsNullOrWhiteSpace(exePath)) return;
+            StartupRegistration.SetEnabled(enabled, exePath);
+        }
+        catch
+        {
+            // Best-effort — never crash the host because a registry write got denied.
+        }
     }
 
     public void Dispose()

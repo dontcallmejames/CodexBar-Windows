@@ -478,7 +478,10 @@ public partial class App : Application
             return false;
         }
 
-        if (NativeMethods.RegisterHotKey(anchorHwnd, HotkeyId, parsed.Modifiers, parsed.VirtualKey))
+        // OR MOD_NOREPEAT into the modifier flags so holding the hotkey only fires
+        // WM_HOTKEY once, not on every key-repeat tick. HotkeyParser keeps returning
+        // the user's intended modifiers — no-repeat is a registration choice.
+        if (NativeMethods.RegisterHotKey(anchorHwnd, HotkeyId, parsed.Modifiers | NativeMethods.MOD_NOREPEAT, parsed.VirtualKey))
         {
             hotkeyRegistered = true;
             return true;
@@ -608,6 +611,11 @@ public partial class App : Application
         // WM_HOTKEY and the WNDPROC slot for our anchor subclass.
         public const uint WM_HOTKEY = 0x0312;
         public const int GWLP_WNDPROC = -4;
+
+        // MOD_NOREPEAT (winuser.h): suppress repeated WM_HOTKEY messages while the
+        // hotkey is held down. Without this, holding Ctrl+Alt+U fires the popover
+        // toggle dozens of times per second, making it flicker open/closed.
+        public const uint MOD_NOREPEAT = 0x4000;
 
         public delegate IntPtr WndProcDelegate(IntPtr hwnd, uint msg, IntPtr wParam, IntPtr lParam);
 

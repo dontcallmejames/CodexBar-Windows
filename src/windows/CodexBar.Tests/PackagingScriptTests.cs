@@ -199,7 +199,7 @@ public sealed class PackagingScriptTests
     }
 
     [TestMethod]
-    public void WindowsWorkflowBuildsPortableZipThroughInstallerScriptWithDeferredSigning()
+    public void WindowsWorkflowSignsPublishDirBeforeZippingAndInstallerPackaging()
     {
         var workflowPath = Path.GetFullPath(Path.Combine(
             AppContext.BaseDirectory,
@@ -214,10 +214,23 @@ public sealed class PackagingScriptTests
             "windows.yml"));
         var workflow = File.ReadAllText(workflowPath);
 
-        // Packaging produces unsigned binaries first; the workflow signs them via
-        // Trusted Signing afterwards so checksums match the signed bytes on disk.
-        StringAssert.Contains(workflow, "./Scripts/package-windows-installer.ps1 -DotNet dotnet -SkipSigning");
-        Assert.IsFalse(workflow.Contains("-SkipPortablePackage", StringComparison.Ordinal));
+        // Required ordering: publish → sign exe → zip → installer → sign installer.
+        // Signing the publish directory FIRST ensures both the portable zip and the
+        // Inno installer payload embed the signed CodexBar.WinUI.exe.
+        StringAssert.Contains(workflow, "-PublishOnly");
+        StringAssert.Contains(workflow, "-SkipPublish -SkipSigning");
+        StringAssert.Contains(workflow, "-SkipPortablePackage -SkipSigning");
+
+        var publishIdx = workflow.IndexOf("Publish self-contained app", StringComparison.Ordinal);
+        var signExeIdx = workflow.IndexOf("Sign CodexBar.WinUI.exe via Trusted Signing", StringComparison.Ordinal);
+        var zipIdx = workflow.IndexOf("Build portable zip from signed publish dir", StringComparison.Ordinal);
+        var installerIdx = workflow.IndexOf("Build installer from signed publish dir", StringComparison.Ordinal);
+        var signInstallerIdx = workflow.IndexOf("Sign installer via Trusted Signing", StringComparison.Ordinal);
+
+        Assert.IsTrue(publishIdx >= 0 && signExeIdx > publishIdx, "Exe signing must follow publish.");
+        Assert.IsTrue(zipIdx > signExeIdx, "Portable zip must be built after exe signing.");
+        Assert.IsTrue(installerIdx > signExeIdx, "Installer must be built after exe signing.");
+        Assert.IsTrue(signInstallerIdx > installerIdx, "Installer signing must follow installer build.");
     }
 
     [TestMethod]
@@ -252,8 +265,10 @@ public sealed class PackagingScriptTests
         // When signing is not configured the workflow still publishes unsigned assets.
         StringAssert.Contains(workflow, "Trusted Signing variables not set");
 
-        // Signed binaries must have their SHA256 checksums refreshed.
-        StringAssert.Contains(workflow, "Re-zip signed portable and refresh checksum");
+        // Signed binaries must have their SHA256 checksums refreshed. The portable zip
+        // is hashed by package-windows.ps1 itself (since the exe is signed before zip
+        // is built); the installer needs an explicit refresh because Trusted Signing
+        // stamps it after Inno Setup produces it.
         StringAssert.Contains(workflow, "Refresh installer checksum");
     }
 }

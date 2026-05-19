@@ -76,6 +76,63 @@ public sealed class UpdateCheckerAssetParsingTests
     }
 
     [TestMethod]
+    public async Task PairsInstallerWithSiblingSha256ByBasenameWhenMultipleVariantsPresent()
+    {
+        // Two installer variants present (x64 + arm64) with their respective sidecars.
+        // The picker MUST pair each installer with the sidecar that has its own basename,
+        // not just "the first .sha256" — otherwise SHA-256 verification will fail.
+        var json = """
+        [
+          {
+            "tag_name": "v0.25.0-preview.99",
+            "html_url": "https://example.com/release",
+            "draft": false,
+            "assets": [
+              { "name": "CodexBar-Windows-0.25-win-x64.installer.exe", "browser_download_url": "https://example.com/x64.installer.exe" },
+              { "name": "CodexBar-Windows-0.25-win-x64.installer.exe.sha256", "browser_download_url": "https://example.com/x64.installer.exe.sha256" },
+              { "name": "CodexBar-Windows-0.25-win-arm64.installer.exe", "browser_download_url": "https://example.com/arm64.installer.exe" },
+              { "name": "CodexBar-Windows-0.25-win-arm64.installer.exe.sha256", "browser_download_url": "https://example.com/arm64.installer.exe.sha256" }
+            ]
+          }
+        ]
+        """;
+
+        var result = await CheckAsync(json, "v0.25.0-preview.1");
+
+        Assert.IsTrue(result.UpdateAvailable);
+        Assert.AreEqual(new Uri("https://example.com/x64.installer.exe"), result.InstallerAssetUri);
+        // CRITICAL: the sha256 URI must match the chosen installer's basename, not
+        // be the first sidecar encountered (or the arm64 sidecar).
+        Assert.AreEqual(new Uri("https://example.com/x64.installer.exe.sha256"), result.InstallerSha256Uri);
+    }
+
+    [TestMethod]
+    public async Task ReturnsNullWhenInstallerPresentButMatchingSha256Missing()
+    {
+        // Installer exists but only an arm64 sidecar is present — the picker must NOT
+        // return the mismatched sha256, since verification would fail.
+        var json = """
+        [
+          {
+            "tag_name": "v0.25.0-preview.99",
+            "html_url": "https://example.com/release",
+            "draft": false,
+            "assets": [
+              { "name": "CodexBar-Windows-0.25-win-x64.installer.exe", "browser_download_url": "https://example.com/x64.installer.exe" },
+              { "name": "CodexBar-Windows-0.25-win-arm64.installer.exe.sha256", "browser_download_url": "https://example.com/arm64.installer.exe.sha256" }
+            ]
+          }
+        ]
+        """;
+
+        var result = await CheckAsync(json, "v0.25.0-preview.1");
+
+        Assert.IsTrue(result.UpdateAvailable);
+        Assert.IsNull(result.InstallerAssetUri);
+        Assert.IsNull(result.InstallerSha256Uri);
+    }
+
+    [TestMethod]
     public async Task SkipsDraftsAndFindsInstallerInPublishedRelease()
     {
         var json = """
