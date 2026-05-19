@@ -47,4 +47,7 @@ Name: "{group}\Uninstall CodexBar"; Filename: "{uninstallexe}"
 Name: "{userdesktop}\CodexBar"; Filename: "{app}\CodexBar.WinUI.exe"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\CodexBar.WinUI.exe"; Description: "Launch CodexBar"; Flags: nowait postinstall skipifsilent
+; Removed skipifsilent so the in-app installer (which always invokes /SILENT) still
+; relaunches CodexBar after the upgrade. Interactive installs keep the "Launch CodexBar"
+; checkbox on the Finish page via the postinstall flag.
+Filename: "{app}\CodexBar.WinUI.exe"; Description: "Launch CodexBar"; Flags: nowait postinstall runasoriginaluser
