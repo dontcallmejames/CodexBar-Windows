@@ -110,11 +110,19 @@ public sealed partial class PopoverViewModel : ObservableObject
 
     public void SelectProvider(UsageProvider provider)
     {
-        // The user's intent (the tab they clicked) wins regardless of whether a snapshot
-        // exists for it yet. A provider can be enabled with no snapshot when it's newly
-        // turned on, has no credentials, or is mid-refresh — in that case we still want
-        // ActiveProvider to match the requested provider so the correct tab visually
-        // activates. The downstream UI handles ActiveSnapshot == null gracefully.
+        // Distinguish two no-snapshot cases:
+        // (a) Provider IS in the enabled list but its snapshot is missing (newly turned on,
+        //     no credentials, mid-refresh) — keep the requested provider active so the
+        //     correct tab visually activates and the UI renders an empty state.
+        // (b) Provider is NOT in the enabled list anymore (user just disabled it while
+        //     the popover was alive) — fall back to the first enabled provider so we don't
+        //     leave ActiveProvider stuck on a tab that no longer exists. Footer commands
+        //     (dashboard, status) would otherwise still target the disabled provider.
+        if (EnabledProviders.Count > 0 && !EnabledProviders.Contains(provider))
+        {
+            provider = EnabledProviders[0];
+        }
+
         var selected = Snapshots.FirstOrDefault(s => s.Provider == provider);
         ActiveProvider = provider;
         ActiveSnapshot = selected;
