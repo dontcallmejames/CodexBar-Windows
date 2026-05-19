@@ -6,4 +6,18 @@
     <AnalysisLevel>latest</AnalysisLevel>
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
+
+  <!--
+    Bake CI-supplied version metadata into the assembly so AppVersionInfo.FromAssembly
+    can read it via AssemblyMetadataAttribute. MSBuild properties passed via
+    -p:BuildNumber=... and -p:WindowsPreviewNumber=... are NOT automatically embedded
+    by GenerateAssemblyInfo — we have to create the metadata items explicitly. Without
+    these, the assembly contains no BuildNumber/WindowsPreviewNumber attributes and the
+    self-reported version always falls through to "preview.0", which made every release
+    look older than itself to the in-app update checker.
+  -->
+  <ItemGroup>
+    <AssemblyMetadata Condition="'$(BuildNumber)' != ''" Include="BuildNumber" Value="$(BuildNumber)" />
+    <AssemblyMetadata Condition="'$(WindowsPreviewNumber)' != ''" Include="WindowsPreviewNumber" Value="$(WindowsPreviewNumber)" />
+  </ItemGroup>
 </Project>
