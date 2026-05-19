@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text.Json;
@@ -106,9 +107,11 @@ public sealed class GitHubUpdateChecker : IUpdateChecker
 
     /// <summary>
     /// Walks the release's "assets" array looking for the Windows installer + its SHA-256 sidecar.
-    /// The installer asset's "name" ends with ".installer.exe"; the sidecar ends with
-    /// ".installer.exe.sha256". Returns (null, null) when either is missing — the in-app installer
-    /// flow becomes disabled but the "Open release" path still works.
+    /// The installer asset's "name" ends with ".installer.exe"; the sidecar's name is the
+    /// installer's name plus ".sha256". When a release publishes multiple installer variants
+    /// (e.g. x64 + arm64), we MUST pair each installer with its own sidecar by basename —
+    /// otherwise SHA-256 verification fails despite valid assets. Returns (null, null) when
+    /// no installer is found, or when the matching sidecar is missing.
     /// </summary>
     private static (Uri? Installer, Uri? Sha256) ExtractInstallerAssets(JsonElement release)
     {
@@ -117,8 +120,10 @@ public sealed class GitHubUpdateChecker : IUpdateChecker
             return (null, null);
         }
 
-        Uri? installer = null;
-        Uri? sha256 = null;
+        // Index all assets by name first so we can do an exact-pair lookup. Asset names
+        // are unique within a release, so a plain dictionary is fine.
+        var byName = new Dictionary<string, Uri>(StringComparer.OrdinalIgnoreCase);
+        string? installerName = null;
         foreach (var asset in assets.EnumerateArray())
         {
             if (asset.ValueKind != JsonValueKind.Object) continue;
@@ -127,18 +132,32 @@ public sealed class GitHubUpdateChecker : IUpdateChecker
             if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(downloadUrl)) continue;
             if (!Uri.TryCreate(downloadUrl, UriKind.Absolute, out var uri)) continue;
 
-            // Sidecar check FIRST so ".installer.exe.sha256" doesn't get caught by the installer matcher.
-            if (name.EndsWith(".installer.exe.sha256", StringComparison.OrdinalIgnoreCase))
+            byName[name] = uri;
+
+            // First installer wins. If a release ever ships multiple installer variants
+            // we'll need a runtime-aware picker; for now we only publish x64.
+            if (installerName is null &&
+                name.EndsWith(".installer.exe", StringComparison.OrdinalIgnoreCase) &&
+                !name.EndsWith(".installer.exe.sha256", StringComparison.OrdinalIgnoreCase))
             {
-                sha256 ??= uri;
-            }
-            else if (name.EndsWith(".installer.exe", StringComparison.OrdinalIgnoreCase))
-            {
-                installer ??= uri;
+                installerName = name;
             }
         }
 
-        return (installer is not null && sha256 is not null) ? (installer, sha256) : (null, null);
+        if (installerName is null || !byName.TryGetValue(installerName, out var installerUri))
+        {
+            return (null, null);
+        }
+
+        var sidecarName = installerName + ".sha256";
+        if (!byName.TryGetValue(sidecarName, out var sidecarUri))
+        {
+            // Installer exists but its matching sidecar is missing — disable the in-app
+            // install path entirely so we never verify against the wrong hash.
+            return (null, null);
+        }
+
+        return (installerUri, sidecarUri);
     }
 
     private static string? ReadString(JsonElement element, string propertyName) =>
