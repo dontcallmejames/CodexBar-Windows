@@ -13,8 +13,11 @@ public sealed class UpdateLauncher
     /// <summary>
     /// Starts the installer process and returns immediately. UseShellExecute=true + Verb=runas
     /// triggers UAC. <c>/CLOSEAPPLICATIONS</c> tells Inno Setup to gracefully terminate the
-    /// running CodexBar before replacing files. <c>/SILENT</c> skips most dialogs (progress
-    /// window still shows) and <c>/SUPPRESSMSGBOXES</c> skips error popups.
+    /// running CodexBar before replacing files; <c>/RESTARTAPPLICATIONS</c> asks Restart
+    /// Manager to relaunch them after install. <c>/SILENT</c> skips most dialogs (progress
+    /// window still shows) and <c>/SUPPRESSMSGBOXES</c> skips error popups. The Inno script's
+    /// [Run] entry (without <c>skipifsilent</c>) is the belt-and-suspenders that relaunches
+    /// CodexBar even when Restart Manager doesn't catch it.
     /// </summary>
     public bool LaunchAndDetach(string installerPath, out string? errorMessage)
     {
@@ -24,7 +27,7 @@ public sealed class UpdateLauncher
             var psi = new ProcessStartInfo
             {
                 FileName = installerPath,
-                Arguments = "/CLOSEAPPLICATIONS /SILENT /SUPPRESSMSGBOXES",
+                Arguments = "/CLOSEAPPLICATIONS /RESTARTAPPLICATIONS /SILENT /SUPPRESSMSGBOXES",
                 UseShellExecute = true,
                 Verb = "runas",
             };
