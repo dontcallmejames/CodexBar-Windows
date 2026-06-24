@@ -27,6 +27,13 @@ public sealed class PublicReleaseDocsTests
         StringAssert.Contains(readme, "## Screenshot");
         StringAssert.Contains(readme, "## Provider Support Matrix");
         StringAssert.Contains(readme, "| Provider | Credential source | Status | Notes |");
+        // Every provider with a setup doc must be linked from the README's setup section.
+        // Copilot's link was missing once even though docs/windows-copilot.md existed.
+        StringAssert.Contains(readme, "docs/windows-codex.md");
+        StringAssert.Contains(readme, "docs/windows-claude.md");
+        StringAssert.Contains(readme, "docs/windows-cursor.md");
+        StringAssert.Contains(readme, "docs/windows-gemini.md");
+        StringAssert.Contains(readme, "docs/windows-copilot.md");
         StringAssert.Contains(readme, "installer");
         StringAssert.Contains(readme, "portable zip");
         StringAssert.Contains(readme, "Open Release");

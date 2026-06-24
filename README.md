@@ -2,7 +2,7 @@
 
 A Windows 11 tray app that shows your AI coding-provider usage at a glance — no need to open every provider dashboard. Built on WinUI 3 + Windows App SDK 1.6 with Mica/Acrylic chrome, native Fluent UI, and live theme/accent reactivity.
 
-Supports **Codex, Claude, Cursor, and Gemini.** Reads local CLI credentials directly — your tokens never leave your machine.
+Supports **Codex, Claude, Cursor, Gemini, and GitHub Copilot.** Reads local CLI credentials directly — your tokens never leave your machine.
 
 ## Screenshots
 
@@ -47,15 +47,17 @@ Requirements:
 - **Per-provider adaptive backoff**: if a provider rate-limits you, only that provider backs off — the others keep refreshing.
 - **Live "updated Ns ago" indicator** that ticks every 5 seconds while the popover is open.
 - **Taskbar dock** (optional): a compact strip pinned near the taskbar showing all providers at once.
+- **Global hotkey** (default Ctrl+Alt+U, configurable in Settings): toggle the popover from anywhere, even when the tray icon is hidden in the overflow.
 - **First-run onboarding**, Settings with Fluent SettingsCard layout, About window, native MenuFlyout right-click menu.
 - **Automatic update checks** against GitHub Releases (24-hour cadence, off by default). The app surfaces updates via a Windows AppNotification banner. Settings has an Install now button that downloads the signed installer, verifies it against the published SHA-256 sidecar, launches it elevated, and exits so the installer can replace the running binaries.
 - **DPAPI-encrypted secrets**: manual cookie headers (Claude, Cursor) are encrypted at rest with Windows DPAPI tied to your user profile. Plaintext values from older installs are migrated on next save.
 - **Accessibility**: every interactive control exposes an `AutomationId` and icon-only buttons expose an accessible `Name`, so Narrator and UI automation tools can navigate the app end-to-end.
 - **Local Claude Code token tracking** (when Claude Code is installed): the Claude tab also shows today's local token spend by scanning `~/.claude/projects/**/*.jsonl`, ccusage-style. No network call, no NPX dependency.
+- **Credential-expiry surfacing**: when a provider's sign-in expires or is rejected, that tab shows a clear "reconnect" message with the exact re-auth steps (and a one-time toast), instead of going blank or showing stale numbers. Expired credentials are kept distinct from transient network errors and rate limits.
 
 ## Updates
 
-CodexBar checks GitHub Releases automatically every 24 hours when enabled in Settings, and you can check manually any time. The Settings window shows your version, the latest release found, and an Open Release button when an update is available.
+CodexBar checks GitHub Releases automatically every 24 hours when enabled in Settings, and you can check manually any time. The Settings window shows your version and the latest release found. When an update is available you can **Install now** — CodexBar downloads the signed installer, verifies its SHA-256, runs it elevated, and relaunches — or use **Open Release** to download from GitHub yourself.
 
 ## Provider setup details
 
@@ -64,6 +66,7 @@ Setup notes per provider:
 - [Claude on Windows](docs/windows-claude.md)
 - [Cursor on Windows](docs/windows-cursor.md)
 - [Gemini on Windows](docs/windows-gemini.md)
+- [GitHub Copilot on Windows](docs/windows-copilot.md)
 
 ## Privacy
 
@@ -75,7 +78,7 @@ Manual cookie headers entered in Settings are encrypted at rest with Windows DPA
 
 ## Known limitations
 
-- Updates are not auto-installed; the app opens the release page when an update is found.
+- Updates aren't silent: you trigger them from Settings — Install now installs in place, or Open Release downloads from GitHub. The app never updates itself in the background.
 - Cursor support requires a manual cookie header you copy from a signed-in browser session.
 - Gemini requires Gemini CLI OAuth credentials. API key and Vertex AI modes are not yet supported.
 - A provider can show "No usage yet" when credentials are present but the provider returns no measurable usage window.
@@ -86,7 +89,7 @@ Manual cookie headers entered in Settings are encrypted at rest with Windows DPA
 The active solution is `src/windows/CodexBar.Windows.sln` (.NET 9, WinUI 3 via Windows App SDK 1.6).
 
 ```powershell
-C:\tmp\dotnet\dotnet.exe test src\windows\CodexBar.Windows.sln --verbosity minimal
+dotnet test src\windows\CodexBar.Windows.sln --verbosity minimal
 ```
 
 Releases use the checklist in [docs/windows-release-checklist.md](docs/windows-release-checklist.md). Provider data is kept siloed per provider; behavior changes need focused tests.
