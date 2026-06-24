@@ -6,8 +6,8 @@ namespace CodexBar.Core.Updates;
 
 public sealed record AppVersionInfo(string DisplayVersion, string Channel, string CurrentTag)
 {
-    private static readonly Regex PreviewTagPattern = new(
-        @"^v(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)-preview\.(?<preview>\d+)$",
+    private static readonly Regex VersionTagPattern = new(
+        @"^v(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)(?:-preview\.(?<preview>\d+))?$",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     public static AppVersionInfo Current { get; } = FromAssembly();
@@ -15,10 +15,20 @@ public sealed record AppVersionInfo(string DisplayVersion, string Channel, strin
     public static AppVersionInfo FromMarketingVersion(
         string marketingVersion,
         string? buildNumber,
-        string? windowsPreviewNumber = null)
+        string? windowsPreviewNumber = null,
+        string? channel = "preview")
     {
         var displayVersion = CleanDisplayVersion(marketingVersion);
         var normalized = NormalizeVersion(displayVersion);
+
+        if (IsStableChannel(channel))
+        {
+            return new AppVersionInfo(
+                displayVersion,
+                "stable",
+                $"v{normalized}");
+        }
+
         var previewNumber = ResolvePreviewNumber(buildNumber, windowsPreviewNumber);
         return new AppVersionInfo(
             displayVersion,
@@ -28,14 +38,17 @@ public sealed record AppVersionInfo(string DisplayVersion, string Channel, strin
 
     public bool IsOlderThan(string? latestTag)
     {
-        if (!TryParsePreviewTag(CurrentTag, out var current) ||
-            !TryParsePreviewTag(latestTag, out var latest))
+        if (!TryParseVersionTag(CurrentTag, out var current) ||
+            !TryParseVersionTag(latestTag, out var latest))
         {
             return false;
         }
 
         return current.CompareTo(latest) < 0;
     }
+
+    private static bool IsStableChannel(string? channel) =>
+        string.Equals(channel?.Trim(), "stable", StringComparison.OrdinalIgnoreCase);
 
     private static AppVersionInfo FromAssembly()
     {
@@ -47,7 +60,10 @@ public sealed record AppVersionInfo(string DisplayVersion, string Channel, strin
             .ToDictionary(attribute => attribute.Key, attribute => attribute.Value);
         metadata.TryGetValue("BuildNumber", out var buildNumber);
         metadata.TryGetValue("WindowsPreviewNumber", out var windowsPreviewNumber);
-        return FromMarketingVersion(version, buildNumber, windowsPreviewNumber);
+        var channel = metadata.TryGetValue("Channel", out var channelValue) && !string.IsNullOrWhiteSpace(channelValue)
+            ? channelValue
+            : "preview";
+        return FromMarketingVersion(version, buildNumber, windowsPreviewNumber, channel);
     }
 
     private static string ResolvePreviewNumber(string? buildNumber, string? windowsPreviewNumber)
@@ -82,7 +98,7 @@ public sealed record AppVersionInfo(string DisplayVersion, string Channel, strin
         return parts.Length == 1 ? $"{parts[0]}.0.0" : "0.0.0";
     }
 
-    private static bool TryParsePreviewTag(string? tag, out VersionComparable value)
+    private static bool TryParseVersionTag(string? tag, out VersionComparable value)
     {
         value = default;
         if (string.IsNullOrWhiteSpace(tag))
@@ -90,17 +106,22 @@ public sealed record AppVersionInfo(string DisplayVersion, string Channel, strin
             return false;
         }
 
-        var match = PreviewTagPattern.Match(tag.Trim());
+        var match = VersionTagPattern.Match(tag.Trim());
         if (!match.Success)
         {
             return false;
         }
 
+        var previewGroup = match.Groups["preview"];
+        int? preview = previewGroup.Success
+            ? int.Parse(previewGroup.Value, CultureInfo.InvariantCulture)
+            : null;
+
         value = new VersionComparable(
             int.Parse(match.Groups["major"].Value, CultureInfo.InvariantCulture),
             int.Parse(match.Groups["minor"].Value, CultureInfo.InvariantCulture),
             int.Parse(match.Groups["patch"].Value, CultureInfo.InvariantCulture),
-            int.Parse(match.Groups["preview"].Value, CultureInfo.InvariantCulture));
+            preview);
         return true;
     }
 
@@ -108,7 +129,7 @@ public sealed record AppVersionInfo(string DisplayVersion, string Channel, strin
         int Major,
         int Minor,
         int Patch,
-        int Preview) : IComparable<VersionComparable>
+        int? Preview) : IComparable<VersionComparable>
     {
         public int CompareTo(VersionComparable other)
         {
@@ -125,7 +146,29 @@ public sealed record AppVersionInfo(string DisplayVersion, string Channel, strin
             }
 
             var patch = Patch.CompareTo(other.Patch);
-            return patch != 0 ? patch : Preview.CompareTo(other.Preview);
+            if (patch != 0)
+            {
+                return patch;
+            }
+
+            // Same major.minor.patch: a stable release (null preview) sorts ABOVE any
+            // preview of the same triple (semver prerelease rule: 0.25.0 > 0.25.0-preview.N).
+            if (Preview is null && other.Preview is null)
+            {
+                return 0;
+            }
+
+            if (Preview is null)
+            {
+                return 1;
+            }
+
+            if (other.Preview is null)
+            {
+                return -1;
+            }
+
+            return Preview.Value.CompareTo(other.Preview.Value);
         }
     }
 }

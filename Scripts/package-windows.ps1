@@ -23,6 +23,7 @@ $versionFile = Join-Path $repoRoot "version.env"
 $version = "dev"
 $buildNumber = "0"
 $windowsPreviewNumber = ""
+$channel = ""
 if (Test-Path -LiteralPath $versionFile) {
     foreach ($line in Get-Content -LiteralPath $versionFile) {
         if ($line -match "^MARKETING_VERSION=(.+)$") {
@@ -34,10 +35,16 @@ if (Test-Path -LiteralPath $versionFile) {
         if ($line -match "^WINDOWS_PREVIEW_NUMBER=(.+)$") {
             $windowsPreviewNumber = $Matches[1]
         }
+        if ($line -match "^CHANNEL=(.+)$") {
+            $channel = $Matches[1]
+        }
     }
 }
 if ([string]::IsNullOrWhiteSpace($windowsPreviewNumber)) {
     $windowsPreviewNumber = $buildNumber
+}
+if ([string]::IsNullOrWhiteSpace($channel)) {
+    $channel = "preview"
 }
 
 function Find-SignTool {
@@ -166,6 +173,7 @@ if (-not $SkipPublish) {
         '-p:IncludeSourceRevisionInInformationalVersion=false',
         "-p:BuildNumber=$buildNumber",
         "-p:WindowsPreviewNumber=$windowsPreviewNumber",
+        "-p:Channel=$channel",
         '-o', $publishDir,
         '--verbosity', 'minimal'
     )

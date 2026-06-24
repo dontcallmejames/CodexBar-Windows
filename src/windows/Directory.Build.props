@@ -19,5 +19,6 @@
   <ItemGroup>
     <AssemblyMetadata Condition="'$(BuildNumber)' != ''" Include="BuildNumber" Value="$(BuildNumber)" />
     <AssemblyMetadata Condition="'$(WindowsPreviewNumber)' != ''" Include="WindowsPreviewNumber" Value="$(WindowsPreviewNumber)" />
+    <AssemblyMetadata Condition="'$(Channel)' != ''" Include="Channel" Value="$(Channel)" />
   </ItemGroup>
 </Project>

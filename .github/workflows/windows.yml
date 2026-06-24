@@ -53,34 +53,52 @@ jobs:
         shell: pwsh
         run: choco install innosetup --no-progress -y
 
-      - name: Sync version.env preview number to git tag
+      - name: Sync version.env to git tag
         shell: pwsh
         run: |
-          # The tag drives the release name. Extract its preview number and bake it into
-          # version.env so the binary reports the correct version to the in-app update
-          # checker. Without this the checker compares the previous-build preview number
-          # against the freshly-tagged one and reports "update available" right after
-          # installing the just-published release.
+          # The tag drives the release name and channel. Bake its preview number and
+          # channel into version.env so the binary reports the correct version to the
+          # in-app update checker. Without this the checker compares the previous-build
+          # preview number against the freshly-tagged one and reports "update available"
+          # right after installing the just-published release.
+          #
+          # Two tag shapes are supported:
+          #   vX.Y.Z-preview.N -> WINDOWS_PREVIEW_NUMBER=N, CHANNEL=preview
+          #   vX.Y.Z           -> CHANNEL=stable (WINDOWS_PREVIEW_NUMBER unused for stable)
           $tag = "${{ github.ref_name }}"
+          $previewNumber = $null
+          $channel = $null
           if ($tag -match '^v\d+\.\d+\.\d+-preview\.(?<num>\d+)$') {
               $previewNumber = $matches['num']
-              Write-Host "Setting WINDOWS_PREVIEW_NUMBER=$previewNumber from tag $tag"
+              $channel = 'preview'
+              Write-Host "Preview tag $tag -> WINDOWS_PREVIEW_NUMBER=$previewNumber, CHANNEL=preview"
+          } elseif ($tag -match '^v\d+\.\d+\.\d+$') {
+              $channel = 'stable'
+              Write-Host "Stable tag $tag -> CHANNEL=stable (WINDOWS_PREVIEW_NUMBER left unchanged)"
+          } else {
+              Write-Host "::notice::Tag $tag does not look like a release tag; leaving version.env untouched."
+          }
+
+          if ($null -ne $channel) {
               $envFile = Join-Path $env:GITHUB_WORKSPACE 'version.env'
               $lines = Get-Content -LiteralPath $envFile
               $updated = @()
-              $found = $false
+              $previewFound = $false
+              $channelFound = $false
               foreach ($line in $lines) {
-                  if ($line -match '^WINDOWS_PREVIEW_NUMBER=') {
+                  if ($null -ne $previewNumber -and $line -match '^WINDOWS_PREVIEW_NUMBER=') {
                       $updated += "WINDOWS_PREVIEW_NUMBER=$previewNumber"
-                      $found = $true
+                      $previewFound = $true
+                  } elseif ($line -match '^CHANNEL=') {
+                      $updated += "CHANNEL=$channel"
+                      $channelFound = $true
                   } else {
                       $updated += $line
                   }
               }
-              if (-not $found) { $updated += "WINDOWS_PREVIEW_NUMBER=$previewNumber" }
+              if ($null -ne $previewNumber -and -not $previewFound) { $updated += "WINDOWS_PREVIEW_NUMBER=$previewNumber" }
+              if (-not $channelFound) { $updated += "CHANNEL=$channel" }
               Set-Content -LiteralPath $envFile -Value $updated -Encoding ascii
-          } else {
-              Write-Host "::notice::Tag $tag does not look like a preview tag; leaving version.env untouched."
           }
 
       - name: Check Trusted Signing availability
