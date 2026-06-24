@@ -92,7 +92,8 @@ public sealed class PackagingScriptTests
 
         StringAssert.Contains(workflow, "contents: write");
         StringAssert.Contains(workflow, "softprops/action-gh-release");
-        StringAssert.Contains(workflow, "prerelease: true");
+        // Preview tags publish as prereleases, stable (vX.Y.Z) tags as full releases.
+        StringAssert.Contains(workflow, "prerelease: ${{ contains(github.ref_name, '-preview.') }}");
         StringAssert.Contains(workflow, "dist/windows/*.zip");
         StringAssert.Contains(workflow, "dist/windows/*.zip.sha256");
     }

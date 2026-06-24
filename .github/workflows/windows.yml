@@ -199,10 +199,11 @@ jobs:
             dist/windows/*.zip.sha256
             dist/windows/*.installer.exe
             dist/windows/*.installer.exe.sha256
-      - name: Publish prerelease assets
+      - name: Publish release assets
         uses: softprops/action-gh-release@v2
         with:
-          prerelease: true
+          # Preview tags (vX.Y.Z-preview.N) publish as prereleases; stable tags (vX.Y.Z) as full releases.
+          prerelease: ${{ contains(github.ref_name, '-preview.') }}
           generate_release_notes: true
           fail_on_unmatched_files: true
           files: |
