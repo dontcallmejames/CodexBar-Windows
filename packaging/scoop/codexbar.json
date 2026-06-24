@@ -1,0 +1,25 @@
+{
+    "version": "0.25.0",
+    "description": "See your AI coding-provider usage (Codex, Claude, Cursor, Gemini, Copilot) in the Windows tray. Tokens never leave your machine.",
+    "homepage": "https://github.com/dontcallmejames/CodexBar-Windows",
+    "license": "MIT",
+    "architecture": {
+        "64bit": {
+            "url": "https://github.com/dontcallmejames/CodexBar-Windows/releases/download/v0.25.0/CodexBar-Windows-0.25-win-x64.zip",
+            "hash": "754e8de070e685ca13a573af0326b7e8c86c3a3a2b4e6254837e740b092472f9"
+        }
+    },
+    "shortcuts": [
+        ["CodexBar.WinUI.exe", "CodexBar"]
+    ],
+    "checkver": {
+        "github": "https://github.com/dontcallmejames/CodexBar-Windows"
+    },
+    "autoupdate": {
+        "architecture": {
+            "64bit": {
+                "url": "https://github.com/dontcallmejames/CodexBar-Windows/releases/download/v$version/CodexBar-Windows-0.25-win-x64.zip"
+            }
+        }
+    }
+}

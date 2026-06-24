@@ -1,0 +1,20 @@
+PackageIdentifier: dontcallmejames.CodexBar
+PackageVersion: 0.25.0
+InstallerLocale: en-US
+Platform:
+  - Windows.Desktop
+MinimumOSVersion: 10.0.19041.0
+InstallerType: inno
+Scope: user
+InstallModes:
+  - interactive
+  - silent
+  - silentWithProgress
+UpgradeBehavior: install
+ReleaseDate: 2026-06-24
+Installers:
+  - Architecture: x64
+    InstallerUrl: https://github.com/dontcallmejames/CodexBar-Windows/releases/download/v0.25.0/CodexBar-Windows-0.25-win-x64.installer.exe
+    InstallerSha256: 53E81671A747BF547DA604D6A90323C5726A69146B41B6F18E3F1674BE2211F8
+ManifestType: installer
+ManifestVersion: 1.6.0
