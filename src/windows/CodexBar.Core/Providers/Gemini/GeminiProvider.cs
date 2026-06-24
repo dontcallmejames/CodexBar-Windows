@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using CodexBar.Core.Models;
 using CodexBar.Core.Paths;
+using CodexBar.Core.Refresh;
 
 namespace CodexBar.Core.Providers.Gemini;
 
@@ -142,6 +143,8 @@ public sealed class GeminiProvider : IUsageProvider
         request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
 
         using var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        if (response.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
+            throw new AuthenticationRequiredException("Your Gemini CLI sign-in expired or was revoked. Run `gemini` and choose Login with Google to reconnect (OAuth mode required — API key / Vertex AI will not work).");
         response.EnsureSuccessStatusCode();
 
         await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);

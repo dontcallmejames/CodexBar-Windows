@@ -20,9 +20,12 @@ public sealed partial class PopoverViewModel : ObservableObject
     private readonly Action? openDashboard;
     private readonly Action? openStatusPage;
     private readonly Action? openAddAccount;
+    private readonly Action<UsageProvider>? openReconnect;
 
     [ObservableProperty] private UsageProvider activeProvider;
     [ObservableProperty] private UsageSnapshot? activeSnapshot;
+    [ObservableProperty] private bool hasError;
+    [ObservableProperty] private string errorText = string.Empty;
     [ObservableProperty] private IReadOnlyList<PopoverMetricViewModel> metrics = Array.Empty<PopoverMetricViewModel>();
     [ObservableProperty] private string updatedText = string.Empty;
     [ObservableProperty] private string planText = string.Empty;
@@ -51,7 +54,8 @@ public sealed partial class PopoverViewModel : ObservableObject
         Action? quit = null,
         Action? openDashboard = null,
         Action? openStatusPage = null,
-        Action? openAddAccount = null)
+        Action? openAddAccount = null,
+        Action<UsageProvider>? openReconnect = null)
     {
         Snapshots = snapshots;
         EnabledProviders = enabledProviders ?? snapshots.Select(s => s.Provider).ToArray();
@@ -64,6 +68,7 @@ public sealed partial class PopoverViewModel : ObservableObject
         this.openDashboard = openDashboard;
         this.openStatusPage = openStatusPage;
         this.openAddAccount = openAddAccount;
+        this.openReconnect = openReconnect;
         SelectProvider(activeProvider);
     }
 
@@ -84,6 +89,9 @@ public sealed partial class PopoverViewModel : ObservableObject
 
     [RelayCommand]
     private void AddAccount() => openAddAccount?.Invoke();
+
+    [RelayCommand]
+    private void Reconnect() => openReconnect?.Invoke(ActiveProvider);
 
     /// <summary>
     /// Replace the snapshot set in-place and re-select the active provider so the bound
@@ -126,6 +134,8 @@ public sealed partial class PopoverViewModel : ObservableObject
         var selected = Snapshots.FirstOrDefault(s => s.Provider == provider);
         ActiveProvider = provider;
         ActiveSnapshot = selected;
+        HasError = selected is { AuthState: AuthState.RequiresAuthentication };
+        ErrorText = selected?.ErrorMessage ?? string.Empty;
         Metrics = BuildMetrics(selected);
         PlanText = selected?.Plan ?? string.Empty;
         UpdateLocalTokens(selected);

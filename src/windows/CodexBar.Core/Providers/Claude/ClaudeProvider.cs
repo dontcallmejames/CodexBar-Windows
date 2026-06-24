@@ -15,6 +15,8 @@ public sealed class ClaudeProvider : IUsageProvider
     private static readonly Uri AccountUri = new("https://claude.ai/api/account");
     private const string OAuthClientId = "9d1c250a-e61b-44d9-88ed-5944d1962f5e";
     private const string ClaudeCodeUserAgent = "claude-code/2.1.0";
+    private const string ClaudeReAuthMessage =
+        "Your Claude sign-in expired. Run `claude` in a terminal, then `/login` to reconnect. Or paste a fresh claude.ai cookie in Settings.";
 
     private readonly HttpClient httpClient;
     private readonly IAppPaths paths;
@@ -52,13 +54,33 @@ public sealed class ClaudeProvider : IUsageProvider
                 {
                     return await RefreshOAuthAsync(credentials, cancellationToken);
                 }
-                catch (HttpRequestException error) when (
-                    error.StatusCode == System.Net.HttpStatusCode.Unauthorized &&
-                    !string.IsNullOrWhiteSpace(credentials.RefreshToken))
+                catch (HttpRequestException error) when (IsAuthRejection(error.StatusCode))
                 {
-                    var refreshed = await RefreshAccessTokenAsync(credentials, cancellationToken);
-                    await ClaudeOAuthCredentials.WriteAsync(paths.ClaudeCredentialsJson, refreshed, cancellationToken);
-                    return await RefreshOAuthAsync(refreshed, cancellationToken);
+                    // No refresh token to recover with → the local credential is dead. Tell the
+                    // user how to re-authenticate rather than letting a raw 401 propagate.
+                    if (string.IsNullOrWhiteSpace(credentials.RefreshToken))
+                    {
+                        throw new AuthenticationRequiredException(ClaudeReAuthMessage);
+                    }
+
+                    try
+                    {
+                        var refreshed = await RefreshAccessTokenAsync(credentials, cancellationToken);
+                        await ClaudeOAuthCredentials.WriteAsync(paths.ClaudeCredentialsJson, refreshed, cancellationToken);
+                        return await RefreshOAuthAsync(refreshed, cancellationToken);
+                    }
+                    catch (HttpRequestException retryError) when (IsAuthRejection(retryError.StatusCode))
+                    {
+                        // Refresh succeeded transport-wise but the new token is still rejected,
+                        // or the refresh endpoint itself rejected the refresh token.
+                        throw new AuthenticationRequiredException(ClaudeReAuthMessage);
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        // Refresh response was missing an access token — the refresh token is no
+                        // longer honored. Surface as re-auth, not an opaque InvalidOperationException.
+                        throw new AuthenticationRequiredException(ClaudeReAuthMessage);
+                    }
                 }
             }
         }
@@ -132,6 +154,17 @@ public sealed class ClaudeProvider : IUsageProvider
 
         using var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
         ThrowIfRateLimited(response);
+
+        // A revoked/expired refresh token comes back as 400 invalid_grant (per OAuth) or
+        // 401/403. That is an unrecoverable auth failure — surface it as re-auth so the
+        // reconnect InfoBar/toast fire, rather than letting EnsureSuccessStatusCode throw a
+        // generic HttpRequestException that the scheduler would treat as a transient blip
+        // (keeping stale AuthState.None data). Genuine 5xx still propagates as transient.
+        if (response.StatusCode is System.Net.HttpStatusCode.BadRequest || IsAuthRejection(response.StatusCode))
+        {
+            throw new AuthenticationRequiredException(ClaudeReAuthMessage);
+        }
+
         response.EnsureSuccessStatusCode();
 
         await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
@@ -153,6 +186,9 @@ public sealed class ClaudeProvider : IUsageProvider
             ExpiresAt = DateTimeOffset.Now.AddSeconds(tokenResponse.ExpiresIn ?? 3600)
         };
     }
+
+    private static bool IsAuthRejection(System.Net.HttpStatusCode? statusCode) =>
+        statusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden;
 
     private static void ThrowIfRateLimited(HttpResponseMessage response)
     {
@@ -180,6 +216,11 @@ public sealed class ClaudeProvider : IUsageProvider
             organizationsRequest,
             HttpCompletionOption.ResponseHeadersRead,
             cancellationToken);
+        ThrowIfRateLimited(organizationsResponse);
+        if (IsAuthRejection(organizationsResponse.StatusCode))
+        {
+            throw new AuthenticationRequiredException(ClaudeReAuthMessage);
+        }
         organizationsResponse.EnsureSuccessStatusCode();
 
         await using var organizationsStream = await organizationsResponse.Content.ReadAsStreamAsync(cancellationToken);

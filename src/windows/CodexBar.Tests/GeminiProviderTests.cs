@@ -1,6 +1,7 @@
 using CodexBar.Core.Models;
 using CodexBar.Core.Paths;
 using CodexBar.Core.Providers.Gemini;
+using CodexBar.Core.Refresh;
 using System.Net;
 
 namespace CodexBar.Tests;
@@ -239,6 +240,49 @@ public sealed class GeminiProviderTests
         Assert.IsTrue(snapshot.IsStale);
         Assert.AreEqual("none", snapshot.SourceLabel);
         StringAssert.Contains(snapshot.ErrorMessage!, "Gemini CLI OAuth refresh failed");
+    }
+
+    [TestMethod]
+    public async Task UnauthorizedFromCodeAssistThrowsAuthenticationRequired()
+    {
+        var root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        var paths = WindowsAppPaths.ForTest(Path.Combine(root, "home"), Path.Combine(root, "appdata"));
+        Directory.CreateDirectory(Path.GetDirectoryName(paths.GeminiOAuthCredentialsJson)!);
+        await File.WriteAllTextAsync(paths.GeminiOAuthCredentialsJson, """
+        {
+          "access_token": "access",
+          "refresh_token": "refresh",
+          "id_token": "header.eyJlbWFpbCI6ImdlbWluaUBleGFtcGxlLmNvbSJ9.signature",
+          "expiry_date": 1893440000000
+        }
+        """);
+        var handler = new QueueHandler(new HttpResponseMessage(HttpStatusCode.Unauthorized));
+        var provider = new GeminiProvider(new HttpClient(handler), paths, new StaticGeminiOAuthClient("id", "secret"));
+
+        var error = await Assert.ThrowsExactlyAsync<AuthenticationRequiredException>(
+            () => provider.RefreshAsync(CancellationToken.None));
+        StringAssert.Contains(error.Message, "Login with Google");
+    }
+
+    [TestMethod]
+    public async Task ForbiddenFromCodeAssistThrowsAuthenticationRequired()
+    {
+        var root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        var paths = WindowsAppPaths.ForTest(Path.Combine(root, "home"), Path.Combine(root, "appdata"));
+        Directory.CreateDirectory(Path.GetDirectoryName(paths.GeminiOAuthCredentialsJson)!);
+        await File.WriteAllTextAsync(paths.GeminiOAuthCredentialsJson, """
+        {
+          "access_token": "access",
+          "refresh_token": "refresh",
+          "id_token": "header.eyJlbWFpbCI6ImdlbWluaUBleGFtcGxlLmNvbSJ9.signature",
+          "expiry_date": 1893440000000
+        }
+        """);
+        var handler = new QueueHandler(new HttpResponseMessage(HttpStatusCode.Forbidden));
+        var provider = new GeminiProvider(new HttpClient(handler), paths, new StaticGeminiOAuthClient("id", "secret"));
+
+        await Assert.ThrowsExactlyAsync<AuthenticationRequiredException>(
+            () => provider.RefreshAsync(CancellationToken.None));
     }
 
     private sealed class QueueHandler : HttpMessageHandler

@@ -46,5 +46,26 @@ public sealed class ProviderLinksTests
         Assert.AreEqual(
             new Uri("https://github.com/dontcallmejames/CodexBar-Windows/blob/main/docs/windows-gemini.md"),
             ProviderLinks.SetupUri(UsageProvider.Gemini));
+        Assert.AreEqual(
+            new Uri("https://github.com/dontcallmejames/CodexBar-Windows/blob/main/docs/windows-copilot.md"),
+            ProviderLinks.SetupUri(UsageProvider.Copilot));
+    }
+
+    [TestMethod]
+    public void SetupUriReturnsDistinctNonNullUriForAllProviders()
+    {
+        var providers = new[]
+        {
+            UsageProvider.Codex,
+            UsageProvider.Claude,
+            UsageProvider.Cursor,
+            UsageProvider.Gemini,
+            UsageProvider.Copilot
+        };
+
+        var uris = providers.Select(ProviderLinks.SetupUri).ToArray();
+
+        Assert.IsTrue(uris.All(uri => uri is not null));
+        Assert.AreEqual(providers.Length, uris.Distinct().Count(), "each provider must map to a distinct setup doc");
     }
 }

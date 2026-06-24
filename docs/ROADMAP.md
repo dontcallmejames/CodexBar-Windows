@@ -39,6 +39,35 @@ Tracked features and ideas. Roughly in priority order; subject to change.
 - **Per-provider color theming** in the popover and dock tiles. Was started in a branch and reverted; revisit after the Codex/Claude/Cursor/Gemini logos are produced.
 - **Native Windows widgets** (Microsoft.Windows.Widgets) — surfaces usage on the Widgets board without opening the popover.
 
+## Adding a provider — auth-expiry contract
+
+Every provider MUST distinguish an expired/revoked credential from a transient
+network error so the user gets an actionable "sign in again" message instead of
+a blank tab or silently-stale numbers.
+
+When a credential is rejected by the server (HTTP 401/403, or a refresh that
+cannot recover), signal re-auth in ONE of these two ways:
+
+- Throw-style providers (you call response.EnsureSuccessStatusCode and let
+  exceptions reach RefreshScheduler — e.g. Codex, Claude, Gemini): detect
+  401/403 before EnsureSuccessStatusCode and
+  `throw new AuthenticationRequiredException("<actionable re-auth message>");`
+
+- Return-style providers (you inspect StatusCode and return a snapshot — e.g.
+  Cursor, Copilot): return
+  `UsageSnapshot.RequiresAuthentication(Provider, "<DisplayName>", "<actionable re-auth message>");`
+  (NOT MissingCredentials — that is only for "never configured".)
+
+Rules:
+- The message must tell the user exactly how to re-authenticate (the CLI command
+  or the Settings field), not the raw HTTP/.NET exception text.
+- Do NOT use the re-auth signal for timeouts, DNS failures, or 5xx — let those
+  propagate so the last-good snapshot is kept as stale.
+- Map HTTP 429 (and 503 with Retry-After) to RateLimitException, never to auth.
+- Add a per-provider entry to ProviderLinks.SetupUri so the popover "Reconnect"
+  button and the toast deep-link to the right docs page.
+- Add a unit test asserting a 401/403 produces AuthState.RequiresAuthentication.
+
 ## Not planned
 
 - Cross-platform port (Linux/macOS). macOS is covered by [steipete/CodexBar](https://github.com/steipete/CodexBar) and [robinebers/openusage](https://github.com/robinebers/openusage); Linux audience for AI coding usage trackers is small enough to not justify the WinUI 3 → Avalonia/MAUI rewrite.

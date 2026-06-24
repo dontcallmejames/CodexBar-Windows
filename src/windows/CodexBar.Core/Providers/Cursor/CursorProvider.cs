@@ -33,10 +33,10 @@ public sealed class CursorProvider : IUsageProvider
         using var usage = await GetJsonAsync(UsageSummaryUri, cancellationToken);
         if (usage is null)
         {
-            return UsageSnapshot.MissingCredentials(
+            return UsageSnapshot.RequiresAuthentication(
                 UsageProvider.Cursor,
                 "Cursor",
-                "Cursor rejected the saved cookie. Please refresh your Cursor cookie in Settings.");
+                "Cursor rejected your saved cookie. Sign in at cursor.com, copy the Cookie header (must include WorkosCursorSessionToken), and re-paste it in Settings.");
         }
 
         using var account = await GetJsonAsync(AccountUri, cancellationToken);

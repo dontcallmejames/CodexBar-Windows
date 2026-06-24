@@ -48,6 +48,12 @@ public partial class App : Application
     private DateTime popoverDismissedAt = DateTime.MinValue;
     private static readonly TimeSpan PopoverDismissDebounce = TimeSpan.FromMilliseconds(300);
 
+    // Providers we have already posted a "sign in again" toast for. Mutated ONLY inside the
+    // uiDispatcher callback in OnLaunched's OnSnapshotsChanged handler, so no locking needed.
+    // A provider is removed once its snapshot returns to AuthState.None so a later expiry
+    // re-notifies the user exactly once.
+    private readonly HashSet<UsageProvider> authNotified = new();
+
     public App()
     {
         InitializeComponent();
@@ -127,8 +133,10 @@ public partial class App : Application
             // Wire live updates: every completed refresh updates the tray icon and dock.
             shell.OnSnapshotsChanged += () => uiDispatcher.TryEnqueue(() =>
             {
-                tray?.Update(TraySelector.Build(shell.Store.All()));
+                var snapshots = shell.Store.All();
+                tray?.Update(TraySelector.Build(snapshots));
                 UpdateTaskbarDock();
+                NotifyAuthExpiries(snapshots);
             });
 
             // Fire one immediate refresh + start the periodic timer.
@@ -159,6 +167,40 @@ public partial class App : Application
         catch (Exception ex)
         {
             WriteCrashLog("OnLaunched", ex);
+        }
+    }
+
+    /// <summary>
+    /// Post a one-time "sign in again" toast for each provider whose snapshot flipped to
+    /// AuthState.RequiresAuthentication, and clear the per-provider flag once it recovers so a
+    /// later expiry re-notifies once. Runs only inside the uiDispatcher callback, so the
+    /// authNotified set needs no synchronization.
+    /// </summary>
+    private void NotifyAuthExpiries(IReadOnlyList<UsageSnapshot> snapshots)
+    {
+        try
+        {
+            foreach (var snapshot in snapshots)
+            {
+                if (snapshot.AuthState == AuthState.RequiresAuthentication)
+                {
+                    if (authNotified.Add(snapshot.Provider))
+                    {
+                        AuthNotificationPoster.Show(
+                            snapshot.Provider,
+                            snapshot.DisplayName,
+                            snapshot.ErrorMessage ?? "Your sign-in expired. Reconnect to keep usage updating.");
+                    }
+                }
+                else
+                {
+                    authNotified.Remove(snapshot.Provider);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            WriteCrashLog("NotifyAuthExpiries", ex);
         }
     }
 
@@ -264,7 +306,8 @@ public partial class App : Application
                     quit: () => dispatcher.TryEnqueue(QuitApp),
                     openDashboard: () => OpenUriForActiveProvider(ProviderLinks.DashboardUri),
                     openStatusPage: () => OpenUriForActiveProvider(ProviderLinks.StatusUri),
-                    openAddAccount: () => dispatcher.TryEnqueue(ShowSettings));
+                    openAddAccount: () => dispatcher.TryEnqueue(ShowSettings),
+                    openReconnect: p => Services.ExternalLauncher.OpenExternalUrl(ProviderLinks.SetupUri(p)));
 
                 popover = new PopoverWindow(vm, themeListener);
                 popover.Closed += (_, _) => popover = null;
@@ -361,7 +404,7 @@ public partial class App : Application
         Microsoft.Windows.AppNotifications.AppNotificationManager sender,
         Microsoft.Windows.AppNotifications.AppNotificationActivatedEventArgs args)
     {
-        if (args.Arguments.TryGetValue("action", out var action) && action == "open-release")
+        if (args.Arguments.TryGetValue("action", out var action) && action is "open-release" or "open-setup")
         {
             if (args.Arguments.TryGetValue("url", out var url))
             {

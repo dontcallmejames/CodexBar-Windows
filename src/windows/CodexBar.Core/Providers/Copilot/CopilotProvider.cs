@@ -46,37 +46,32 @@ public sealed class CopilotProvider : IUsageProvider
 
         using var request = BuildRequest(tokenResult.Token);
 
-        try
+        using var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+
+        if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
         {
-            using var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-
-            if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
-            {
-                return UsageSnapshot.MissingCredentials(
-                    UsageProvider.Copilot,
-                    "Copilot",
-                    "GitHub rejected the token. Re-run `gh auth login` and ensure your account has Copilot access.");
-            }
-
-            response.EnsureSuccessStatusCode();
-
-            await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-            var usage = await JsonSerializer.DeserializeAsync<CopilotUserResponse>(
-                stream,
-                CopilotUsageMapper.JsonOptions,
-                cancellationToken);
-
-            return CopilotUsageMapper.Map(
-                usage ?? new CopilotUserResponse(null, null, null, null, null, null),
-                DateTimeOffset.Now);
-        }
-        catch (HttpRequestException ex)
-        {
-            return UsageSnapshot.MissingCredentials(
+            return UsageSnapshot.RequiresAuthentication(
                 UsageProvider.Copilot,
                 "Copilot",
-                $"GitHub API request failed: {ex.Message}");
+                "GitHub rejected your token. Re-run `gh auth login` and ensure your account has Copilot access.");
         }
+
+        // Let transient failures (429, 5xx, network/timeout) propagate to RefreshScheduler's
+        // generic catch, which keeps the last-good snapshot as stale and applies backoff.
+        // We must NOT swallow them into a MissingCredentials snapshot: that carries
+        // AuthState.None, so the scheduler would record it as SUCCESS — wiping last-good data
+        // and resetting the backoff that protects a struggling endpoint.
+        response.EnsureSuccessStatusCode();
+
+        await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+        var usage = await JsonSerializer.DeserializeAsync<CopilotUserResponse>(
+            stream,
+            CopilotUsageMapper.JsonOptions,
+            cancellationToken);
+
+        return CopilotUsageMapper.Map(
+            usage ?? new CopilotUserResponse(null, null, null, null, null, null),
+            DateTimeOffset.Now);
     }
 
     public static HttpRequestMessage BuildRequest(string token)

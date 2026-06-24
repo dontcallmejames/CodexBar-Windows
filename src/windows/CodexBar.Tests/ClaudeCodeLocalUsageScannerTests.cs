@@ -148,7 +148,11 @@ public sealed class ClaudeCodeLocalUsageScannerTests
         {
             AssistantLine("c", tenDaysAgo, 9999, 9999)
         });
-        File.SetLastWriteTimeUtc(stalePath, DateTime.UtcNow.AddDays(-30));
+        // Set the stale file's mtime relative to asOf (NOT real wall-clock time) so the test
+        // stays deterministic. The scanner's stale cutoff is asOf - MaxAge; anchoring to
+        // DateTime.UtcNow made this a time bomb that stopped skipping the file once the real
+        // date drifted past the hardcoded asOf.
+        File.SetLastWriteTimeUtc(stalePath, asOf.UtcDateTime.AddDays(-30));
 
         var scanner = new ClaudeCodeLocalUsageScanner(tempRoot);
         var report = scanner.Scan(asOf);

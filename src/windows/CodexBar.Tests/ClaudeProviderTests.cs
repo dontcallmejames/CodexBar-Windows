@@ -121,6 +121,119 @@ public sealed class ClaudeProviderTests
     }
 
     [TestMethod]
+    public async Task OAuthUnauthorizedWithoutRefreshTokenThrowsAuthenticationRequired()
+    {
+        // The motivating bug: a future expiresAt but an EMPTY refresh token. The 401 must
+        // surface as a re-auth signal, not silently give up and keep an empty snapshot.
+        var credentialsPath = await WriteCredentialsFileAsync("""
+        {
+          "claudeAiOauth": {
+            "accessToken": "access-123",
+            "refreshToken": "",
+            "expiresAt": 9999999999999,
+            "scopes": ["user:profile"]
+          }
+        }
+        """);
+        using var handler = new QueueHandler(new HttpResponseMessage(HttpStatusCode.Unauthorized));
+        using var httpClient = new HttpClient(handler);
+        var provider = new ClaudeProvider(httpClient, new TestAppPaths(credentialsPath), localUsageScanner: EmptyScanner());
+
+        var error = await Assert.ThrowsExactlyAsync<AuthenticationRequiredException>(
+            () => provider.RefreshAsync(CancellationToken.None));
+
+        StringAssert.Contains(error.Message, "/login");
+        Assert.AreEqual(1, handler.Requests.Count, "must not attempt a refresh with no refresh token");
+    }
+
+    [TestMethod]
+    public async Task OAuthRefreshThatStillReturnsUnauthorizedThrowsAuthenticationRequired()
+    {
+        var credentialsPath = await WriteCredentialsFileAsync("""
+        {
+          "claudeAiOauth": {
+            "accessToken": "expired-access",
+            "refreshToken": "refresh-456",
+            "expiresAt": 1,
+            "scopes": ["user:profile"]
+          }
+        }
+        """);
+        using var handler = new QueueHandler(
+            new HttpResponseMessage(HttpStatusCode.Unauthorized),
+            new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("""
+                { "access_token": "fresh-access", "refresh_token": "fresh-refresh", "expires_in": 3600 }
+                """)
+            },
+            new HttpResponseMessage(HttpStatusCode.Unauthorized));
+        using var httpClient = new HttpClient(handler);
+        var provider = new ClaudeProvider(httpClient, new TestAppPaths(credentialsPath), localUsageScanner: EmptyScanner());
+
+        await Assert.ThrowsExactlyAsync<AuthenticationRequiredException>(
+            () => provider.RefreshAsync(CancellationToken.None));
+        Assert.AreEqual(3, handler.Requests.Count);
+    }
+
+    [TestMethod]
+    public async Task OAuthRefreshInvalidGrantThrowsAuthenticationRequired()
+    {
+        // A revoked refresh token: usage 401, then the refresh endpoint rejects the refresh
+        // token with 400 invalid_grant. Must surface as re-auth, NOT fall through to the
+        // scheduler's transient path (which would keep stale AuthState.None data and never
+        // show the reconnect prompt).
+        var credentialsPath = await WriteCredentialsFileAsync("""
+        {
+          "claudeAiOauth": {
+            "accessToken": "expired-access",
+            "refreshToken": "revoked-refresh",
+            "expiresAt": 1,
+            "scopes": ["user:profile"]
+          }
+        }
+        """);
+        using var handler = new QueueHandler(
+            new HttpResponseMessage(HttpStatusCode.Unauthorized),
+            new HttpResponseMessage(HttpStatusCode.BadRequest)
+            {
+                Content = new StringContent("""{ "error": "invalid_grant" }""")
+            });
+        using var httpClient = new HttpClient(handler);
+        var provider = new ClaudeProvider(httpClient, new TestAppPaths(credentialsPath), localUsageScanner: EmptyScanner());
+
+        await Assert.ThrowsExactlyAsync<AuthenticationRequiredException>(
+            () => provider.RefreshAsync(CancellationToken.None));
+        Assert.AreEqual(2, handler.Requests.Count);
+    }
+
+    [TestMethod]
+    public async Task OAuthRefreshMissingAccessTokenThrowsAuthenticationRequired()
+    {
+        var credentialsPath = await WriteCredentialsFileAsync("""
+        {
+          "claudeAiOauth": {
+            "accessToken": "expired-access",
+            "refreshToken": "refresh-456",
+            "expiresAt": 1,
+            "scopes": ["user:profile"]
+          }
+        }
+        """);
+        using var handler = new QueueHandler(
+            new HttpResponseMessage(HttpStatusCode.Unauthorized),
+            new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("""{ "refresh_token": "fresh-refresh", "expires_in": 3600 }""")
+            });
+        using var httpClient = new HttpClient(handler);
+        var provider = new ClaudeProvider(httpClient, new TestAppPaths(credentialsPath), localUsageScanner: EmptyScanner());
+
+        await Assert.ThrowsExactlyAsync<AuthenticationRequiredException>(
+            () => provider.RefreshAsync(CancellationToken.None));
+    }
+
+    [TestMethod]
     public async Task OAuthThrottleThrowsRateLimitException()
     {
         var credentialsPath = await WriteCredentialsFileAsync("""

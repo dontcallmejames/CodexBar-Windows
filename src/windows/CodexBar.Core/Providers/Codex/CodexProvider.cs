@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 using System.Text.Json;
 using CodexBar.Core.Models;
 using CodexBar.Core.Paths;
+using CodexBar.Core.Refresh;
 
 namespace CodexBar.Core.Providers.Codex;
 
@@ -53,6 +54,8 @@ public sealed class CodexProvider : IUsageProvider
         request.Headers.TryAddWithoutValidation("User-Agent", "CodexBar-Windows");
 
         using var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        if (response.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
+            throw new AuthenticationRequiredException("Your Codex sign-in expired. Run `codex login` in a terminal to reconnect, then CodexBar will refresh automatically.");
         response.EnsureSuccessStatusCode();
 
         await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);

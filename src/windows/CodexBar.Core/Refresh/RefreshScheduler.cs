@@ -47,12 +47,20 @@ public sealed class RefreshScheduler : IRefreshScheduler
             {
                 var snapshot = await provider.RefreshAsync(cancellationToken);
                 store.Set(snapshot);
-                registry.RecordSuccess(provider.Provider);
+                if (snapshot.AuthState == AuthState.RequiresAuthentication)
+                    registry.RecordFailure(provider.Provider, snapshot.ErrorMessage ?? "Authentication required.");
+                else
+                    registry.RecordSuccess(provider.Provider);
             }
             catch (RateLimitException rl)
             {
                 registry.RecordFailure(provider.Provider, rl.Message, rl.RetryAfter);
                 store.Set(FailedSnapshot(provider, rl.Message));
+            }
+            catch (AuthenticationRequiredException auth)
+            {
+                registry.RecordFailure(provider.Provider, auth.Message);
+                store.Set(UsageSnapshot.RequiresAuthentication(provider.Provider, provider.Provider.ToString(), auth.Message));
             }
             catch (Exception error) when (error is not OperationCanceledException)
             {

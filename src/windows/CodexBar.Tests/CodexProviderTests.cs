@@ -2,6 +2,7 @@ using System.Net;
 using CodexBar.Core.Models;
 using CodexBar.Core.Paths;
 using CodexBar.Core.Providers.Codex;
+using CodexBar.Core.Refresh;
 
 namespace CodexBar.Tests;
 
@@ -62,12 +63,41 @@ public sealed class CodexProviderTests
     }
 
     [TestMethod]
-    public async Task NonSuccessResponseThrows()
+    public async Task UnauthorizedResponseThrowsAuthenticationRequired()
     {
         var authPath = await WriteAuthFileAsync("""
         { "tokens": { "access_token": "access-123" } }
         """);
         using var handler = new CapturingHandler(new HttpResponseMessage(HttpStatusCode.Unauthorized));
+        using var httpClient = new HttpClient(handler);
+        var provider = new CodexProvider(httpClient, new TestAppPaths(authPath));
+
+        var error = await Assert.ThrowsExactlyAsync<AuthenticationRequiredException>(
+            () => provider.RefreshAsync(CancellationToken.None));
+        StringAssert.Contains(error.Message, "codex login");
+    }
+
+    [TestMethod]
+    public async Task ForbiddenResponseThrowsAuthenticationRequired()
+    {
+        var authPath = await WriteAuthFileAsync("""
+        { "tokens": { "access_token": "access-123" } }
+        """);
+        using var handler = new CapturingHandler(new HttpResponseMessage(HttpStatusCode.Forbidden));
+        using var httpClient = new HttpClient(handler);
+        var provider = new CodexProvider(httpClient, new TestAppPaths(authPath));
+
+        await Assert.ThrowsExactlyAsync<AuthenticationRequiredException>(
+            () => provider.RefreshAsync(CancellationToken.None));
+    }
+
+    [TestMethod]
+    public async Task ServerErrorStillThrowsHttpRequestException()
+    {
+        var authPath = await WriteAuthFileAsync("""
+        { "tokens": { "access_token": "access-123" } }
+        """);
+        using var handler = new CapturingHandler(new HttpResponseMessage(HttpStatusCode.InternalServerError));
         using var httpClient = new HttpClient(handler);
         var provider = new CodexProvider(httpClient, new TestAppPaths(authPath));
 

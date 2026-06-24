@@ -34,15 +34,38 @@ public sealed class CursorProviderTests
     }
 
     [TestMethod]
-    public async Task UnauthorizedResponseReturnsRefreshCookieSnapshot()
+    public async Task UnauthorizedResponseReturnsRequiresAuthenticationSnapshot()
     {
         using var handler = new QueueHandler(HttpStatusCode.Unauthorized, "{}");
         var provider = new CursorProvider(new HttpClient(handler), "expired=true");
 
         var snapshot = await provider.RefreshAsync(CancellationToken.None);
 
+        Assert.AreEqual(AuthState.RequiresAuthentication, snapshot.AuthState);
         Assert.IsTrue(snapshot.IsStale);
-        StringAssert.Contains(snapshot.ErrorMessage!, "refresh your Cursor cookie");
+        StringAssert.Contains(snapshot.ErrorMessage!, "Cursor rejected your saved cookie");
+    }
+
+    [TestMethod]
+    public async Task ForbiddenResponseReturnsRequiresAuthenticationSnapshot()
+    {
+        using var handler = new QueueHandler(HttpStatusCode.Forbidden, "{}");
+        var provider = new CursorProvider(new HttpClient(handler), "expired=true");
+
+        var snapshot = await provider.RefreshAsync(CancellationToken.None);
+
+        Assert.AreEqual(AuthState.RequiresAuthentication, snapshot.AuthState);
+        StringAssert.Contains(snapshot.ErrorMessage!, "WorkosCursorSessionToken");
+    }
+
+    [TestMethod]
+    public async Task MissingCookieStaysAuthStateNone()
+    {
+        var provider = new CursorProvider(new HttpClient(new QueueHandler()), null);
+
+        var snapshot = await provider.RefreshAsync(CancellationToken.None);
+
+        Assert.AreEqual(AuthState.None, snapshot.AuthState);
     }
 
     private sealed class QueueHandler : HttpMessageHandler

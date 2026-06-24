@@ -75,6 +75,16 @@
                         Text="{x:Bind ViewModel.PlanText, Mode=OneWay}" />
                 </Grid>
 
+                <controls:InfoBar Severity="Warning" IsClosable="False"
+                                  IsOpen="{x:Bind ViewModel.HasError, Mode=OneWay}"
+                                  Message="{x:Bind ViewModel.ErrorText, Mode=OneWay}"
+                                  AutomationProperties.AutomationId="PopoverAuthInfoBar">
+                    <controls:InfoBar.ActionButton>
+                        <Button Content="Reconnect" Command="{x:Bind ViewModel.ReconnectCommand}"
+                                AutomationProperties.AutomationId="PopoverReconnectButton" />
+                    </controls:InfoBar.ActionButton>
+                </controls:InfoBar>
+
                 <ItemsRepeater ItemsSource="{x:Bind ViewModel.Metrics, Mode=OneWay}">
                     <ItemsRepeater.Layout>
                         <StackLayout Spacing="14" />
