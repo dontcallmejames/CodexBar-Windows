@@ -39,4 +39,4 @@ Distribution options:
 - **Personal bucket** (fastest): create a `scoop-codexbar` repo, drop `codexbar.json` in `bucket/`, then users run `scoop bucket add codexbar https://github.com/dontcallmejames/scoop-codexbar` and `scoop install codexbar`.
 - **Submit to `extras`**: open a PR to `ScoopInstaller/Extras` once the app has some traction.
 
-Maintenance note: the release asset filenames embed the marketing version (`0.25`), not the full semver (`0.25.0`). The Scoop `autoupdate` URL hardcodes `0.25`; revisit it when the marketing version changes (0.26+).
+Maintenance note: as of 0.25.1, `MARKETING_VERSION` carries the full semver, so release asset filenames are `CodexBar-Windows-<version>-win-x64.*` (e.g. `0.25.1`). The Scoop `autoupdate` URL uses `$version` for both the tag and the filename, so it tracks new releases automatically once `checkver` finds them.
