@@ -3,7 +3,7 @@
 ## 0.25 — Preview
 
 ### Windows
-- Antigravity: add a local provider that reads Claude + Gemini Pro + Gemini Flash quota from the running Antigravity language server, replacing the retired consumer Gemini CLI path.
+- Antigravity: add a local provider that reads Claude and Gemini usage quota from the running Antigravity language server, replacing the retired consumer Gemini CLI path.
 - Gemini: report the June 18, 2026 Gemini CLI retirement and point users to the Antigravity card.
 - Windows preview builds are published as `v0.25.0-preview.N` until the final 0.25 release is cut.
 - Windows preview: publish tagged portable zip builds to prerelease GitHub Releases, add public issue/PR templates, and document the release checklist.
@@ -16,6 +16,7 @@
 - Windows repository hygiene: mark legacy macOS release artifacts and scripts so they are not mistaken for the Windows release path.
 
 ### Fixes
+- Antigravity: read the live language-server quota shape — unwrap the Connect `response` envelope and render the real grouped weekly/5-hour limits ("Gemini", "Claude and GPT") instead of a blank card, and backfill the plan tier + account email from `GetUserStatus`.
 - Antigravity: show the provider's popover tab when enabled — it was wired into refresh and Settings but missing from the popover's enabled-provider list, so the card never rendered. The enabled-provider list is now a single source of truth on `AppSettings` with a regression test covering every provider.
 - Windows updates: check GitHub's releases list so prerelease-only repos do not fail with a 404.
 - Windows popover: keep tray-opened popovers anchored to their original tray click while provider tab content resizes.

@@ -11,29 +11,27 @@ public class AntigravityUsageMapperTests
     private static JsonElement Parse(string json) => JsonDocument.Parse(json).RootElement;
 
     [TestMethod]
-    public void MapsQuotaSummaryToThreeLanes()
+    public void MapsWrappedGroupedQuotaSummary()
     {
+        // Real shape from a live Antigravity server: a Connect "response" envelope wrapping
+        // groups (Gemini vs Claude/GPT), each with weekly + 5-hour window buckets.
         var root = Parse("""
-        {
-          "groups": [
-            { "displayName": "Models", "buckets": [
-              { "bucketId": "claude", "displayName": "Claude Sonnet", "remainingFraction": 0.25, "resetTime": "2030-01-01T00:00:00Z", "disabled": false },
-              { "bucketId": "gemini-pro", "displayName": "Gemini 3 Pro", "remainingFraction": 0.80, "resetTime": "2030-01-01T00:00:00Z", "disabled": false },
-              { "bucketId": "gemini-flash", "displayName": "Gemini Flash", "remainingFraction": 1.0, "resetTime": "2030-01-01T00:00:00Z", "disabled": false }
-            ] }
-          ]
-        }
+        {"response":{"groups":[
+          {"displayName":"Gemini Models","buckets":[
+            {"bucketId":"gemini-weekly","displayName":"Weekly Limit","remainingFraction":1.0,"resetTime":"2030-01-01T00:00:00Z"},
+            {"bucketId":"gemini-5h","displayName":"Five Hour Limit","remainingFraction":0.5,"resetTime":"2030-01-01T00:00:00Z"}]},
+          {"displayName":"Claude and GPT models","buckets":[
+            {"bucketId":"3p-weekly","displayName":"Weekly Limit","remainingFraction":0.8,"resetTime":"2030-01-01T00:00:00Z"}]}]}}
         """);
 
         var snapshot = AntigravityUsageMapper.Map("RetrieveUserQuotaSummary", root, DateTimeOffset.UnixEpoch);
 
         Assert.AreEqual(UsageProvider.Antigravity, snapshot.Provider);
-        Assert.AreEqual(3, snapshot.Windows.Count);
-        var claude = snapshot.Windows.Single(w => w.Title == "Claude");
-        Assert.AreEqual(75.0, claude.UsedPercent, 0.001);
-        var pro = snapshot.Windows.Single(w => w.Title == "Gemini Pro");
-        Assert.AreEqual(20.0, pro.UsedPercent, 0.001);
         Assert.IsNull(snapshot.ErrorMessage);
+        Assert.AreEqual(3, snapshot.Windows.Count);
+        Assert.AreEqual(0.0, snapshot.Windows.Single(w => w.Title == "Gemini · Weekly Limit").UsedPercent, 0.001);
+        Assert.AreEqual(50.0, snapshot.Windows.Single(w => w.Title == "Gemini · Five Hour Limit").UsedPercent, 0.001);
+        Assert.AreEqual(20.0, snapshot.Windows.Single(w => w.Title == "Claude and GPT · Weekly Limit").UsedPercent, 0.001);
     }
 
     [TestMethod]

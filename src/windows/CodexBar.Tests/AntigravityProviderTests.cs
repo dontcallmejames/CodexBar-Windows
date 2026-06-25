@@ -57,9 +57,9 @@ public class AntigravityProviderTests
                 return new HttpResponseMessage(HttpStatusCode.OK)
                 {
                     Content = new StringContent("""
-                    {"groups":[{"buckets":[
-                      {"bucketId":"gemini-pro","displayName":"Gemini 3 Pro","remainingFraction":0.4,"resetTime":"2030-01-01T00:00:00Z","disabled":false}
-                    ]}]}
+                    {"response":{"groups":[{"displayName":"Gemini Models","buckets":[
+                      {"bucketId":"gemini-weekly","displayName":"Weekly Limit","remainingFraction":0.4,"resetTime":"2030-01-01T00:00:00Z"}
+                    ]}]}}
                     """),
                 };
             }
@@ -82,7 +82,7 @@ public class AntigravityProviderTests
 
         Assert.AreEqual("Google AI Ultra", snapshot.Plan);
         Assert.AreEqual("jim@example.com", snapshot.AccountEmail);
-        Assert.AreEqual(60.0, snapshot.Windows.Single(w => w.Title == "Gemini Pro").UsedPercent, 0.001);
+        Assert.AreEqual(60.0, snapshot.Windows.Single(w => w.Title == "Gemini · Weekly Limit").UsedPercent, 0.001);
     }
 
     [TestMethod]
@@ -91,9 +91,9 @@ public class AntigravityProviderTests
         using var http = new HttpClient(new StubHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
         {
             Content = new StringContent("""
-            {"groups":[{"buckets":[
-              {"bucketId":"gemini-pro","displayName":"Gemini 3 Pro","remainingFraction":0.4,"resetTime":"2030-01-01T00:00:00Z","disabled":false}
-            ]}]}
+            {"response":{"groups":[{"displayName":"Gemini Models","buckets":[
+              {"bucketId":"gemini-weekly","displayName":"Weekly Limit","remainingFraction":0.4,"resetTime":"2030-01-01T00:00:00Z"}
+            ]}]}}
             """)
         }));
         var provider = new AntigravityProvider(http, new FakeLocator([Cli()]));
@@ -101,7 +101,7 @@ public class AntigravityProviderTests
         var snapshot = await provider.RefreshAsync(CancellationToken.None);
 
         Assert.AreEqual(UsageProvider.Antigravity, snapshot.Provider);
-        Assert.AreEqual(60.0, snapshot.Windows.Single(w => w.Title == "Gemini Pro").UsedPercent, 0.001);
+        Assert.AreEqual(60.0, snapshot.Windows.Single(w => w.Title == "Gemini · Weekly Limit").UsedPercent, 0.001);
         Assert.IsNull(snapshot.ErrorMessage);
     }
 }
