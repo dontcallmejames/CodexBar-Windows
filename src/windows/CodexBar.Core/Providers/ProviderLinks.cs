@@ -17,6 +17,7 @@ public static class ProviderLinks
             UsageProvider.Cursor => new Uri("https://github.com/dontcallmejames/CodexBar-Windows/blob/main/docs/windows-cursor.md"),
             UsageProvider.Gemini => new Uri("https://github.com/dontcallmejames/CodexBar-Windows/blob/main/docs/windows-gemini.md"),
             UsageProvider.Copilot => new Uri("https://github.com/dontcallmejames/CodexBar-Windows/blob/main/docs/windows-copilot.md"),
+            UsageProvider.Antigravity => new Uri("https://github.com/dontcallmejames/CodexBar-Windows/blob/main/docs/windows-antigravity.md"),
             _ => new Uri("https://github.com/dontcallmejames/CodexBar-Windows/blob/main/docs/windows-codex.md")
         };
 
@@ -27,6 +28,7 @@ public static class ProviderLinks
             UsageProvider.Cursor => new Uri("https://cursor.com/settings"),
             UsageProvider.Gemini => new Uri("https://aistudio.google.com/usage"),
             UsageProvider.Copilot => new Uri("https://github.com/settings/copilot"),
+            UsageProvider.Antigravity => new Uri("https://antigravity.google"),
             _ => new Uri("https://chatgpt.com/codex/settings/usage")
         };
 
@@ -37,6 +39,7 @@ public static class ProviderLinks
             UsageProvider.Cursor => new Uri("https://status.cursor.com/"),
             UsageProvider.Gemini => new Uri("https://status.cloud.google.com/"),
             UsageProvider.Copilot => new Uri("https://www.githubstatus.com/"),
+            UsageProvider.Antigravity => new Uri("https://status.cloud.google.com/"),
             _ => new Uri("https://status.openai.com/")
         };
 
