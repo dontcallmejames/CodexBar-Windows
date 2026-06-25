@@ -3,6 +3,8 @@
 ## 0.25 — Preview
 
 ### Windows
+- Antigravity: add a local provider that reads Claude + Gemini Pro + Gemini Flash quota from the running Antigravity language server, replacing the retired consumer Gemini CLI path.
+- Gemini: report the June 18, 2026 Gemini CLI retirement and point users to the Antigravity card.
 - Windows preview builds are published as `v0.25.0-preview.N` until the final 0.25 release is cut.
 - Windows preview: publish tagged portable zip builds to prerelease GitHub Releases, add public issue/PR templates, and document the release checklist.
 - Windows app: add a Settings > Report a Bug flow that copies a redacted diagnostic summary and opens the GitHub bug report form.
