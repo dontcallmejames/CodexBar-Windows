@@ -1,8 +1,13 @@
 {
+    "$schema": "https://raw.githubusercontent.com/ScoopInstaller/Scoop/master/schema.json",
     "version": "0.25.2",
     "description": "See your AI coding-provider usage (Codex, Claude, Cursor, Gemini, Copilot) in the Windows tray. Tokens never leave your machine.",
     "homepage": "https://github.com/dontcallmejames/CodexBar-Windows",
     "license": "MIT",
+    "notes": [
+        "Updates are managed by Scoop - run 'scoop update codexbar' to upgrade.",
+        "CodexBar's in-app 'Install update' button installs a separate, non-Scoop copy into %LOCALAPPDATA%\\Programs\\CodexBar. Scoop users should ignore it and update via Scoop."
+    ],
     "architecture": {
         "64bit": {
             "url": "https://github.com/dontcallmejames/CodexBar-Windows/releases/download/v0.25.2/CodexBar-Windows-0.25.2-win-x64.zip",
@@ -10,7 +15,10 @@
         }
     },
     "shortcuts": [
-        ["CodexBar.WinUI.exe", "CodexBar"]
+        [
+            "CodexBar.WinUI.exe",
+            "CodexBar"
+        ]
     ],
     "checkver": {
         "github": "https://github.com/dontcallmejames/CodexBar-Windows"
@@ -18,7 +26,11 @@
     "autoupdate": {
         "architecture": {
             "64bit": {
-                "url": "https://github.com/dontcallmejames/CodexBar-Windows/releases/download/v$version/CodexBar-Windows-$version-win-x64.zip"
+                "url": "https://github.com/dontcallmejames/CodexBar-Windows/releases/download/v$version/CodexBar-Windows-$version-win-x64.zip",
+                "hash": {
+                    "url": "$url.sha256",
+                    "regex": "([a-fA-F0-9]{64})"
+                }
             }
         }
     }

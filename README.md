@@ -16,6 +16,15 @@ Supports **Codex, Claude, Cursor, Gemini, and GitHub Copilot.** Reads local CLI 
 
 Download the latest release from the [Releases](https://github.com/dontcallmejames/CodexBar-Windows/releases) page. Most users want the `.installer.exe`. A portable zip is also published for users who don't want an installer.
 
+Prefer a package manager? Install with [Scoop](https://scoop.sh):
+
+```pwsh
+scoop bucket add codexbar https://github.com/dontcallmejames/scoop-codexbar
+scoop install codexbar
+```
+
+Scoop installs the portable build and manages updates — run `scoop update codexbar` to upgrade.
+
 Both the installer and the app executable are signed with **Azure Trusted Signing** (Microsoft ID Verified Code Signing). Authenticode reports `Status: Valid` and the publisher is verified by Microsoft; SmartScreen reputation builds over time as downloads accumulate.
 
 Requirements:
