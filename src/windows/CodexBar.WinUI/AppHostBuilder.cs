@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using CodexBar.Core.Models;
 using CodexBar.Core.Paths;
 using CodexBar.Core.Providers;
+using CodexBar.Core.Providers.Antigravity;
 using CodexBar.Core.Providers.Claude;
 using CodexBar.Core.Providers.Codex;
 using CodexBar.Core.Providers.Copilot;
@@ -25,6 +26,7 @@ public sealed class AppShell : IDisposable
     public IAppPaths Paths { get; }
     public AppSettings Settings { get; private set; }
     public HttpClient HttpClient { get; }
+    public HttpClient AntigravityHttpClient { get; }
     public SnapshotStore Store { get; }
     public ProviderRefreshStateRegistry RefreshStates { get; }
     public RefreshScheduler Scheduler { get; }
@@ -96,6 +98,16 @@ public sealed class AppShell : IDisposable
         Paths = new WindowsAppPaths();
         Settings = settings;
         HttpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+        // Dedicated client that trusts the Antigravity language server's self-signed loopback cert.
+        // Kept separate from HttpClient so this bypass never applies to any other provider.
+        AntigravityHttpClient = new HttpClient(new HttpClientHandler
+        {
+            ServerCertificateCustomValidationCallback = (request, _, _, _) =>
+                request.RequestUri?.Host is "127.0.0.1" or "::1" or "localhost"
+        })
+        {
+            Timeout = TimeSpan.FromSeconds(10)
+        };
         Store = new SnapshotStore();
         RefreshStates = new ProviderRefreshStateRegistry();
         Providers = BuildProviders(settings);
@@ -141,6 +153,7 @@ public sealed class AppShell : IDisposable
         RefreshOrchestrator.Dispose();
         UpdateNotifier.Dispose();
         HttpClient.Dispose();
+        AntigravityHttpClient.Dispose();
     }
 
     private IReadOnlyList<IUsageProvider> BuildProviders(AppSettings settings)
@@ -151,6 +164,7 @@ public sealed class AppShell : IDisposable
         if (settings.CursorEnabled) list.Add(new CursorProvider(HttpClient, settings.CursorManualCookieHeader));
         if (settings.GeminiEnabled) list.Add(new GeminiProvider(HttpClient, Paths));
         if (settings.CopilotEnabled) list.Add(new CopilotProvider(HttpClient));
+        if (settings.AntigravityEnabled) list.Add(new AntigravityProvider(AntigravityHttpClient, new WindowsAntigravityProcessLocator()));
         return list;
     }
 }
