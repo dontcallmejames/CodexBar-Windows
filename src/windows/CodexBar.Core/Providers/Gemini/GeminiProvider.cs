@@ -72,22 +72,29 @@ public sealed class GeminiProvider : IUsageProvider
             await GeminiCredentials.WriteAsync(paths.GeminiOAuthCredentialsJson, credentials, cancellationToken);
         }
 
-        using var load = await PostJsonAsync(
-            LoadCodeAssistUri,
-            credentials.AccessToken!,
-            LoadCodeAssistRequest(null),
-            cancellationToken);
-        var project = ReadString(load.RootElement, "cloudaicompanionProject")
-            ?? Environment.GetEnvironmentVariable("GOOGLE_CLOUD_PROJECT")
-            ?? Environment.GetEnvironmentVariable("GOOGLE_CLOUD_PROJECT_ID");
+        try
+        {
+            using var load = await PostJsonAsync(
+                LoadCodeAssistUri,
+                credentials.AccessToken!,
+                LoadCodeAssistRequest(null),
+                cancellationToken);
+            var project = ReadString(load.RootElement, "cloudaicompanionProject")
+                ?? Environment.GetEnvironmentVariable("GOOGLE_CLOUD_PROJECT")
+                ?? Environment.GetEnvironmentVariable("GOOGLE_CLOUD_PROJECT_ID");
 
-        using var quota = await PostJsonAsync(
-            RetrieveUserQuotaUri,
-            credentials.AccessToken!,
-            string.IsNullOrWhiteSpace(project) ? new { } : new { project },
-            cancellationToken);
+            using var quota = await PostJsonAsync(
+                RetrieveUserQuotaUri,
+                credentials.AccessToken!,
+                string.IsNullOrWhiteSpace(project) ? new { } : new { project },
+                cancellationToken);
 
-        return GeminiUsageMapper.Map(load.RootElement, quota.RootElement, credentials.Email, DateTimeOffset.Now);
+            return GeminiUsageMapper.Map(load.RootElement, quota.RootElement, credentials.Email, DateTimeOffset.Now);
+        }
+        catch (GeminiRetiredException ex)
+        {
+            return Missing(ex.Message);
+        }
     }
 
     private async Task<GeminiCredentials?> RefreshAccessTokenAsync(
@@ -144,7 +151,8 @@ public sealed class GeminiProvider : IUsageProvider
 
         using var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
         if (response.StatusCode is System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden)
-            throw new AuthenticationRequiredException("Your Gemini CLI sign-in expired or was revoked. Run `gemini` and choose Login with Google to reconnect (OAuth mode required — API key / Vertex AI will not work).");
+            throw new GeminiRetiredException(
+                "Gemini CLI was retired June 18, 2026. Your Gemini usage now appears under Antigravity. (Paid Gemini Code Assist licenses are unaffected — re-run `gemini` to reconnect.)");
         response.EnsureSuccessStatusCode();
 
         await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
@@ -206,6 +214,8 @@ public sealed class GeminiProvider : IUsageProvider
             ? property.GetString()
             : null;
 }
+
+internal sealed class GeminiRetiredException(string message) : Exception(message);
 
 public interface IGeminiOAuthClientProvider
 {

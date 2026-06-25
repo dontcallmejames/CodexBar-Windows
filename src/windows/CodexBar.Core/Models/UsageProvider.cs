@@ -6,5 +6,6 @@ public enum UsageProvider
     Claude,
     Cursor,
     Gemini,
-    Copilot
+    Copilot,
+    Antigravity
 }

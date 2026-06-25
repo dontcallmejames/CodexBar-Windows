@@ -37,6 +37,10 @@
                     <ToggleSwitch AutomationProperties.AutomationId="SettingsCopilotEnabledToggle"
                                   IsOn="{x:Bind ViewModel.CopilotEnabled, Mode=TwoWay}" />
                 </ctk:SettingsCard>
+                <ctk:SettingsCard Header="Antigravity" Description="Reads Claude + Gemini quota from the local Antigravity language server. Antigravity must be running.">
+                    <ToggleSwitch AutomationProperties.AutomationId="SettingsAntigravityEnabledToggle"
+                                  IsOn="{x:Bind ViewModel.AntigravityEnabled, Mode=TwoWay}" />
+                </ctk:SettingsCard>
 
                 <TextBlock Style="{StaticResource SubtitleTextBlockStyle}" Text="Refresh" Margin="0,12,0,0" />
                 <ctk:SettingsCard Header="Refresh interval" Description="How often CodexBar queries each provider (in minutes).">

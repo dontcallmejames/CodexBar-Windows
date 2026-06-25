@@ -243,7 +243,7 @@ public sealed class GeminiProviderTests
     }
 
     [TestMethod]
-    public async Task UnauthorizedFromCodeAssistThrowsAuthenticationRequired()
+    public async Task UnauthorizedFromCodeAssistReturnsRetirementMessage()
     {
         var root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
         var paths = WindowsAppPaths.ForTest(Path.Combine(root, "home"), Path.Combine(root, "appdata"));
@@ -259,13 +259,14 @@ public sealed class GeminiProviderTests
         var handler = new QueueHandler(new HttpResponseMessage(HttpStatusCode.Unauthorized));
         var provider = new GeminiProvider(new HttpClient(handler), paths, new StaticGeminiOAuthClient("id", "secret"));
 
-        var error = await Assert.ThrowsExactlyAsync<AuthenticationRequiredException>(
-            () => provider.RefreshAsync(CancellationToken.None));
-        StringAssert.Contains(error.Message, "Login with Google");
+        var snapshot = await provider.RefreshAsync(CancellationToken.None);
+
+        StringAssert.Contains(snapshot.ErrorMessage!, "retired June 18, 2026");
+        StringAssert.Contains(snapshot.ErrorMessage!, "Antigravity");
     }
 
     [TestMethod]
-    public async Task ForbiddenFromCodeAssistThrowsAuthenticationRequired()
+    public async Task ForbiddenFromCodeAssistReturnsRetirementMessage()
     {
         var root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
         var paths = WindowsAppPaths.ForTest(Path.Combine(root, "home"), Path.Combine(root, "appdata"));
@@ -281,8 +282,33 @@ public sealed class GeminiProviderTests
         var handler = new QueueHandler(new HttpResponseMessage(HttpStatusCode.Forbidden));
         var provider = new GeminiProvider(new HttpClient(handler), paths, new StaticGeminiOAuthClient("id", "secret"));
 
-        await Assert.ThrowsExactlyAsync<AuthenticationRequiredException>(
-            () => provider.RefreshAsync(CancellationToken.None));
+        var snapshot = await provider.RefreshAsync(CancellationToken.None);
+
+        StringAssert.Contains(snapshot.ErrorMessage!, "retired June 18, 2026");
+        StringAssert.Contains(snapshot.ErrorMessage!, "Antigravity");
+    }
+
+    [TestMethod]
+    public async Task ReturnsRetirementMessageWhenQuotaCallIsForbidden()
+    {
+        var root = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        var paths = WindowsAppPaths.ForTest(Path.Combine(root, "home"), Path.Combine(root, "appdata"));
+        Directory.CreateDirectory(Path.GetDirectoryName(paths.GeminiOAuthCredentialsJson)!);
+        // Valid, non-expired credentials so the provider proceeds to the quota call.
+        await File.WriteAllTextAsync(paths.GeminiOAuthCredentialsJson, """
+        {
+          "access_token": "live-token",
+          "refresh_token": "refresh",
+          "expiry_date": 1893440000000
+        }
+        """);
+        var handler = new QueueHandler(new HttpResponseMessage(HttpStatusCode.Forbidden));
+        var provider = new GeminiProvider(new HttpClient(handler), paths, new StaticGeminiOAuthClient("id", "secret"));
+
+        var snapshot = await provider.RefreshAsync(CancellationToken.None);
+
+        StringAssert.Contains(snapshot.ErrorMessage!, "retired June 18, 2026");
+        StringAssert.Contains(snapshot.ErrorMessage!, "Antigravity");
     }
 
     private sealed class QueueHandler : HttpMessageHandler
