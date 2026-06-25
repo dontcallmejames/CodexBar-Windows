@@ -26,15 +26,50 @@ public sealed class AntigravityProvider : IUsageProvider
         foreach (var candidate in candidates)
         {
             using var response = await client.FetchAsync(candidate, cancellationToken);
-            if (response is not null)
+            if (response is null)
             {
-                return AntigravityUsageMapper.Map(response.Method, response.Document.RootElement, DateTimeOffset.Now);
+                continue;
             }
+
+            var snapshot = AntigravityUsageMapper.Map(response.Method, response.Document.RootElement, DateTimeOffset.Now);
+
+            // RetrieveUserQuotaSummary carries quota but no identity. Backfill the plan tier and
+            // account email from GetUserStatus so the card shows them.
+            if (response.Method == "RetrieveUserQuotaSummary" &&
+                (snapshot.Plan is null || snapshot.AccountEmail is null))
+            {
+                using var identity = await client.FetchUserStatusAsync(candidate, cancellationToken);
+                if (identity is not null)
+                {
+                    var (plan, email) = AntigravityUsageMapper.ReadIdentity(identity.RootElement);
+                    snapshot = snapshot with
+                    {
+                        Plan = snapshot.Plan ?? plan,
+                        AccountEmail = snapshot.AccountEmail ?? email,
+                    };
+                }
+            }
+
+            return snapshot;
         }
 
-        return Missing("Antigravity isn't available.");
+        // Antigravity is running but no RPC returned quota — treat as transient and throw so
+        // RefreshScheduler preserves the last-good snapshot (marked stale) instead of overwriting
+        // it with an error card. Self-recovers on the next refresh.
+        throw new AntigravityUnavailableException("Antigravity isn't available.");
     }
 
     private static UsageSnapshot Missing(string message) =>
         UsageSnapshot.MissingCredentials(UsageProvider.Antigravity, "Antigravity", message);
+}
+
+/// <summary>
+/// Thrown when Antigravity is running but its language server returned no quota. Routed through
+/// RefreshScheduler's generic failure path so the previous snapshot is kept as stale.
+/// </summary>
+public sealed class AntigravityUnavailableException : Exception
+{
+    public AntigravityUnavailableException(string message) : base(message)
+    {
+    }
 }

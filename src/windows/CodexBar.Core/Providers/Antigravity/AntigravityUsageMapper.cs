@@ -13,6 +13,13 @@ public static class AntigravityUsageMapper
             ? Build(QuotaSummaryBuckets(root), plan: null, email: null, updatedAt)
             : Build(UserStatusBuckets(root), UserStatusPlan(root), UserStatusEmail(root), updatedAt);
 
+    /// <summary>
+    /// Reads the plan tier and account email from a GetUserStatus response. RetrieveUserQuotaSummary
+    /// carries quota but no identity, so the provider fetches GetUserStatus separately to fill these.
+    /// </summary>
+    public static (string? Plan, string? Email) ReadIdentity(JsonElement userStatusRoot) =>
+        (Clean(UserStatusPlan(userStatusRoot)), Clean(UserStatusEmail(userStatusRoot)));
+
     private sealed record Bucket(string Identity, double? RemainingFraction, DateTimeOffset? ResetsAt, bool Disabled);
 
     private static UsageSnapshot Build(IEnumerable<Bucket> buckets, string? plan, string? email, DateTimeOffset updatedAt)
@@ -119,9 +126,11 @@ public static class AntigravityUsageMapper
             return ReadString(root, "planName");
         }
 
+        // Older builds expose userTier.preferredName / .name; current builds use
+        // planStatus.planInfo.planName (e.g. "Pro"). Try all, most-specific first.
         if (userStatus.TryGetProperty("userTier", out var tier) && tier.ValueKind == JsonValueKind.Object)
         {
-            var name = ReadString(tier, "preferredName");
+            var name = ReadString(tier, "preferredName") ?? ReadString(tier, "name");
             if (!string.IsNullOrWhiteSpace(name))
             {
                 return name;
@@ -131,7 +140,11 @@ public static class AntigravityUsageMapper
         if (userStatus.TryGetProperty("planStatus", out var planStatus) &&
             planStatus.TryGetProperty("planInfo", out var planInfo))
         {
-            return ReadString(planInfo, "preferredName");
+            var plan = ReadString(planInfo, "preferredName") ?? ReadString(planInfo, "planName");
+            if (!string.IsNullOrWhiteSpace(plan))
+            {
+                return plan;
+            }
         }
 
         return ReadString(root, "planName");
@@ -145,8 +158,9 @@ public static class AntigravityUsageMapper
             return email;
         }
 
+        // Current builds put the address at userStatus.email.
         return root.TryGetProperty("userStatus", out var userStatus)
-            ? ReadString(userStatus, "accountEmail")
+            ? ReadString(userStatus, "email") ?? ReadString(userStatus, "accountEmail")
             : null;
     }
 

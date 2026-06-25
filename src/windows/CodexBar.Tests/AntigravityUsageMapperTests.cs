@@ -57,6 +57,61 @@ public class AntigravityUsageMapperTests
     }
 
     [TestMethod]
+    public void ReadIdentityExtractsPlanAndEmailFromUserStatus()
+    {
+        var root = Parse("""
+        {"accountEmail":"jim@example.com","userStatus":{"userTier":{"preferredName":"Google AI Ultra"}}}
+        """);
+
+        var (plan, email) = AntigravityUsageMapper.ReadIdentity(root);
+
+        Assert.AreEqual("Google AI Ultra", plan);
+        Assert.AreEqual("jim@example.com", email);
+    }
+
+    [TestMethod]
+    public void MapsRealUserStatusShape_EmailUnderUserStatus_PlanFromPlanInfoPlanName()
+    {
+        // Shape observed from a live Antigravity build: email lives at userStatus.email and the
+        // plan name at userStatus.planStatus.planInfo.planName (no accountEmail / userTier).
+        var root = Parse("""
+        {
+          "userStatus": {
+            "name": "Jim",
+            "email": "jim@example.com",
+            "planStatus": { "planInfo": { "planName": "Pro" } },
+            "cascadeModelConfigData": {
+              "clientModelConfigs": [
+                { "label": "Gemini 3.1 Pro (Low)", "modelOrAlias": { "model": "M36" }, "quotaInfo": { "remainingFraction": 1.0, "resetTime": "2030-01-01T00:00:00Z" } },
+                { "label": "Claude Sonnet 4.6 (Thinking)", "modelOrAlias": { "model": "M35" }, "quotaInfo": { "remainingFraction": 0.5, "resetTime": "2030-01-01T00:00:00Z" } }
+              ]
+            }
+          }
+        }
+        """);
+
+        var snapshot = AntigravityUsageMapper.Map("GetUserStatus", root, DateTimeOffset.UnixEpoch);
+
+        Assert.AreEqual("jim@example.com", snapshot.AccountEmail);
+        Assert.AreEqual("Pro", snapshot.Plan);
+        Assert.AreEqual(0.0, snapshot.Windows.Single(w => w.Title == "Gemini Pro").UsedPercent, 0.001);
+        Assert.AreEqual(50.0, snapshot.Windows.Single(w => w.Title == "Claude").UsedPercent, 0.001);
+    }
+
+    [TestMethod]
+    public void ReadIdentityReadsRealUserStatusShape()
+    {
+        var root = Parse("""
+        {"userStatus":{"email":"jim@example.com","planStatus":{"planInfo":{"planName":"Pro"}}}}
+        """);
+
+        var (plan, email) = AntigravityUsageMapper.ReadIdentity(root);
+
+        Assert.AreEqual("Pro", plan);
+        Assert.AreEqual("jim@example.com", email);
+    }
+
+    [TestMethod]
     public void MapsUserStatusLanesPlanAndEmail()
     {
         var root = Parse("""

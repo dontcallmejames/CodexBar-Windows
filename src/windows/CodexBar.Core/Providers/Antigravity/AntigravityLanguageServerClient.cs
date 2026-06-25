@@ -21,14 +21,14 @@ public sealed class AntigravityQuotaResponse : IDisposable
 public sealed class AntigravityLanguageServerClient
 {
     private const string ServicePath = "/exa.language_server_pb.LanguageServerService/";
-    private static readonly string[] Schemes = ["https", "http"];
+    private const string MetadataBody = """{"metadata":{"ideName":"antigravity","extensionName":"antigravity","ideVersion":"unknown","locale":"en"}}""";
 
     // Method name -> request body. Ordered: summary first, then legacy fallbacks.
     private static readonly (string Method, string Body)[] Rpcs =
     [
         ("RetrieveUserQuotaSummary", """{"forceRefresh":true}"""),
-        ("GetUserStatus", """{"metadata":{"ideName":"antigravity","extensionName":"antigravity","ideVersion":"unknown","locale":"en"}}"""),
-        ("GetCommandModelConfigs", """{"metadata":{"ideName":"antigravity","extensionName":"antigravity","ideVersion":"unknown","locale":"en"}}"""),
+        ("GetUserStatus", MetadataBody),
+        ("GetCommandModelConfigs", MetadataBody),
     ];
 
     private readonly HttpClient httpClient;
@@ -37,23 +37,55 @@ public sealed class AntigravityLanguageServerClient
 
     public async Task<AntigravityQuotaResponse?> FetchAsync(AntigravityCandidate candidate, CancellationToken cancellationToken)
     {
-        foreach (var port in candidate.LoopbackPorts)
+        foreach (var (scheme, port, token) in Endpoints(candidate))
         {
-            foreach (var scheme in Schemes)
+            foreach (var (method, body) in Rpcs)
             {
-                foreach (var (method, body) in Rpcs)
+                cancellationToken.ThrowIfCancellationRequested();
+                var document = await TryPostAsync(scheme, port, method, body, token, cancellationToken);
+                if (document is not null)
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    var document = await TryPostAsync(scheme, port, method, body, candidate.CsrfToken, cancellationToken);
-                    if (document is not null)
-                    {
-                        return new AntigravityQuotaResponse(method, document);
-                    }
+                    return new AntigravityQuotaResponse(method, document);
                 }
             }
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Fetches a GetUserStatus response (identity: plan tier + account email) across the same
+    /// endpoints. Used to backfill identity when quota came from RetrieveUserQuotaSummary.
+    /// </summary>
+    public async Task<JsonDocument?> FetchUserStatusAsync(AntigravityCandidate candidate, CancellationToken cancellationToken)
+    {
+        foreach (var (scheme, port, token) in Endpoints(candidate))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var document = await TryPostAsync(scheme, port, "GetUserStatus", MetadataBody, token, cancellationToken);
+            if (document is not null)
+            {
+                return document;
+            }
+        }
+
+        return null;
+    }
+
+    // Loopback endpoints to probe, in order: each discovered language-server port over https then
+    // http, then the extension server (plain http) using its own CSRF token when the IDE exposes one.
+    private static IEnumerable<(string Scheme, int Port, string Token)> Endpoints(AntigravityCandidate candidate)
+    {
+        foreach (var port in candidate.LoopbackPorts)
+        {
+            yield return ("https", port, candidate.CsrfToken);
+            yield return ("http", port, candidate.CsrfToken);
+        }
+
+        if (candidate.ExtensionServerPort is int extensionPort)
+        {
+            yield return ("http", extensionPort, candidate.ExtensionServerCsrfToken ?? candidate.CsrfToken);
+        }
     }
 
     private async Task<JsonDocument?> TryPostAsync(

@@ -75,4 +75,31 @@ public class AntigravityLanguageServerClientTests
 
         Assert.IsNull(response);
     }
+
+    [TestMethod]
+    public async Task FallsBackToExtensionServerWithItsTokenWhenLoopbackFails()
+    {
+        const int mainPort = 42100;
+        const int extPort = 53111;
+        using var handler = new StubHandler(request =>
+        {
+            var onExtensionSummary = request.RequestUri!.Port == extPort &&
+                request.RequestUri.AbsoluteUri.EndsWith("RetrieveUserQuotaSummary", StringComparison.Ordinal);
+            return new HttpResponseMessage(onExtensionSummary ? HttpStatusCode.OK : HttpStatusCode.InternalServerError)
+            {
+                Content = new StringContent("""{"groups":[]}"""),
+            };
+        });
+        using var http = new HttpClient(handler);
+        var client = new AntigravityLanguageServerClient(http);
+        var candidate = new AntigravityCandidate(
+            Pid: 1, LoopbackPorts: [mainPort], CsrfToken: "main",
+            ExtensionServerPort: extPort, ExtensionServerCsrfToken: "ext", IsCli: false);
+
+        using var response = await client.FetchAsync(candidate, CancellationToken.None);
+
+        Assert.IsNotNull(response);
+        var extensionRequest = handler.Requests.Single(r => r.RequestUri!.Port == extPort);
+        Assert.AreEqual("ext", extensionRequest.Headers.GetValues("X-Codeium-Csrf-Token").Single());
+    }
 }

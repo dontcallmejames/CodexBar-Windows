@@ -35,14 +35,54 @@ public class AntigravityProviderTests
     }
 
     [TestMethod]
-    public async Task ReturnsNotAvailableWhenCandidatesButNoQuota()
+    public async Task ThrowsWhenCandidatesButNoQuota()
     {
+        // Candidates exist but every RPC fails — a transient failure. Throwing (rather than
+        // returning an error snapshot) lets RefreshScheduler preserve the last-good snapshot as stale.
         using var http = new HttpClient(new StubHandler(_ => new HttpResponseMessage(HttpStatusCode.InternalServerError)));
+        var provider = new AntigravityProvider(http, new FakeLocator([Cli()]));
+
+        await Assert.ThrowsExactlyAsync<AntigravityUnavailableException>(
+            () => provider.RefreshAsync(CancellationToken.None));
+    }
+
+    [TestMethod]
+    public async Task FillsPlanAndEmailFromUserStatusWhenSummaryLacksThem()
+    {
+        using var http = new HttpClient(new StubHandler(request =>
+        {
+            var uri = request.RequestUri!.AbsoluteUri;
+            if (uri.EndsWith("RetrieveUserQuotaSummary", StringComparison.Ordinal))
+            {
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent("""
+                    {"groups":[{"buckets":[
+                      {"bucketId":"gemini-pro","displayName":"Gemini 3 Pro","remainingFraction":0.4,"resetTime":"2030-01-01T00:00:00Z","disabled":false}
+                    ]}]}
+                    """),
+                };
+            }
+
+            if (uri.EndsWith("GetUserStatus", StringComparison.Ordinal))
+            {
+                return new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent("""
+                    {"accountEmail":"jim@example.com","userStatus":{"userTier":{"preferredName":"Google AI Ultra"}}}
+                    """),
+                };
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.InternalServerError);
+        }));
         var provider = new AntigravityProvider(http, new FakeLocator([Cli()]));
 
         var snapshot = await provider.RefreshAsync(CancellationToken.None);
 
-        Assert.AreEqual("Antigravity isn't available.", snapshot.ErrorMessage);
+        Assert.AreEqual("Google AI Ultra", snapshot.Plan);
+        Assert.AreEqual("jim@example.com", snapshot.AccountEmail);
+        Assert.AreEqual(60.0, snapshot.Windows.Single(w => w.Title == "Gemini Pro").UsedPercent, 0.001);
     }
 
     [TestMethod]
