@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Net;
 using CodexBar.Core.Providers.Antigravity;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -101,5 +102,30 @@ public class AntigravityLanguageServerClientTests
         Assert.IsNotNull(response);
         var extensionRequest = handler.Requests.Single(r => r.RequestUri!.Port == extPort);
         Assert.AreEqual("ext", extensionRequest.Headers.GetValues("X-Codeium-Csrf-Token").Single());
+    }
+
+    [TestMethod]
+    public async Task ReachesServerOnIPv6Loopback()
+    {
+        // A server that only answers on the IPv6 loopback host. The client must try [::1],
+        // not just 127.0.0.1, or it would never reach an IPv6-only localhost bind.
+        using var handler = new StubHandler(request =>
+        {
+            var onIpv6 = request.RequestUri!.DnsSafeHost == "::1" &&
+                request.RequestUri.AbsoluteUri.EndsWith("RetrieveUserQuotaSummary", StringComparison.Ordinal);
+            return new HttpResponseMessage(onIpv6 ? HttpStatusCode.OK : HttpStatusCode.InternalServerError)
+            {
+                Content = new StringContent("""{"response":{"groups":[]}}"""),
+            };
+        });
+        using var http = new HttpClient(handler);
+        var client = new AntigravityLanguageServerClient(http);
+
+        using var response = await client.FetchAsync(Candidate(), CancellationToken.None);
+
+        Assert.IsNotNull(response);
+        Assert.IsTrue(
+            handler.Requests.Any(r => r.RequestUri!.DnsSafeHost == "::1"),
+            "client should attempt the [::1] loopback host");
     }
 }
