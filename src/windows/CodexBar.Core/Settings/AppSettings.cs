@@ -1,3 +1,6 @@
+using System.Collections.Generic;
+using CodexBar.Core.Models;
+
 namespace CodexBar.Core.Settings;
 
 public sealed record AppSettings(
@@ -48,4 +51,21 @@ public sealed record AppSettings(
         CursorManualCookieHeader: null,
         GlobalHotkey: "Ctrl+Alt+U",
         EnableGlobalHotkey: true);
+
+    /// <summary>
+    /// The providers the user has enabled, in display order. Single source of truth for the
+    /// menu/popover tab list (App.ResolveEnabledProviders) so a new provider can't be wired
+    /// into one place and silently forgotten in another.
+    /// </summary>
+    public IReadOnlyList<UsageProvider> EnabledProviders()
+    {
+        var providers = new List<UsageProvider>(6);
+        if (CodexEnabled) providers.Add(UsageProvider.Codex);
+        if (ClaudeEnabled) providers.Add(UsageProvider.Claude);
+        if (CursorEnabled) providers.Add(UsageProvider.Cursor);
+        if (GeminiEnabled) providers.Add(UsageProvider.Gemini);
+        if (CopilotEnabled) providers.Add(UsageProvider.Copilot);
+        if (AntigravityEnabled) providers.Add(UsageProvider.Antigravity);
+        return providers;
+    }
 }

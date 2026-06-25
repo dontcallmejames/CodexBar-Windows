@@ -378,16 +378,8 @@ public partial class App : Application
     /// The popover renders one tab per provider in this list, regardless of whether the
     /// snapshot store has data for the provider yet.
     /// </summary>
-    private static IReadOnlyList<UsageProvider> ResolveEnabledProviders(AppSettings settings)
-    {
-        var enabled = new List<UsageProvider>(5);
-        if (settings.CodexEnabled) enabled.Add(UsageProvider.Codex);
-        if (settings.ClaudeEnabled) enabled.Add(UsageProvider.Claude);
-        if (settings.CursorEnabled) enabled.Add(UsageProvider.Cursor);
-        if (settings.GeminiEnabled) enabled.Add(UsageProvider.Gemini);
-        if (settings.CopilotEnabled) enabled.Add(UsageProvider.Copilot);
-        return enabled;
-    }
+    private static IReadOnlyList<UsageProvider> ResolveEnabledProviders(AppSettings settings) =>
+        settings.EnabledProviders();
 
     private static CodexBarTheme ProbeSystemTheme()
     {

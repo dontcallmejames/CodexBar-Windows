@@ -1,3 +1,6 @@
+using System;
+using System.Linq;
+using CodexBar.Core.Models;
 using CodexBar.Core.Settings;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -19,5 +22,35 @@ public class SettingsRoundTripTests
         var toggledOff = AppSettings.Default with { AntigravityEnabled = false };
 
         Assert.IsFalse(toggledOff.AntigravityEnabled);
+    }
+
+    // Guards against the popover/menu enabled-provider list silently dropping a provider —
+    // the exact bug where Antigravity was enabled in Settings but never rendered a tab.
+    [TestMethod]
+    public void EnabledProviders_WhenAllOn_IncludesEveryProvider()
+    {
+        var allOn = AppSettings.Default with
+        {
+            CodexEnabled = true,
+            ClaudeEnabled = true,
+            CursorEnabled = true,
+            GeminiEnabled = true,
+            CopilotEnabled = true,
+            AntigravityEnabled = true,
+        };
+
+        CollectionAssert.AreEquivalent(
+            Enum.GetValues<UsageProvider>(),
+            allOn.EnabledProviders().ToArray());
+    }
+
+    [TestMethod]
+    public void EnabledProviders_HonorsTheAntigravityToggle()
+    {
+        Assert.IsTrue(AppSettings.Default.EnabledProviders().Contains(UsageProvider.Antigravity));
+
+        var off = AppSettings.Default with { AntigravityEnabled = false };
+
+        Assert.IsFalse(off.EnabledProviders().Contains(UsageProvider.Antigravity));
     }
 }

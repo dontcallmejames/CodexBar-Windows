@@ -16,6 +16,7 @@
 - Windows repository hygiene: mark legacy macOS release artifacts and scripts so they are not mistaken for the Windows release path.
 
 ### Fixes
+- Antigravity: show the provider's popover tab when enabled — it was wired into refresh and Settings but missing from the popover's enabled-provider list, so the card never rendered. The enabled-provider list is now a single source of truth on `AppSettings` with a regression test covering every provider.
 - Windows updates: check GitHub's releases list so prerelease-only repos do not fail with a 404.
 - Windows popover: keep tray-opened popovers anchored to their original tray click while provider tab content resizes.
 - Augment: report the real 1-minute keepalive check/min-refresh intervals in startup logs and docs (#434). Thanks @guglielmofonda!
