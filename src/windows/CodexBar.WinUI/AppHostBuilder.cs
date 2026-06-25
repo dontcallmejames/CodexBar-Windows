@@ -87,6 +87,7 @@ public sealed class AppShell : IDisposable
         UsageProvider.Cursor => s.CursorEnabled,
         UsageProvider.Gemini => s.GeminiEnabled,
         UsageProvider.Copilot => s.CopilotEnabled,
+        UsageProvider.Antigravity => s.AntigravityEnabled,
         _ => true,
     };
 
