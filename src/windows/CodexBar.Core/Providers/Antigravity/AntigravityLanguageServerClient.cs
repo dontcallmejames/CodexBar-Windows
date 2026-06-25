@@ -37,12 +37,12 @@ public sealed class AntigravityLanguageServerClient
 
     public async Task<AntigravityQuotaResponse?> FetchAsync(AntigravityCandidate candidate, CancellationToken cancellationToken)
     {
-        foreach (var (scheme, port, token) in Endpoints(candidate))
+        foreach (var (host, scheme, port, token) in Endpoints(candidate))
         {
             foreach (var (method, body) in Rpcs)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var document = await TryPostAsync(scheme, port, method, body, token, cancellationToken);
+                var document = await TryPostAsync(host, scheme, port, method, body, token, cancellationToken);
                 if (document is not null)
                 {
                     return new AntigravityQuotaResponse(method, document);
@@ -59,10 +59,10 @@ public sealed class AntigravityLanguageServerClient
     /// </summary>
     public async Task<JsonDocument?> FetchUserStatusAsync(AntigravityCandidate candidate, CancellationToken cancellationToken)
     {
-        foreach (var (scheme, port, token) in Endpoints(candidate))
+        foreach (var (host, scheme, port, token) in Endpoints(candidate))
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var document = await TryPostAsync(scheme, port, "GetUserStatus", MetadataBody, token, cancellationToken);
+            var document = await TryPostAsync(host, scheme, port, "GetUserStatus", MetadataBody, token, cancellationToken);
             if (document is not null)
             {
                 return document;
@@ -72,23 +72,36 @@ public sealed class AntigravityLanguageServerClient
         return null;
     }
 
-    // Loopback endpoints to probe, in order: each discovered language-server port over https then
-    // http, then the extension server (plain http) using its own CSRF token when the IDE exposes one.
-    private static IEnumerable<(string Scheme, int Port, string Token)> Endpoints(AntigravityCandidate candidate)
+    // The IPv4 and IPv6 loopback hosts. A discovered port number may belong to either stack, so we
+    // try both — "[::1]" is bracketed for use in a URL authority.
+    private static readonly string[] LoopbackHosts = ["127.0.0.1", "[::1]"];
+
+    // Loopback endpoints to probe, in order: each discovered language-server port over each loopback
+    // host, https then http, then the extension server (plain http) using its own CSRF token when
+    // the IDE exposes one.
+    private static IEnumerable<(string Host, string Scheme, int Port, string Token)> Endpoints(AntigravityCandidate candidate)
     {
         foreach (var port in candidate.LoopbackPorts)
         {
-            yield return ("https", port, candidate.CsrfToken);
-            yield return ("http", port, candidate.CsrfToken);
+            foreach (var host in LoopbackHosts)
+            {
+                yield return (host, "https", port, candidate.CsrfToken);
+                yield return (host, "http", port, candidate.CsrfToken);
+            }
         }
 
         if (candidate.ExtensionServerPort is int extensionPort)
         {
-            yield return ("http", extensionPort, candidate.ExtensionServerCsrfToken ?? candidate.CsrfToken);
+            var token = candidate.ExtensionServerCsrfToken ?? candidate.CsrfToken;
+            foreach (var host in LoopbackHosts)
+            {
+                yield return (host, "http", extensionPort, token);
+            }
         }
     }
 
     private async Task<JsonDocument?> TryPostAsync(
+        string host,
         string scheme,
         int port,
         string method,
@@ -96,7 +109,7 @@ public sealed class AntigravityLanguageServerClient
         string csrfToken,
         CancellationToken cancellationToken)
     {
-        var uri = new Uri($"{scheme}://127.0.0.1:{port}{ServicePath}{method}");
+        var uri = new Uri($"{scheme}://{host}:{port}{ServicePath}{method}");
         try
         {
             using var request = new HttpRequestMessage(HttpMethod.Post, uri);

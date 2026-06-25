@@ -117,11 +117,18 @@ public sealed partial class WindowsAntigravityProcessLocator : IAntigravityProce
     private static IReadOnlyList<int> ListeningLoopbackPorts(int pid)
     {
         var ports = new List<int>();
+        AddIpv4LoopbackPorts(ports, pid);
+        AddIpv6LoopbackPorts(ports, pid);
+        return ports;
+    }
+
+    private static void AddIpv4LoopbackPorts(List<int> ports, int pid)
+    {
         int size = 0;
         GetExtendedTcpTable(IntPtr.Zero, ref size, true, AF_INET, TCP_TABLE_OWNER_PID_LISTENER, 0);
         if (size == 0)
         {
-            return ports;
+            return;
         }
 
         var table = Marshal.AllocHGlobal(size);
@@ -129,7 +136,7 @@ public sealed partial class WindowsAntigravityProcessLocator : IAntigravityProce
         {
             if (GetExtendedTcpTable(table, ref size, true, AF_INET, TCP_TABLE_OWNER_PID_LISTENER, 0) != 0)
             {
-                return ports;
+                return;
             }
 
             int count = Marshal.ReadInt32(table);
@@ -144,21 +151,67 @@ public sealed partial class WindowsAntigravityProcessLocator : IAntigravityProce
                     continue;
                 }
 
-                if (!new IPAddress(row.localAddr).Equals(IPAddress.Loopback))
+                if (new IPAddress(row.localAddr).Equals(IPAddress.Loopback))
                 {
-                    continue;
+                    ports.Add(NetworkOrderPort(row.localPort));
                 }
-
-                // localPort is the port in network byte order packed into the low word.
-                int port = ((int)(row.localPort & 0xFF) << 8) | (int)((row.localPort >> 8) & 0xFF);
-                ports.Add(port);
             }
         }
         finally
         {
             Marshal.FreeHGlobal(table);
         }
-
-        return ports;
     }
+
+    // MIB_TCP6ROW_OWNER_PID is 56 bytes: localAddr[16], localScopeId(4), localPort(4),
+    // remoteAddr[16], remoteScopeId(4), remotePort(4), state(4), owningPid(4). Read the fields we
+    // need by offset rather than marshalling the fixed-size address arrays.
+    private const int AF_INET6 = 23;
+    private const int Ipv6RowSize = 56;
+    private const int Ipv6LocalPortOffset = 20;
+    private const int Ipv6OwningPidOffset = 52;
+
+    private static void AddIpv6LoopbackPorts(List<int> ports, int pid)
+    {
+        int size = 0;
+        GetExtendedTcpTable(IntPtr.Zero, ref size, true, AF_INET6, TCP_TABLE_OWNER_PID_LISTENER, 0);
+        if (size == 0)
+        {
+            return;
+        }
+
+        var table = Marshal.AllocHGlobal(size);
+        try
+        {
+            if (GetExtendedTcpTable(table, ref size, true, AF_INET6, TCP_TABLE_OWNER_PID_LISTENER, 0) != 0)
+            {
+                return;
+            }
+
+            int count = Marshal.ReadInt32(table);
+            var rowPtr = table + 4;
+            var address = new byte[16];
+            for (int i = 0; i < count; i++)
+            {
+                if ((uint)Marshal.ReadInt32(rowPtr + Ipv6OwningPidOffset) == (uint)pid)
+                {
+                    Marshal.Copy(rowPtr, address, 0, 16);
+                    if (new IPAddress(address).Equals(IPAddress.IPv6Loopback))
+                    {
+                        ports.Add(NetworkOrderPort((uint)Marshal.ReadInt32(rowPtr + Ipv6LocalPortOffset)));
+                    }
+                }
+
+                rowPtr += Ipv6RowSize;
+            }
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(table);
+        }
+    }
+
+    // localPort is the port in network byte order packed into the low word of the DWORD.
+    private static int NetworkOrderPort(uint localPort) =>
+        ((int)(localPort & 0xFF) << 8) | (int)((localPort >> 8) & 0xFF);
 }

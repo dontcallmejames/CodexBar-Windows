@@ -103,7 +103,9 @@ public sealed class AppShell : IDisposable
         AntigravityHttpClient = new HttpClient(new HttpClientHandler
         {
             ServerCertificateCustomValidationCallback = (request, _, _, _) =>
-                request.RequestUri?.Host is "127.0.0.1" or "::1" or "localhost"
+                // DnsSafeHost normalizes the IPv6 literal: Uri.Host returns "[::1]" (bracketed),
+                // DnsSafeHost returns "::1", so the loopback bypass also covers IPv6 connections.
+                request.RequestUri?.DnsSafeHost is "127.0.0.1" or "::1" or "localhost"
         })
         {
             Timeout = TimeSpan.FromSeconds(10)
