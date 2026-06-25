@@ -16,6 +16,7 @@
 - Windows repository hygiene: mark legacy macOS release artifacts and scripts so they are not mistaken for the Windows release path.
 
 ### Fixes
+- Antigravity: discover language servers bound to IPv6 loopback (`::1`), not just IPv4 — enumerate `AF_INET6` listeners and try the `[::1]` host, and match the loopback TLS bypass on `Uri.DnsSafeHost` so the IPv6 self-signed cert is trusted.
 - Antigravity: read the live language-server quota shape — unwrap the Connect `response` envelope and render the real grouped weekly/5-hour limits ("Gemini", "Claude and GPT") instead of a blank card, and backfill the plan tier + account email from `GetUserStatus`.
 - Antigravity: show the provider's popover tab when enabled — it was wired into refresh and Settings but missing from the popover's enabled-provider list, so the card never rendered. The enabled-provider list is now a single source of truth on `AppSettings` with a regression test covering every provider.
 - Windows updates: check GitHub's releases list so prerelease-only repos do not fail with a 404.
