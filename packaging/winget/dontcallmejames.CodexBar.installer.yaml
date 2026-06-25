@@ -1,5 +1,5 @@
 PackageIdentifier: dontcallmejames.CodexBar
-PackageVersion: 0.25.1
+PackageVersion: 0.25.2
 InstallerLocale: en-US
 Platform:
   - Windows.Desktop
@@ -14,7 +14,7 @@ UpgradeBehavior: install
 ReleaseDate: 2026-06-24
 Installers:
   - Architecture: x64
-    InstallerUrl: https://github.com/dontcallmejames/CodexBar-Windows/releases/download/v0.25.1/CodexBar-Windows-0.25.1-win-x64.installer.exe
-    InstallerSha256: 32412136B2D52499B7D0D0BEF760F1B84F301DBCD233977E1326036382090317
+    InstallerUrl: https://github.com/dontcallmejames/CodexBar-Windows/releases/download/v0.25.2/CodexBar-Windows-0.25.2-win-x64.installer.exe
+    InstallerSha256: EF21A3DCB71315127E43E9DDE2C6AA96730D40D0EDE812098A3C34910A5BFA83
 ManifestType: installer
 ManifestVersion: 1.6.0
