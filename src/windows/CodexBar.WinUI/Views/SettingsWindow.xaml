@@ -92,6 +92,9 @@
                                      Width="120" Minimum="0" Maximum="100"
                                      Value="{x:Bind ViewModel.DownloadProgress, Mode=OneWay}"
                                      Visibility="{x:Bind ViewModel.ProgressVisibility, Mode=OneWay}" />
+                        <Button AutomationProperties.AutomationId="SettingsCheckNowButton"
+                                Content="Check now"
+                                Command="{x:Bind ViewModel.CheckNowCommand}" />
                         <Button AutomationProperties.AutomationId="SettingsInstallUpdateButton"
                                 Content="Install now"
                                 Command="{x:Bind ViewModel.InstallUpdateCommand}"

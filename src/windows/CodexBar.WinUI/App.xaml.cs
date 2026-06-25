@@ -451,7 +451,8 @@ public partial class App : Application
                 var ok = launcher.LaunchAndDetach(installerPath, out var err);
                 return (ok, err);
             },
-            () => uiDispatcher?.TryEnqueue(QuitApp));
+            () => uiDispatcher?.TryEnqueue(QuitApp),
+            checkForUpdates: () => shell!.UpdateNotifier.CheckNowAsync(shutdownCts?.Token ?? System.Threading.CancellationToken.None));
 
         // Refresh the VM's CanInstallUpdate / status text whenever the notifier picks up new data.
         EventHandler? handler = null;

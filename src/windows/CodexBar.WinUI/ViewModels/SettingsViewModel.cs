@@ -18,6 +18,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     private readonly IUpdateInstaller? updateInstaller;
     private readonly Func<string, (bool Success, string? ErrorMessage)>? launchInstaller;
     private readonly Action? quitApp;
+    private readonly Func<Task>? checkForUpdates;
 
     [ObservableProperty] private bool codexEnabled;
     [ObservableProperty] private bool claudeEnabled;
@@ -43,6 +44,10 @@ public sealed partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private double downloadProgress;
     [ObservableProperty] private string installStatusText = string.Empty;
 
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(CheckNowCommand))]
+    private bool isCheckingForUpdates;
+
     public Microsoft.UI.Xaml.Visibility ProgressVisibility =>
         IsInstalling ? Microsoft.UI.Xaml.Visibility.Visible : Microsoft.UI.Xaml.Visibility.Collapsed;
 
@@ -65,7 +70,8 @@ public sealed partial class SettingsViewModel : ObservableObject
         Func<UpdateCheckResult?> lastUpdateProvider,
         IUpdateInstaller? updateInstaller,
         Func<string, (bool Success, string? ErrorMessage)>? launchInstaller,
-        Action? quitApp)
+        Action? quitApp,
+        Func<Task>? checkForUpdates = null)
     {
         originalSettings = settings;
         this.snapshotsProvider = snapshotsProvider;
@@ -73,6 +79,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         this.updateInstaller = updateInstaller;
         this.launchInstaller = launchInstaller;
         this.quitApp = quitApp;
+        this.checkForUpdates = checkForUpdates;
         codexEnabled = settings.CodexEnabled;
         claudeEnabled = settings.ClaudeEnabled;
         cursorEnabled = settings.CursorEnabled;
@@ -152,6 +159,35 @@ public sealed partial class SettingsViewModel : ObservableObject
         {
             // Swallow — failing to copy/open shouldn't crash settings.
         }
+    }
+
+    /// <summary>
+    /// Can run a manual update check whenever the host supplied a checker and one isn't already running.
+    /// </summary>
+    public bool CanCheckNow => !IsCheckingForUpdates && checkForUpdates is not null;
+
+    [RelayCommand(CanExecute = nameof(CanCheckNow))]
+    private async Task CheckNow()
+    {
+        if (checkForUpdates is null) return;
+        IsCheckingForUpdates = true;
+        InstallStatusText = "Checking for updates…";
+        try
+        {
+            await checkForUpdates();
+        }
+        catch (Exception ex)
+        {
+            InstallStatusText = $"Update check failed: {ex.Message}";
+            IsCheckingForUpdates = false;
+            return;
+        }
+
+        IsCheckingForUpdates = false;
+        // The notifier's ResultChanged also refreshes these via the host; do it here too so
+        // the status reflects the result immediately even if that event is missed.
+        UpdateAvailableStatus();
+        InstallStatusText = LatestUpdateText;
     }
 
     [RelayCommand(CanExecute = nameof(CanInstallUpdate))]
