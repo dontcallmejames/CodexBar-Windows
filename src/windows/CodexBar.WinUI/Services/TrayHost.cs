@@ -8,6 +8,14 @@ namespace CodexBar.WinUI.Services;
 
 public sealed class TrayHost : IDisposable
 {
+    // Stable notify-icon identity. Windows 11 keys an icon's notification-area state
+    // (including the user's "always show / promote out of the overflow" choice) on this
+    // GUID. Without a fixed GUID, every build path / update looks like a brand-new icon,
+    // so promotion never sticks and HKCU\Control Panel\NotifyIconSettings accumulates a
+    // dead entry per path. A constant GUID collapses the installed app to a single
+    // persistent entry whose promotion survives updates.
+    private static readonly Guid TrayIconId = new("7C0E1A2B-3D4E-4F5A-8B6C-9D0E1F2A3B4C");
+
     private readonly TaskbarIcon icon = new();
     private Icon? currentIcon;
 
@@ -19,6 +27,7 @@ public sealed class TrayHost : IDisposable
 
     public TrayHost()
     {
+        icon.Id = TrayIconId;
         icon.NoLeftClickDelay = true;
         icon.ToolTipText = "CodexBar";
         icon.LeftClickCommand = new RelayCommand(() => LeftClick?.Invoke(this, EventArgs.Empty));
