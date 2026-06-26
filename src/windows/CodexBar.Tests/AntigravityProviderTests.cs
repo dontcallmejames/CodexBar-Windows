@@ -13,6 +13,15 @@ public class AntigravityProviderTests
         public IReadOnlyList<AntigravityCandidate> FindCandidates() => candidates;
     }
 
+    private sealed class ThreadCapturingLocator(Action onScan) : IAntigravityProcessLocator
+    {
+        public IReadOnlyList<AntigravityCandidate> FindCandidates()
+        {
+            onScan();
+            return [];
+        }
+    }
+
     private sealed class StubHandler(Func<HttpRequestMessage, HttpResponseMessage> responder) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
@@ -103,5 +112,33 @@ public class AntigravityProviderTests
         Assert.AreEqual(UsageProvider.Antigravity, snapshot.Provider);
         Assert.AreEqual(60.0, snapshot.Windows.Single(w => w.Title == "Gemini · Weekly Limit").UsedPercent, 0.001);
         Assert.IsNull(snapshot.ErrorMessage);
+    }
+
+    [TestMethod]
+    public void RunsProcessScanOffTheCallingThread()
+    {
+        // FindCandidates() does a synchronous WMI process scan; it must not run on the caller's
+        // thread (the UI thread in the app), or a slow/stalled scan blocks the refresh timer.
+        // Drive the call from a dedicated (non-ThreadPool) thread so Task.Run's worker can never
+        // coincidentally be the caller thread — which keeps the assertion deterministic in CI.
+        int callerThreadId = 0;
+        int? scanThreadId = null;
+        var locator = new ThreadCapturingLocator(() => scanThreadId = Environment.CurrentManagedThreadId);
+        using var http = new HttpClient(new StubHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)));
+        var provider = new AntigravityProvider(http, locator);
+
+        var done = new ManualResetEventSlim(false);
+        var caller = new Thread(() =>
+        {
+            callerThreadId = Environment.CurrentManagedThreadId;
+            provider.RefreshAsync(CancellationToken.None).GetAwaiter().GetResult();
+            done.Set();
+        })
+        { IsBackground = true };
+        caller.Start();
+
+        Assert.IsTrue(done.Wait(TimeSpan.FromSeconds(10)), "refresh did not complete in time");
+        Assert.IsNotNull(scanThreadId);
+        Assert.AreNotEqual(callerThreadId, scanThreadId, "the WMI process scan must run off the calling thread");
     }
 }
