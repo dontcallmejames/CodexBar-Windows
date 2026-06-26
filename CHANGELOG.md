@@ -16,6 +16,7 @@
 - Windows repository hygiene: mark legacy macOS release artifacts and scripts so they are not mistaken for the Windows release path.
 
 ### Fixes
+- Updates: force-close the running app during install (`/FORCECLOSEAPPLICATIONS`) and relaunch it, so an update no longer leaves you on a stale still-running build when the tray app doesn't close gracefully in time.
 - Antigravity: run the language-server process scan (WMI + `iphlpapi`) off the UI thread so a slow scan no longer lags the card or stalls the periodic refresh timer for every provider.
 - Antigravity: discover language servers bound to IPv6 loopback (`::1`), not just IPv4 — enumerate `AF_INET6` listeners and try the `[::1]` host, and match the loopback TLS bypass on `Uri.DnsSafeHost` so the IPv6 self-signed cert is trusted.
 - Antigravity: read the live language-server quota shape — unwrap the Connect `response` envelope and render the real grouped weekly/5-hour limits ("Gemini", "Claude and GPT") instead of a blank card, and backfill the plan tier + account email from `GetUserStatus`.
