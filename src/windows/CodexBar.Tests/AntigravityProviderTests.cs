@@ -13,6 +13,15 @@ public class AntigravityProviderTests
         public IReadOnlyList<AntigravityCandidate> FindCandidates() => candidates;
     }
 
+    private sealed class ThreadCapturingLocator(Action onScan) : IAntigravityProcessLocator
+    {
+        public IReadOnlyList<AntigravityCandidate> FindCandidates()
+        {
+            onScan();
+            return [];
+        }
+    }
+
     private sealed class StubHandler(Func<HttpRequestMessage, HttpResponseMessage> responder) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
@@ -103,5 +112,22 @@ public class AntigravityProviderTests
         Assert.AreEqual(UsageProvider.Antigravity, snapshot.Provider);
         Assert.AreEqual(60.0, snapshot.Windows.Single(w => w.Title == "Gemini · Weekly Limit").UsedPercent, 0.001);
         Assert.IsNull(snapshot.ErrorMessage);
+    }
+
+    [TestMethod]
+    public async Task RunsProcessScanOffTheCallingThread()
+    {
+        // FindCandidates() does a synchronous WMI process scan; it must not run on the caller's
+        // thread (the UI thread in the app), or a slow/stalled scan blocks the refresh timer.
+        var callerThreadId = Environment.CurrentManagedThreadId;
+        int? scanThreadId = null;
+        var locator = new ThreadCapturingLocator(() => scanThreadId = Environment.CurrentManagedThreadId);
+        using var http = new HttpClient(new StubHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)));
+        var provider = new AntigravityProvider(http, locator);
+
+        await provider.RefreshAsync(CancellationToken.None);
+
+        Assert.IsNotNull(scanThreadId);
+        Assert.AreNotEqual(callerThreadId, scanThreadId, "the WMI process scan must run off the calling thread");
     }
 }

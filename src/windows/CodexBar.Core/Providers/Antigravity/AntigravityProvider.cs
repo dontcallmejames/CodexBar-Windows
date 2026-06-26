@@ -17,7 +17,9 @@ public sealed class AntigravityProvider : IUsageProvider
 
     public async Task<UsageSnapshot> RefreshAsync(CancellationToken cancellationToken)
     {
-        var candidates = locator.FindCandidates();
+        // FindCandidates() is a synchronous WMI + iphlpapi process scan. Run it on a worker thread
+        // so it never blocks the caller (the UI thread, which drives the periodic refresh timer).
+        var candidates = await Task.Run(locator.FindCandidates, cancellationToken);
         if (candidates.Count == 0)
         {
             return Missing("Antigravity isn't running.");
