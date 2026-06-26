@@ -127,6 +127,30 @@ public sealed class PackagingScriptTests
     }
 
     [TestMethod]
+    public void WindowsUpdateForceClosesAndRestartsRunningApp()
+    {
+        var repoRoot = Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory, "..", "..", "..", "..", "..", ".."));
+        var launcherPath = Path.Combine(repoRoot, "src", "windows", "CodexBar.WinUI", "Services", "UpdateLauncher.cs");
+        var innoPath = Path.Combine(repoRoot, "installer", "windows", "CodexBar.iss");
+        Assert.IsTrue(File.Exists(launcherPath), launcherPath);
+        Assert.IsTrue(File.Exists(innoPath), innoPath);
+        var launcher = File.ReadAllText(launcherPath);
+        var inno = File.ReadAllText(innoPath);
+
+        // The in-app updater must force-close (not just politely ask) the running app and then
+        // restart it; otherwise the installer replaces the exe under a still-running process,
+        // leaving the user on a stale build.
+        StringAssert.Contains(launcher, "/CLOSEAPPLICATIONS");
+        StringAssert.Contains(launcher, "/FORCECLOSEAPPLICATIONS");
+        StringAssert.Contains(launcher, "/RESTARTAPPLICATIONS");
+
+        // Manual (interactive) installs get the same close + restart behavior from the script.
+        StringAssert.Contains(inno, "CloseApplications=yes");
+        StringAssert.Contains(inno, "RestartApplications=yes");
+    }
+
+    [TestMethod]
     public void WindowsInstallerScriptSupportsOptionalCodeSigning()
     {
         var scriptPath = Path.GetFullPath(Path.Combine(

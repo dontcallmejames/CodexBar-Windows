@@ -34,6 +34,11 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 PrivilegesRequired=lowest
 UninstallDisplayIcon={app}\CodexBar.WinUI.exe
+; Close the running CodexBar via Restart Manager before replacing files, and relaunch it after,
+; so an upgrade never leaves the user on a stale still-running process. The in-app updater also
+; passes /FORCECLOSEAPPLICATIONS to force-terminate the tray app when it doesn't exit gracefully.
+CloseApplications=yes
+RestartApplications=yes
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Additional shortcuts:"; Flags: unchecked
