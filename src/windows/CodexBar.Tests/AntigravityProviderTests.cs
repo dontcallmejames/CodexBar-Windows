@@ -115,18 +115,29 @@ public class AntigravityProviderTests
     }
 
     [TestMethod]
-    public async Task RunsProcessScanOffTheCallingThread()
+    public void RunsProcessScanOffTheCallingThread()
     {
         // FindCandidates() does a synchronous WMI process scan; it must not run on the caller's
         // thread (the UI thread in the app), or a slow/stalled scan blocks the refresh timer.
-        var callerThreadId = Environment.CurrentManagedThreadId;
+        // Drive the call from a dedicated (non-ThreadPool) thread so Task.Run's worker can never
+        // coincidentally be the caller thread — which keeps the assertion deterministic in CI.
+        int callerThreadId = 0;
         int? scanThreadId = null;
         var locator = new ThreadCapturingLocator(() => scanThreadId = Environment.CurrentManagedThreadId);
         using var http = new HttpClient(new StubHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)));
         var provider = new AntigravityProvider(http, locator);
 
-        await provider.RefreshAsync(CancellationToken.None);
+        var done = new ManualResetEventSlim(false);
+        var caller = new Thread(() =>
+        {
+            callerThreadId = Environment.CurrentManagedThreadId;
+            provider.RefreshAsync(CancellationToken.None).GetAwaiter().GetResult();
+            done.Set();
+        })
+        { IsBackground = true };
+        caller.Start();
 
+        Assert.IsTrue(done.Wait(TimeSpan.FromSeconds(10)), "refresh did not complete in time");
         Assert.IsNotNull(scanThreadId);
         Assert.AreNotEqual(callerThreadId, scanThreadId, "the WMI process scan must run off the calling thread");
     }
